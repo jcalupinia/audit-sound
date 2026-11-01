@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AUDIT SOUND</title>
+<style>
+  :root{
+    --bg:#071B2F; --card:#0A2342; --btn:#0E2C50; --gold:#C7A83C;
+    --text:#E8EEF5; --muted:#8FA6BF;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:16px; gap:28px; text-align:center;
+  }
+  .brand{letter-spacing:.18em; font-size:14px; color:var(--muted); text-transform:uppercase}
+  h1{margin:0; font-size:clamp(28px,8vw,44px); font-weight:700}
+  h1 .gold{color:var(--gold)}
+  .card{
+    background:var(--card); border-radius:18px; padding:26px 22px; width:100%; max-width:420px;
+    box-shadow:0 10px 40px rgba(0,0,0,.35);
+  }
+  #now{font-size:15px; color:var(--muted); min-height:20px; margin-bottom:18px}
+  #now b{color:var(--text)}
+  button{
+    appearance:none; border:none; cursor:pointer; width:100%;
+    background:var(--gold); color:#13233a; font-weight:700; font-size:18px;
+    padding:16px 20px; border-radius:12px; transition:transform .05s ease, filter .2s;
+  }
+  button:active{transform:scale(.98)}
+  button.stop{background:var(--btn); color:var(--text)}
+  button:disabled{filter:grayscale(.5) opacity(.6); cursor:default}
+  #status{margin-top:14px; font-size:13px; color:var(--muted); min-height:18px}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--muted); margin-right:6px; vertical-align:middle}
+  .dot.live{background:#3fb950}
+  .dot.err{background:#f85149}
+  footer{font-size:11px; color:var(--muted); opacity:.7}
+</style>
+</head>
+<body>
+  <div class="brand">DJ autónomo</div>
+  <h1>AUDIT <span class="gold">SOUND</span></h1>
+
+  <div class="card">
+    <div id="now">Listo para escuchar tu sesión.</div>
+    <button id="btn">▶ Escuchar</button>
+    <div id="status"><span class="dot" id="dot"></span><span id="statusText">Detenido</span></div>
+  </div>
+
+  <footer>Stream MP3 vía Icecast · AUDIT SOUND</footer>
+
+  <!-- El audio es un stream continuo tipo radio (Opción B): suena también con la
+       pantalla bloqueada, porque es un <audio> que reproduce un stream, no
+       procesamiento Web Audio del lado cliente. -->
+  <audio id="player" preload="none" playsinline></audio>
+
+<script>
+(function(){
+  // URL del stream: ?stream=... o, por defecto, mismo host /stream.mp3.
+  // En producción se sirve desde el Icecast en Coolify (p.ej. https://stream.audit-ia/stream.mp3).
+  var params = new URLSearchParams(location.search);
+  var STREAM = params.get('stream') || (location.origin + '/stream.mp3');
+
+  var player = document.getElementById('player');
+  var btn = document.getElementById('btn');
+  var dot = document.getElementById('dot');
+  var statusText = document.getElementById('statusText');
+  var now = document.getElementById('now');
+  var playing = false;
+
+  function setStatus(text, cls){
+    statusText.textContent = text;
+    dot.className = 'dot' + (cls ? ' ' + cls : '');
+  }
+
+  function start(){
+    // Cache-busting para forzar reconexión limpia al stream en vivo.
+    player.src = STREAM + (STREAM.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+    player.load();
+    var p = player.play();
+    if (p && p.catch) p.catch(function(err){ setStatus('No se pudo iniciar: ' + err.message, 'err'); });
+  }
+  function stop(){
+    player.pause();
+    player.removeAttribute('src');
+    player.load();
+  }
+
+  btn.addEventListener('click', function(){
+    if (!playing) start(); else stop();
+  });
+
+  player.addEventListener('playing', function(){
+    playing = true;
+    btn.textContent = '⏸ Detener';
+    btn.classList.add('stop');
+    setStatus('En vivo', 'live');
+    now.innerHTML = 'Reproduciendo <b>tu sesión AUDIT SOUND</b>';
+  });
+  player.addEventListener('pause', function(){
+    playing = false;
+    btn.textContent = '▶ Escuchar';
+    btn.classList.remove('stop');
+    setStatus('Detenido');
+    now.textContent = 'Listo para escuchar tu sesión.';
+  });
+  player.addEventListener('waiting', function(){ setStatus('Conectando…'); });
+  player.addEventListener('stalled', function(){ setStatus('Reconectando…'); });
+  player.addEventListener('error', function(){ setStatus('Error de stream', 'err'); });
+
+  // Exponer para pruebas automatizadas (headless).
+  window.__auditSound = { start: start, stop: stop, el: player, streamUrl: STREAM };
+})();
+</script>
+</body>
+</html>
