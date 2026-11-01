@@ -58,12 +58,17 @@
        procesamiento Web Audio del lado cliente. -->
   <audio id="player" preload="none" playsinline></audio>
 
+  <!-- config.js lo genera el contenedor web a partir de STREAM_URL (Coolify).
+       Opcional: si no existe, se usa ?stream= o <origin>/stream.mp3. -->
+  <script src="config.js" onerror="void 0"></script>
 <script>
 (function(){
   // URL del stream: ?stream=... o, por defecto, mismo host /stream.mp3.
   // En producción se sirve desde el Icecast en Coolify (p.ej. https://stream.audit-ia/stream.mp3).
   var params = new URLSearchParams(location.search);
-  var STREAM = params.get('stream') || (location.origin + '/stream.mp3');
+  var STREAM = params.get('stream') ||
+               (typeof window.AUDIT_SOUND_STREAM === 'string' && window.AUDIT_SOUND_STREAM) ||
+               (location.origin + '/stream.mp3');
 
   var player = document.getElementById('player');
   var btn = document.getElementById('btn');

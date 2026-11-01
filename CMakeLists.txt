@@ -59,3 +59,8 @@ target_link_libraries(engine_selftest PRIVATE audit_sound_engine Threads::Thread
 # validez, duración y nivel (no-silencio). Issue D1.
 add_executable(mp3_verify ${ROOT}/tools/mp3_verify.cpp)
 target_include_directories(mp3_verify PRIVATE ${ROOT}/third_party/dr_libs)
+
+# Servidor de larga vida: reproduce una carpeta en bucle y emite por el sink
+# (Icecast en producción). Placeholder hasta el AutoMix (M3). Issue de despliegue.
+add_executable(audit_sound_server ${ROOT}/tools/audit_sound_server.cpp)
+target_link_libraries(audit_sound_server PRIVATE audit_sound_engine Threads::Threads)
