@@ -19,10 +19,11 @@ por Oboe (Android).
 
 ## Compilar y probar (Linux)
 
-Requisitos del sistema: `cmake`, `g++`, **`libmp3lame-dev`** (encoder MP3, issue D1).
+Requisitos del sistema: `cmake`, `g++`, **`libmp3lame-dev`** (encoder MP3, D1),
+**`libshout3-dev`** (source client de Icecast, D2).
 
 ```bash
-sudo apt-get install -y cmake g++ libmp3lame-dev
+sudo apt-get install -y cmake g++ libmp3lame-dev libshout3-dev
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 
@@ -36,6 +37,24 @@ AUDIT_SOUND_PCM_OUT=/tmp/out.pcm ./build/engine_selftest ruta/al/audio.wav
 AUDIT_SOUND_MP3_OUT=/tmp/out.mp3 ./build/engine_selftest ruta/al/audio.wav
 ./build/mp3_verify /tmp/out.mp3
 ```
+
+### Transmitir a Icecast (D2)
+
+El sink de salida se elige por variables de entorno. Con las de Icecast, el motor
+publica el MP3 como *source client* (en producción, un Icecast en Coolify/Hetzner):
+
+```bash
+export AUDIT_SOUND_ICECAST_HOST=localhost
+export AUDIT_SOUND_ICECAST_PORT=8900
+export AUDIT_SOUND_ICECAST_MOUNT=/stream.mp3
+export AUDIT_SOUND_ICECAST_USER=source
+export AUDIT_SOUND_ICECAST_PASSWORD=<source-password>
+./build/engine_selftest ruta/al/audio.wav
+# El stream se escucha en http://<host>:<port>/stream.mp3 (navegador, <audio>, etc.)
+```
+
+Prioridad de sinks: `ICECAST_HOST` → Icecast (D2); si no, `MP3_OUT` → MP3 a disco
+(D1); si no, `OfflineSink` (pruebas).
 
 ## Licencia
 

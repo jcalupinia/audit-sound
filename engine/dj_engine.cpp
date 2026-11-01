@@ -41,6 +41,7 @@
 #ifndef __ANDROID__
 #include "sinks/offline_sink.hpp"
 #include "sinks/stream_sink.hpp"
+#include "sinks/icecast_byte_sink.hpp"
 #include <cstdlib>
 #include <memory>
 #endif
@@ -604,11 +605,22 @@ struct Engine : public IAudioRenderer
 #else  // !__ANDROID__  — servidor / headless (Opción B)
   bool openStream() {
     closeStream();
-    // Selección de sink (Opción B). Con AUDIT_SOUND_MP3_OUT=<ruta> se codifica a
-    // MP3 a disco (D1); si no, OfflineSink. El destino Icecast (D2) se añadirá
-    // con AUDIT_SOUND_ICECAST_URL.
+    // Selección de sink (Opción B), por variables de entorno:
+    //  1) AUDIT_SOUND_ICECAST_HOST -> StreamSink(MP3) a Icecast (D2, producción).
+    //  2) AUDIT_SOUND_MP3_OUT=<ruta> -> StreamSink(MP3) a disco (D1).
+    //  3) si no -> OfflineSink (pruebas).
+    const char* icHost = std::getenv("AUDIT_SOUND_ICECAST_HOST");
     const char* mp3out = std::getenv("AUDIT_SOUND_MP3_OUT");
-    if (mp3out && mp3out[0]) {
+    if (icHost && icHost[0]) {
+      const char* p = std::getenv("AUDIT_SOUND_ICECAST_PORT");
+      const char* mount = std::getenv("AUDIT_SOUND_ICECAST_MOUNT");
+      const char* user = std::getenv("AUDIT_SOUND_ICECAST_USER");
+      const char* pass = std::getenv("AUDIT_SOUND_ICECAST_PASSWORD");
+      const int port = (p && p[0]) ? std::atoi(p) : 8000;
+      sink = std::make_unique<StreamSink>(std::make_unique<IcecastByteSink>(
+          icHost, port, (mount && mount[0]) ? mount : "/stream.mp3",
+          (user && user[0]) ? user : "source", (pass && pass[0]) ? pass : ""));
+    } else if (mp3out && mp3out[0]) {
       sink = std::make_unique<StreamSink>(std::make_unique<FileByteSink>(mp3out));
     } else {
       sink = std::make_unique<OfflineSink>();

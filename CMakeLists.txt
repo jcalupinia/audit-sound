@@ -20,6 +20,13 @@ if(NOT LAME_INCLUDE_DIR OR NOT LAME_LIBRARY)
   message(FATAL_ERROR "libmp3lame no encontrada (instalar libmp3lame-dev)")
 endif()
 
+# libshout (source client de Icecast del StreamSink, issue D2).
+find_path(SHOUT_INCLUDE_DIR shout/shout.h)
+find_library(SHOUT_LIBRARY NAMES shout)
+if(NOT SHOUT_INCLUDE_DIR OR NOT SHOUT_LIBRARY)
+  message(FATAL_ERROR "libshout no encontrada (instalar libshout3-dev)")
+endif()
+
 # Dependencias vendorizadas (cada una con su propio CMake).
 add_subdirectory(${ROOT}/third_party/qm-dsp qm-dsp-build)
 include(${ROOT}/third_party/opus_stack.cmake)   # define: ogg, opus, opusfile
@@ -39,8 +46,9 @@ target_include_directories(audit_sound_engine PRIVATE
   ${ROOT}/third_party/signalsmith-linear/include
   ${ROOT}/third_party/qm-dsp
   ${LAME_INCLUDE_DIR}
+  ${SHOUT_INCLUDE_DIR}
 )
-target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY})
+target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY} ${SHOUT_LIBRARY})
 
 # Autoprueba headless: crea el motor, arranca el sink, opcionalmente carga
 # un archivo y comprueba que la posición avanza (pipeline vivo).

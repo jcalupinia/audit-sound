@@ -10,6 +10,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <thread>
 
 int main(int argc, char** argv) {
@@ -40,12 +41,14 @@ int main(int argc, char** argv) {
     std::printf("(sin archivo; solo se prueba arranque/stop del motor y el sink)\n");
   }
 
-  std::this_thread::sleep_for(std::chrono::seconds(2));
+  const char* secsEnv = std::getenv("AUDIT_SOUND_SELFTEST_SECS");
+  const int secs = (secsEnv && secsEnv[0]) ? std::atoi(secsEnv) : 2;
+  std::this_thread::sleep_for(std::chrono::seconds(secs > 0 ? secs : 2));
 
   int rc = 0;
   if (loaded) {
     const double pos = dj_position(e, 0);
-    std::printf("posición tras 2 s = %.3f s\n", pos);
+    std::printf("posición tras %d s = %.3f s\n", secs, pos);
     if (pos <= 0.0) {
       std::fprintf(stderr, "ERROR: la reproducción no avanzó\n");
       rc = 2;
