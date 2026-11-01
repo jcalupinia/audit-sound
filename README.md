@@ -19,13 +19,22 @@ por Oboe (Android).
 
 ## Compilar y probar (Linux)
 
+Requisitos del sistema: `cmake`, `g++`, **`libmp3lame-dev`** (encoder MP3, issue D1).
+
 ```bash
+sudo apt-get install -y cmake g++ libmp3lame-dev
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
-./build/engine_selftest                 # arranque headless del motor + sink
-./build/engine_selftest ruta/al/audio.wav   # carga, reproduce y avanza posición
-# Volcar PCM para inspección:
+
+./build/engine_selftest                      # arranque headless del motor + sink
+./build/engine_selftest ruta/al/audio.wav    # carga, reproduce y avanza posición
+
+# Volcar PCM crudo (float32 intercalado) para inspección:
 AUDIT_SOUND_PCM_OUT=/tmp/out.pcm ./build/engine_selftest ruta/al/audio.wav
+
+# Codificar la salida a MP3 a disco (D1) y verificar que es válido:
+AUDIT_SOUND_MP3_OUT=/tmp/out.mp3 ./build/engine_selftest ruta/al/audio.wav
+./build/mp3_verify /tmp/out.mp3
 ```
 
 ## Licencia
