@@ -13,6 +13,13 @@ set(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(Threads REQUIRED)
 
+# libmp3lame (encoder MP3 del StreamSink, issue D1).
+find_path(LAME_INCLUDE_DIR lame/lame.h)
+find_library(LAME_LIBRARY NAMES mp3lame)
+if(NOT LAME_INCLUDE_DIR OR NOT LAME_LIBRARY)
+  message(FATAL_ERROR "libmp3lame no encontrada (instalar libmp3lame-dev)")
+endif()
+
 # Dependencias vendorizadas (cada una con su propio CMake).
 add_subdirectory(${ROOT}/third_party/qm-dsp qm-dsp-build)
 include(${ROOT}/third_party/opus_stack.cmake)   # define: ogg, opus, opusfile
@@ -26,14 +33,21 @@ target_compile_definitions(audit_sound_engine PRIVATE _USE_MATH_DEFINES)
 target_compile_options(audit_sound_engine PRIVATE -fexceptions)
 target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine)
 target_include_directories(audit_sound_engine PRIVATE
+  ${ROOT}/engine/sinks
   ${ROOT}/third_party/dr_libs
   ${ROOT}/third_party/signalsmith-stretch
   ${ROOT}/third_party/signalsmith-linear/include
   ${ROOT}/third_party/qm-dsp
+  ${LAME_INCLUDE_DIR}
 )
-target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads)
+target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY})
 
-# Autoprueba headless: crea el motor, arranca el OfflineSink, opcionalmente carga
+# Autoprueba headless: crea el motor, arranca el sink, opcionalmente carga
 # un archivo y comprueba que la posición avanza (pipeline vivo).
 add_executable(engine_selftest ${ROOT}/tools/engine_selftest.cpp)
 target_link_libraries(engine_selftest PRIVATE audit_sound_engine Threads::Threads)
+
+# Verificador: re-decodifica un MP3 con dr_mp3 (ya vendorizado) y reporta
+# validez, duración y nivel (no-silencio). Issue D1.
+add_executable(mp3_verify ${ROOT}/tools/mp3_verify.cpp)
+target_include_directories(mp3_verify PRIVATE ${ROOT}/third_party/dr_libs)

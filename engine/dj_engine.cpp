@@ -40,6 +40,8 @@
 
 #ifndef __ANDROID__
 #include "sinks/offline_sink.hpp"
+#include "sinks/stream_sink.hpp"
+#include <cstdlib>
 #include <memory>
 #endif
 
@@ -602,7 +604,15 @@ struct Engine : public IAudioRenderer
 #else  // !__ANDROID__  — servidor / headless (Opción B)
   bool openStream() {
     closeStream();
-    sink = std::make_unique<OfflineSink>();
+    // Selección de sink (Opción B). Con AUDIT_SOUND_MP3_OUT=<ruta> se codifica a
+    // MP3 a disco (D1); si no, OfflineSink. El destino Icecast (D2) se añadirá
+    // con AUDIT_SOUND_ICECAST_URL.
+    const char* mp3out = std::getenv("AUDIT_SOUND_MP3_OUT");
+    if (mp3out && mp3out[0]) {
+      sink = std::make_unique<StreamSink>(std::make_unique<FileByteSink>(mp3out));
+    } else {
+      sink = std::make_unique<OfflineSink>();
+    }
     const int sr = sink->start(this);
     if (sr <= 0) {
       LOGE("sink start failed");
@@ -612,7 +622,7 @@ struct Engine : public IAudioRenderer
     engineSampleRate.store(sr);
     engineChannels.store(sink->channels());
     applyLoadedDeckSampleRate(sr);
-    LOGI("stream open sr=%d ch=%d (offline sink)", sr, sink->channels());
+    LOGI("salida abierta: sr=%d ch=%d", sr, sink->channels());
     return true;
   }
 
