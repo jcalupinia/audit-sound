@@ -4,6 +4,7 @@
 #include "biquad.hpp"
 #include "id3_meta.hpp"
 #include "last_error.hpp"
+#include "silence.hpp"
 
 #include "signalsmith-stretch.h"
 #include "sinks/iaudiosink.hpp"
@@ -1095,6 +1096,69 @@ int dj_analyze_file(const char* path, float* bpm, int* key, float* beat_offset) 
   if (beat_offset) {
     *beat_offset = analysis.beatOffsetSec;
   }
+  return 1;
+}
+
+int dj_analyze_silence(const char* path, double* first_sound, double* last_sound,
+                       float* energy_rms) {
+  if (!path) {
+    return 0;
+  }
+  StreamingDecoder dec;
+  if (!dec.open(path) || dec.sampleRate < 1) {
+    return 0;
+  }
+  const double sr = (double)dec.sampleRate;
+  const int ch = 2;
+  const int hold = silence::holdSamples((float)sr);
+  const uint64_t total = dec.totalFrames;
+  const uint64_t chunk = (uint64_t)sr;  // 1 s
+  std::vector<float> buf((size_t)chunk * ch);
+
+  // Cabecera: primer sonido + energía RMS (hasta 30 s).
+  double firstSec = 0.0;
+  bool foundFirst = false;
+  double sumsq = 0.0;
+  uint64_t rmsSamples = 0;
+  dec.seek(0);
+  uint64_t pos = 0;
+  const uint64_t headEnd = (uint64_t)(30.0 * sr);
+  while (pos < headEnd) {
+    const uint64_t n = dec.readStereo(buf.data(), chunk);
+    if (n == 0) break;
+    if (!foundFirst) {
+      const int64_t idx = silence::firstSoundFrame(buf.data(), (int64_t)n, ch, hold);
+      if (idx >= 0) {
+        firstSec = (double)(pos + idx) / sr;
+        foundFirst = true;
+      }
+    }
+    const int64_t m = (int64_t)n * ch;
+    for (int64_t i = 0; i < m; ++i) sumsq += (double)buf[i] * (double)buf[i];
+    rmsSamples += (uint64_t)m;
+    pos += n;
+  }
+  if (first_sound) *first_sound = firstSec;
+  if (energy_rms) *energy_rms = rmsSamples ? (float)std::sqrt(sumsq / (double)rmsSamples) : 0.0f;
+
+  // Cola: último sonido (últimos 45 s).
+  double lastSec = total > 0 ? (double)total / sr : -1.0;
+  if (total > 0) {
+    const uint64_t tailWin = (uint64_t)(45.0 * sr);
+    const uint64_t tailStart = total > tailWin ? total - tailWin : 0;
+    dec.seek(tailStart);
+    uint64_t p = tailStart;
+    int64_t lastAbs = -1;
+    while (p < total) {
+      const uint64_t n = dec.readStereo(buf.data(), chunk);
+      if (n == 0) break;
+      const int64_t idx = silence::lastSoundFrame(buf.data(), (int64_t)n, ch, hold);
+      if (idx >= 0) lastAbs = (int64_t)(p + idx);
+      p += n;
+    }
+    if (lastAbs >= 0) lastSec = (double)lastAbs / sr;
+  }
+  if (last_sound) *last_sound = lastSec;
   return 1;
 }
 

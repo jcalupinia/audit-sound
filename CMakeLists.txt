@@ -69,3 +69,7 @@ target_include_directories(mp3_verify PRIVATE ${ROOT}/third_party/dr_libs)
 # (Icecast en producción). Placeholder hasta el AutoMix (M3). Issue de despliegue.
 add_executable(audit_sound_server ${ROOT}/tools/audit_sound_server.cpp)
 target_link_libraries(audit_sound_server PRIVATE audit_sound_engine Threads::Threads)
+
+# Prueba del detector de silencio (-60 dB) + energía (M2).
+add_executable(silence_test ${ROOT}/tools/silence_test.cpp)
+target_link_libraries(silence_test PRIVATE audit_sound_engine Threads::Threads)
