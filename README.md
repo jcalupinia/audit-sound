@@ -11,9 +11,22 @@ de auditoría técnica. El motor es un **fork del motor C++ de
 en Linux y emitir su salida como stream MP3 vía Icecast, en lugar de reproducir
 por Oboe (Android).
 
-> **Estado:** andamiaje inicial (issue **A1**). Todavía **no** compila ni funciona
-> como producto: el cableado de build para Linux, el sink de streaming y el
-> cerebro autónomo llegan en los issues siguientes (C1, D1/D2, M3…). Ver el plan.
+> **Estado:** issues **A1** (andamiaje) y **C1** (build headless en Linux)
+> completados. El motor **compila y corre headless en Linux sin Oboe** y
+> reproduce audio a través de un `OfflineSink` de pruebas (ver más abajo). Falta
+> el sink de streaming (MP3 → Icecast, D1/D2) y el cerebro autónomo (M3). No es
+> aún un producto; es la base verificada del runtime.
+
+## Compilar y probar (Linux)
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)"
+./build/engine_selftest                 # arranque headless del motor + sink
+./build/engine_selftest ruta/al/audio.wav   # carga, reproduce y avanza posición
+# Volcar PCM para inspección:
+AUDIT_SOUND_PCM_OUT=/tmp/out.pcm ./build/engine_selftest ruta/al/audio.wav
+```
 
 ## Licencia
 

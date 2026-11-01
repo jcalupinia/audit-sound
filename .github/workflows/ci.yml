@@ -34,11 +34,15 @@ jobs:
           echo "Motor presente."
 
   build:
-    name: Build del motor (Linux) — pendiente C1
+    name: Build headless del motor (Linux) + selftest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Marcador de posición
+      - name: Instalar toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: Configurar y compilar (sin Oboe)
         run: |
-          echo "El build headless para Linux se implementa en el issue C1"
-          echo "(CMake sin Oboe/Android + libmp3lame + libshout)."
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+      - name: Autoprueba headless (arranque del motor + OfflineSink)
+        run: ./build/engine_selftest

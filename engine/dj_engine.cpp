@@ -6,7 +6,11 @@
 #include "last_error.hpp"
 
 #include "signalsmith-stretch.h"
+#include "sinks/iaudiosink.hpp"
+#include "platform_log.hpp"
+#ifdef __ANDROID__
 #include <oboe/Oboe.h>
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -34,9 +38,10 @@
 
 #include "chunk_cache.hpp"
 
-#include <android/log.h>
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "sidedeck", __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "sidedeck", __VA_ARGS__)
+#ifndef __ANDROID__
+#include "sinks/offline_sink.hpp"
+#include <memory>
+#endif
 
 namespace {
 
@@ -420,10 +425,18 @@ struct AtomicFlag {
   ~AtomicFlag() { flag.store(false); }
 };
 
-struct Engine : public oboe::AudioStreamDataCallback,
-                public oboe::AudioStreamErrorCallback {
+struct Engine : public IAudioRenderer
+#ifdef __ANDROID__
+                , public oboe::AudioStreamDataCallback
+                , public oboe::AudioStreamErrorCallback
+#endif
+{
   std::mutex streamMutex;
+#ifdef __ANDROID__
   std::shared_ptr<oboe::AudioStream> stream;
+#else
+  std::unique_ptr<IAudioSink> sink;
+#endif
   Deck decks[2];
   std::atomic<float> xfader{0.5f};
   std::atomic<float> master{1.0f};
@@ -506,6 +519,7 @@ struct Engine : public oboe::AudioStreamDataCallback,
     }
   }
 
+#ifdef __ANDROID__
   bool tryOpenStream(int wantCh, oboe::SharingMode share, oboe::PerformanceMode perf,
                      int32_t sampleRate, int32_t deviceId) {
     oboe::AudioStreamBuilder builder;
@@ -585,6 +599,30 @@ struct Engine : public oboe::AudioStreamDataCallback,
       stream.reset();
     }
   }
+#else  // !__ANDROID__  — servidor / headless (Opción B)
+  bool openStream() {
+    closeStream();
+    sink = std::make_unique<OfflineSink>();
+    const int sr = sink->start(this);
+    if (sr <= 0) {
+      LOGE("sink start failed");
+      sink.reset();
+      return false;
+    }
+    engineSampleRate.store(sr);
+    engineChannels.store(sink->channels());
+    applyLoadedDeckSampleRate(sr);
+    LOGI("stream open sr=%d ch=%d (offline sink)", sr, sink->channels());
+    return true;
+  }
+
+  void closeStream() {
+    if (sink) {
+      sink->stop();
+      sink.reset();
+    }
+  }
+#endif  // __ANDROID__
 
   void renderDeck(Deck& d, float* left, float* right, int frames) {
     std::unique_lock<std::mutex> lock(d.mutex, std::try_to_lock);
@@ -792,6 +830,7 @@ struct Engine : public oboe::AudioStreamDataCallback,
     }
   }
 
+#ifdef __ANDROID__
   oboe::DataCallbackResult onAudioReady(oboe::AudioStream* s, void* audioData,
                                         int32_t numFrames) override {
     if (s == nullptr || audioData == nullptr || s->getFormat() != oboe::AudioFormat::Float) {
@@ -818,6 +857,7 @@ struct Engine : public oboe::AudioStreamDataCallback,
       LOGE("stream reconnect failed");
     }
   }
+#endif  // __ANDROID__
 
 
   // First 60s, mixed to mono and resampled for BPM/key.

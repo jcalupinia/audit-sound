@@ -10,7 +10,6 @@
 #include "streaming_decoder.hpp"
 
 #include <algorithm>
-#include <android/log.h>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -25,7 +24,17 @@
 #include <unordered_map>
 #include <vector>
 
-#define CACHE_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "sidedeck.cache", __VA_ARGS__)
+#ifdef __ANDROID__
+#include <android/log.h>
+#define CACHE_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "auditsound.cache", __VA_ARGS__)
+#else
+#include <cstdio>
+#define CACHE_LOGI(...)                                     \
+  do {                                                      \
+    std::fprintf(stderr, "[auditsound.cache] " __VA_ARGS__); \
+    std::fprintf(stderr, "\n");                             \
+  } while (0)
+#endif
 
 struct ChunkCache {
   static constexpr int kChunkFrames = 8192;
