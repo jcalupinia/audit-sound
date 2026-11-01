@@ -9,7 +9,10 @@ Frontend de AUDIT SOUND (www.audit-ia).
   `<origin>/stream.mp3`. En producción apunta al Icecast de Coolify.
   Verificado en Chromium/Blink (equivalente a Android Chrome) con
   `tools/web_playback_check.js`.
-- **E2 (pendiente):** Media Session API (metadatos + controles de pantalla de bloqueo).
+- **E2 (hecho):** Media Session API — metadatos (título, artista "AUDIT SOUND",
+  carátula SVG inline) + `playbackState` + handlers play/pause/stop, para mostrar
+  información y controles en la pantalla de bloqueo / notificación. Verificado en
+  Chromium con `tools/web_playback_check.js` (metadata + playbackState poblados).
 - **M5:** frontend real (login, now-playing, waveform, cola, perilla de energía,
   play/skip) sobre el Control API (WebSocket).
 

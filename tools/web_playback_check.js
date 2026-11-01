@@ -22,21 +22,30 @@ const { chromium } = require('playwright');
 
   const info = await page.evaluate(() => {
     const a = window.__auditSound.el;
+    const ms = ('mediaSession' in navigator) ? navigator.mediaSession : null;
+    const md = ms && ms.metadata ? ms.metadata : null;
     return {
       currentTime: a.currentTime,
       paused: a.paused,
       readyState: a.readyState,
       errorCode: a.error ? a.error.code : null,
       status: document.getElementById('statusText').textContent,
+      mediaSession: !!ms,
+      msTitle: md ? md.title : null,
+      msArtist: md ? md.artist : null,
+      msPlaybackState: ms ? ms.playbackState : null,
     };
   });
   console.log('estado del <audio>:', JSON.stringify(info));
   await browser.close();
 
-  if (!info.paused && info.currentTime > 0.5 && !info.errorCode) {
-    console.log('WEB PLAYBACK OK');
+  const playbackOk = !info.paused && info.currentTime > 0.5 && !info.errorCode;
+  const mediaOk = info.mediaSession && info.msTitle && info.msArtist === 'AUDIT SOUND' &&
+                  info.msPlaybackState === 'playing';
+  if (playbackOk && mediaOk) {
+    console.log('WEB PLAYBACK OK + MEDIA SESSION OK');
     process.exit(0);
   }
-  console.error('WEB PLAYBACK FAIL');
+  console.error('FAIL: playbackOk=' + playbackOk + ' mediaOk=' + mediaOk);
   process.exit(1);
 })().catch((e) => { console.error('excepción:', e.message); process.exit(3); });

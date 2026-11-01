@@ -77,6 +77,36 @@
     dot.className = 'dot' + (cls ? ' ' + cls : '');
   }
 
+  // --- Media Session API (E2): metadatos + controles de pantalla de bloqueo ---
+  // Un escudo dorado inline (data URI) como carátula; sin recursos externos.
+  var ARTWORK = 'data:image/svg+xml;base64,' + btoa(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">' +
+    '<rect width="512" height="512" fill="#071B2F"/>' +
+    '<circle cx="256" cy="256" r="150" fill="none" stroke="#C7A83C" stroke-width="20"/>' +
+    '<circle cx="256" cy="256" r="52" fill="#C7A83C"/></svg>');
+
+  function setupMediaSession(){
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Sesión en vivo',
+        artist: 'AUDIT SOUND',
+        album: 'DJ autónomo',
+        artwork: [
+          { src: ARTWORK, sizes: '512x512', type: 'image/svg+xml' }
+        ]
+      });
+      navigator.mediaSession.setActionHandler('play', function(){ start(); });
+      navigator.mediaSession.setActionHandler('pause', function(){ stop(); });
+      navigator.mediaSession.setActionHandler('stop', function(){ stop(); });
+    } catch (e) { /* algunos navegadores no soportan todos los handlers */ }
+  }
+  function setPlaybackState(state){
+    if ('mediaSession' in navigator) {
+      try { navigator.mediaSession.playbackState = state; } catch (e) {}
+    }
+  }
+
   function start(){
     // Cache-busting para forzar reconexión limpia al stream en vivo.
     player.src = STREAM + (STREAM.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
@@ -100,6 +130,8 @@
     btn.classList.add('stop');
     setStatus('En vivo', 'live');
     now.innerHTML = 'Reproduciendo <b>tu sesión AUDIT SOUND</b>';
+    setupMediaSession();
+    setPlaybackState('playing');
   });
   player.addEventListener('pause', function(){
     playing = false;
@@ -107,6 +139,7 @@
     btn.classList.remove('stop');
     setStatus('Detenido');
     now.textContent = 'Listo para escuchar tu sesión.';
+    setPlaybackState('paused');
   });
   player.addEventListener('waiting', function(){ setStatus('Conectando…'); });
   player.addEventListener('stalled', function(){ setStatus('Reconectando…'); });
