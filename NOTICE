@@ -1,0 +1,80 @@
+AUDIT SOUND
+Copyright (C) 2026 AUDIT SOUND contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See the file LICENSE for the full text.
+
+AUDIT SOUND is a derivative work of SideDeck. Its audio engine is a fork of
+SideDeck's C++ engine (native/engine), adapted to run headless on a server and
+stream its mixed output (Option B architecture). All upstream copyrights and
+licenses remain in force and are reproduced below.
+
+--------------------------------------------------------------------------------
+Upstream project
+--------------------------------------------------------------------------------
+
+SideDeck (GNU General Public License v3 or later)
+  https://github.com/manueljpy/SideDeck
+  Copyright (C) 2026 SideDeck contributors
+  Base of engine/ (forked from SideDeck native/engine).
+
+--------------------------------------------------------------------------------
+Third-party software bundled in this distribution
+(Their licenses remain in force.)
+--------------------------------------------------------------------------------
+
+dr_libs — dr_mp3 / dr_wav / dr_flac (public domain / MIT-0)
+  third_party/dr_libs — https://github.com/mackron/dr_libs
+  MP3, WAV, and FLAC decode.
+
+libogg (BSD-style)
+  third_party/ogg — https://github.com/xiph/ogg
+  Ogg container demux for Opus.
+
+libopus (BSD-style)
+  third_party/opus — https://github.com/xiph/opus
+  Opus audio decode.
+
+opusfile (BSD-style)
+  third_party/opusfile — https://github.com/xiph/opusfile
+  Seekable Opus-in-Ogg decode.
+
+Signalsmith Stretch (MIT)
+  third_party/signalsmith-stretch — https://github.com/Signalsmith-Audio/signalsmith-stretch
+  Keylock time-stretch.
+
+Signalsmith Linear (MIT)
+  third_party/signalsmith-linear — https://github.com/Signalsmith-Audio/linear
+  FFT / STFT used by Signalsmith Stretch.
+
+qm-dsp (GNU General Public License 2.0 or later)
+  third_party/qm-dsp — https://github.com/c4dm/qm-dsp
+  Queen Mary beat tracking (DetectionFunction, TempoTrackV2) and key detection
+  (GetKeyMode, Chromagram, ConstantQ, Decimator). Bundled kissfft is
+  BSD-3-Clause (see third_party/qm-dsp/ext/kissfft).
+
+Mixxx (GNU General Public License 2.0 or later)
+  https://github.com/mixxxdj/mixxx
+  Copyright (C) Mixxx developers
+  engine/beat_utils.hpp (from src/track/beatutils.cpp) and engine/dj_engine.cpp
+  (xfader, isolator, filter) are ported from Mixxx. The Auto DJ logic (AutoMix)
+  planned for this project is likewise ported from Mixxx's AutoDJProcessor.
+
+--------------------------------------------------------------------------------
+Dependencies added by AUDIT SOUND for the server/streaming backend
+(to be integrated in later milestones; listed here for completeness)
+--------------------------------------------------------------------------------
+
+Oboe — REMOVED (was SideDeck's Android audio I/O; not used by the server-side
+  Option B build). The audio sink is replaced by a streaming sink.
+
+LAME — libmp3lame (LGPL)
+  MP3 encoding of the mixed stream (milestone D1). Dynamically linked.
+
+libshout (LGPL)
+  Icecast source client for publishing the MP3 stream (milestone D2).
+
+FFmpeg — libavcodec / libavformat (LGPL)
+  AAC / M4A decode on the server (milestone M2), replacing Android MediaCodec.

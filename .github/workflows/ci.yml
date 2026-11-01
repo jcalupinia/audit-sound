@@ -1,0 +1,44 @@
+name: CI
+
+# Esqueleto de CI (issue A1). El cableado real de build para Linux llega en C1
+# (CMake headless sin Oboe + libmp3lame/libshout). Por ahora validamos estructura.
+
+on:
+  push:
+    branches: [ main, "claude/**" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  structure:
+    name: Verificar estructura y licencia
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar archivos de licencia y atribución
+        run: |
+          test -f LICENSE
+          test -f NOTICE
+          grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE
+          echo "LICENSE y NOTICE presentes."
+      - name: Comprobar que Oboe no está vendorizado (build de servidor)
+        run: |
+          if [ -d third_party/oboe ]; then
+            echo "ERROR: third_party/oboe no debe estar en el build de servidor"; exit 1
+          fi
+          echo "OK: sin Oboe."
+      - name: Comprobar motor forkeado presente
+        run: |
+          test -f engine/dj_engine.cpp
+          test -f engine/dj_engine.h
+          echo "Motor presente."
+
+  build:
+    name: Build del motor (Linux) — pendiente C1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Marcador de posición
+        run: |
+          echo "El build headless para Linux se implementa en el issue C1"
+          echo "(CMake sin Oboe/Android + libmp3lame + libshout)."
