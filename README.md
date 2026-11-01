@@ -19,11 +19,13 @@ por Oboe (Android).
 
 ## Compilar y probar (Linux)
 
-Requisitos del sistema: `cmake`, `g++`, **`libmp3lame-dev`** (encoder MP3, D1),
-**`libshout3-dev`** (source client de Icecast, D2).
+Requisitos del sistema: `cmake`, `g++`, `pkg-config`, **`libmp3lame-dev`** (encoder
+MP3, D1), **`libshout3-dev`** (source client de Icecast, D2), **FFmpeg dev**
+(`libavcodec/libavformat/libavutil/libswresample-dev`, decodificación AAC/M4A, M2).
 
 ```bash
-sudo apt-get install -y cmake g++ libmp3lame-dev libshout3-dev
+sudo apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev \
+     libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 

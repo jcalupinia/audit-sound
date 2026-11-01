@@ -5,8 +5,9 @@
 FROM ubuntu:24.04 AS build
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      cmake g++ make ca-certificates \
+      cmake g++ make ca-certificates pkg-config \
       libmp3lame-dev libshout3-dev \
+      libavcodec-dev libavformat-dev libavutil-dev libswresample-dev \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY CMakeLists.txt ./
@@ -21,6 +22,7 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libmp3lame0 libshout3 ca-certificates \
+      libavcodec60 libavformat60 libavutil58 libswresample4 \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /src/build/audit_sound_server /usr/local/bin/audit_sound_server
 # La música se monta en /music (solo lectura). El destino Icecast va por entorno.

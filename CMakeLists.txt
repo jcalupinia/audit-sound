@@ -27,6 +27,11 @@ if(NOT SHOUT_INCLUDE_DIR OR NOT SHOUT_LIBRARY)
   message(FATAL_ERROR "libshout no encontrada (instalar libshout3-dev)")
 endif()
 
+# FFmpeg (decodificación AAC/M4A/ALAC en el servidor, issue M2).
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+  libavcodec libavformat libavutil libswresample)
+
 # Dependencias vendorizadas (cada una con su propio CMake).
 add_subdirectory(${ROOT}/third_party/qm-dsp qm-dsp-build)
 include(${ROOT}/third_party/opus_stack.cmake)   # define: ogg, opus, opusfile
@@ -48,7 +53,7 @@ target_include_directories(audit_sound_engine PRIVATE
   ${LAME_INCLUDE_DIR}
   ${SHOUT_INCLUDE_DIR}
 )
-target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY} ${SHOUT_LIBRARY})
+target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY} ${SHOUT_LIBRARY} PkgConfig::FFMPEG)
 
 # Autoprueba headless: crea el motor, arranca el sink, opcionalmente carga
 # un archivo y comprueba que la posición avanza (pipeline vivo).
