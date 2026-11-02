@@ -7,9 +7,13 @@ emite un stream MP3 por **Icecast**, y la **web** lo reproduce en el navegador.
 
 | Servicio | Qué hace | Dominio en Coolify |
 |---|---|---|
-| `icecast` | Servidor de stream (mountpoint `/stream.mp3`) | p.ej. `stream.audit-ia` |
+| `icecast` | Servidor de stream (mountpoint `/stream.mp3`) | — (interno; lo proxya `web`) |
 | `engine`  | Motor/DJ: reproduce `/music` en bucle y publica el MP3 a Icecast | — (interno) |
-| `web`     | Página (nginx) que reproduce el stream | p.ej. `www.audit-ia` |
+| `web`     | Página (nginx) + **proxy del stream** en `/stream.mp3` | p.ej. `audit-sound.audit-ia.ec` |
+
+> **Un solo dominio:** el servicio `web` sirve la página **y** el stream (`/stream.mp3`,
+> proxy al Icecast interno). Mismo origen, HTTPS, sin exponer Icecast y **sin mezcla de
+> contenido** (la causa nº1 de que iOS no reproduzca). No necesitas `STREAM_URL`.
 
 > El `engine` encadena las pistas con el **AutoMix** (transiciones) y el **selector
 > inteligente** (armonía/BPM/energía). Si no le das música, suena un **audio de demo**
@@ -20,14 +24,14 @@ emite un stream MP3 por **Icecast**, y la **web** lo reproduce en el navegador.
 1. **Nuevo recurso → Docker Compose**, apuntando a `deploy/docker-compose.yml`
    (contexto de build = raíz del repo).
 2. **Variables de entorno** (desde `deploy/.env.example`, valores reales en Coolify,
-   nunca en el repo): `ICECAST_SOURCE_PASSWORD`, `ICECAST_ADMIN_PASSWORD`,
-   `ICECAST_HOSTNAME`, `STREAM_URL`. Para el Preview rápido con demo, no hace falta nada
-   más (la demo viene activada con `AUDIT_SOUND_DEMO=1`).
-3. **Dominios**: asignar `www.audit-ia` → servicio `web` **y** `stream.audit-ia` →
-   servicio `icecast`. Coolify pone el proxy y el **TLS (Let's Encrypt)** en **ambos**.
-4. **`STREAM_URL`** debe ser la URL **HTTPS** del Icecast: `https://<ICECAST_HOSTNAME>/stream.mp3`.
-   **Mezcla de contenido:** una página HTTPS **no puede** cargar un stream HTTP (iOS lo
-   bloquea). Por eso el servicio `icecast` también necesita su dominio con HTTPS.
+   nunca en el repo): `ICECAST_SOURCE_PASSWORD`, `ICECAST_ADMIN_PASSWORD`. Para el Preview
+   rápido con demo, no hace falta nada más (la demo viene activada con `AUDIT_SOUND_DEMO=1`).
+3. **Dominio (uno solo)**: asignar `audit-sound.audit-ia.ec` → servicio `web`. El `icecast`
+   queda **interno** (sin dominio). Coolify pone el proxy y el **TLS (Let's Encrypt)**.
+4. **Sin mezcla de contenido:** como el stream sale por el mismo dominio
+   (`https://…/stream.mp3`, proxy del `web`), no hay problema HTTP/HTTPS y **no hace falta
+   `STREAM_URL`**. *(Solo si expusieras Icecast en su propio dominio HTTPS definirías
+   `STREAM_URL=https://…/stream.mp3`.)*
 5. **Música (opcional).** Por defecto suena la **demo**. Para usar **tu** biblioteca:
    sube tus archivos al volumen `audit_music` (o cambia el volumen por un bind
    `- /ruta/host:/music:ro` en el compose), o configura **Navidrome/Subsonic**
@@ -36,8 +40,8 @@ emite un stream MP3 por **Icecast**, y la **web** lo reproduce en el navegador.
 
 ## Verificar (gate de M1)
 
-- `https://stream.audit-ia/stream.mp3` reproduce en un navegador de escritorio.
-- Abrir `https://www.audit-ia` → **Escuchar** → suena.
+- `https://audit-sound.audit-ia.ec/stream.mp3` reproduce en un navegador de escritorio.
+- Abrir `https://audit-sound.audit-ia.ec` → **Escuchar** → suena.
 - **En iPhone (Safari/WebKit) y Android (Chrome): bloquear la pantalla** y confirmar
   que el audio sigue, con controles en la pantalla de bloqueo (Media Session).
   Este es el criterio que retira el riesgo R1.
