@@ -7,7 +7,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <chrono>
 #include <ctime>
+#include <map>
 #include <mutex>
 #include <random>
 #include <string>
@@ -17,26 +19,49 @@
 
 namespace {
 
+constexpr long SESSION_TTL_SECONDS = 7200;  // sesiones inactivas se purgan tras 2 h
+
 struct Catalog {
   std::vector<std::string> titles;
   std::vector<std::string> paths;
+};
+
+// M6 — una sesión por dispositivo.
+struct Session {
+  std::string name;
+  time_t last = 0;
 };
 
 struct Api {
   struct MHD_Daemon* daemon = nullptr;
   DjEngine engine = nullptr;
   AutoMix automix = nullptr;
-  std::string user, pass, token;
+  std::string user, pass;
+  std::map<std::string, Session> sessions;  // token -> sesión
+  std::string controller;                    // token del controlador activo ("" = ninguno)
   Catalog cat;
   std::mutex mu;
   bool manual = false;
   float xfader = 0.5f;
   std::string deckTitle[2];
+
+  // Nombre del controlador actual (vacío si no hay o si su sesión caducó).
+  std::string controllerName() {
+    auto it = sessions.find(controller);
+    return it == sessions.end() ? std::string() : it->second.name;
+  }
 };
 
 std::string randomToken() {
   static const char* hx = "0123456789abcdef";
-  std::mt19937 rng((unsigned)time(nullptr) ^ (unsigned)(uintptr_t)&hx);
+  // RNG sembrado UNA sola vez: reseeding por llamada con time() daba tokens
+  // idénticos a dos logins en el mismo segundo (rompía las sesiones por dispositivo, M6).
+  static std::mutex seedMu;
+  static std::mt19937_64 rng(std::random_device{}() ^
+                             (uint64_t)std::chrono::high_resolution_clock::now()
+                                 .time_since_epoch()
+                                 .count());
+  std::lock_guard<std::mutex> lk(seedMu);
   std::string s;
   for (int i = 0; i < 32; ++i) s += hx[rng() & 0xf];
   return s;
@@ -114,16 +139,46 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   if (path == "/api/login" && 0 == std::strcmp(method, "POST")) {
     const char* u = arg(c, "user");
     const char* p = arg(c, "pass");
-    if (u && p && api->user == u && api->pass == p)
-      return reply(c, 200, "{\"token\":\"" + api->token + "\"}");
-    return reply(c, 401, "{\"error\":\"credenciales inválidas\"}");
+    if (!(u && p && api->user == u && api->pass == p))
+      return reply(c, 401, "{\"error\":\"credenciales inválidas\"}");
+    const char* nm = arg(c, "name");
+    const std::string name = (nm && nm[0]) ? jsonEsc(nm) : std::string("Dispositivo");
+    std::lock_guard<std::mutex> lk(api->mu);
+    const time_t now = time(nullptr);
+    for (auto it = api->sessions.begin(); it != api->sessions.end();) {  // purgar inactivas
+      if (now - it->second.last > SESSION_TTL_SECONDS) {
+        if (api->controller == it->first) api->controller.clear();
+        it = api->sessions.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    const std::string t = randomToken();
+    api->sessions[t] = Session{name, now};
+    if (api->controller.empty()) api->controller = t;  // el primero en entrar toma el control
+    const bool youCtl = (api->controller == t);
+    return reply(c, 200, "{\"token\":\"" + t + "\",\"name\":\"" + name +
+                             "\",\"youAreController\":" + (youCtl ? "true" : "false") + "}");
   }
 
+  // A partir de aquí todo requiere un token de sesión válido. Un único lock cubre
+  // la validación y el manejo (los handlers ya NO toman el lock por separado).
+  std::lock_guard<std::mutex> lk(api->mu);
   const char* tok = arg(c, "token");
-  if (!tok || api->token != tok) return reply(c, 401, "{\"error\":\"no autorizado\"}");
+  auto sit = tok ? api->sessions.find(tok) : api->sessions.end();
+  if (!tok || sit == api->sessions.end()) return reply(c, 401, "{\"error\":\"no autorizado\"}");
+  sit->second.last = time(nullptr);
+
+  if (path == "/api/control/take" && 0 == std::strcmp(method, "POST")) {
+    api->controller = tok;  // handoff: este dispositivo toma el control
+    return reply(c, 200, "{\"ok\":true,\"controller\":\"" + sit->second.name + "\"}");
+  }
+  if (path == "/api/control/release" && 0 == std::strcmp(method, "POST")) {
+    if (api->controller == tok) api->controller.clear();
+    return reply(c, 200, "{\"ok\":true}");
+  }
 
   if (path == "/api/tracks" && 0 == std::strcmp(method, "GET")) {
-    std::lock_guard<std::mutex> lk(api->mu);
     std::string out = "{\"tracks\":[";
     for (size_t i = 0; i < api->cat.titles.size(); ++i) {
       if (i) out += ",";
@@ -134,13 +189,15 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   }
 
   if (path == "/api/status" && 0 == std::strcmp(method, "GET")) {
-    std::lock_guard<std::mutex> lk(api->mu);
-    char head[256];
+    const std::string cn = api->controllerName();          // M6: quién controla
+    const bool youCtl = (api->controller == tok);
+    char head[512];
     std::snprintf(head, sizeof(head),
                   "{\"mode\":\"%s\",\"xfader\":%.3f,\"state\":%d,\"transition\":%.1f,"
-                  "\"mixmode\":%d,\"decks\":[",
+                  "\"mixmode\":%d,\"controller\":\"%s\",\"youAreController\":%s,\"decks\":[",
                   api->manual ? "manual" : "auto", api->xfader, automix_state(api->automix),
-                  automix_get_transition_time(api->automix), automix_get_mode(api->automix));
+                  automix_get_transition_time(api->automix), automix_get_mode(api->automix),
+                  cn.c_str(), youCtl ? "true" : "false");
     std::string out = head;
     out += deckJson(api, 0) + "," + deckJson(api, 1) + "]}";
     return reply(c, 200, out);
@@ -149,7 +206,10 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   if (path == "/api/command" && 0 == std::strcmp(method, "POST")) {
     const char* action = arg(c, "action");
     if (!action) return reply(c, 400, "{\"error\":\"falta action\"}");
-    std::lock_guard<std::mutex> lk(api->mu);
+    // M6: solo el dispositivo que tiene el control puede ejecutar comandos.
+    if (api->controller != tok)
+      return reply(c, 409,
+                   "{\"error\":\"control_held\",\"controller\":\"" + api->controllerName() + "\"}");
     DjEngine e = api->engine;
     const int d = argi(c, "deck", 0) == 1 ? 1 : 0;
 
@@ -223,7 +283,6 @@ ControlApi control_api_start(int port, const char* user, const char* pass, DjEng
   api->automix = automix;
   api->user = user ? user : "";
   api->pass = pass ? pass : "";
-  api->token = randomToken();
   api->daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, (uint16_t)port, nullptr,
                                  nullptr, &handler, api, MHD_OPTION_END);
   if (!api->daemon) {
