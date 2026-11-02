@@ -13,6 +13,7 @@
 
 #include "automix.h"
 #include "dj_engine.h"
+#include "selector.h"
 #include "subsonic.h"
 
 #include <algorithm>
@@ -100,6 +101,7 @@ int main(int argc, char** argv) {
 
   // Mantener vivos los objetos del proveedor elegido.
   LocalProvider local;
+  Selector selector;
   SubsonicClient* subClient = nullptr;
   SubsonicProvider sub;
 
@@ -141,9 +143,21 @@ int main(int argc, char** argv) {
       std::fprintf(stderr, "no hay archivos de audio en: %s\n", dir.c_str());
       return 1;
     }
-    automix_set_next_track(am, nextLocal, &local);
-    std::printf("audit_sound_server: %zu pistas en %s (DJ autónomo)\n", local.files.size(),
-                dir.c_str());
+    // Selector inteligente (M4): analizar cada pista (BPM/tonalidad/energía).
+    std::printf("audit_sound_server: analizando %zu pistas para el selector…\n",
+                local.files.size());
+    for (const auto& f : local.files) {
+      float bpm = 0, energy = 0;
+      int key = -1;
+      float off = 0;
+      dj_analyze_file(f.c_str(), &bpm, &key, &off);
+      double first = 0, last = -1;
+      dj_analyze_silence(f.c_str(), &first, &last, &energy);
+      selector.addTrack(f, bpm, key, energy);
+    }
+    automix_set_next_track(am, Selector::nextTrackCb, &selector);
+    std::printf("audit_sound_server: %zu pistas, selección inteligente (DJ autónomo)\n",
+                selector.size());
   }
 
   automix_enable(am, 1);

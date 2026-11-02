@@ -49,10 +49,11 @@ add_library(audit_sound_engine STATIC
   ${ROOT}/engine/last_error.cpp
   ${ROOT}/engine/automix/automix.cpp
   ${ROOT}/engine/catalog/subsonic.cpp
+  ${ROOT}/engine/selector/selector.cpp
 )
 target_compile_definitions(audit_sound_engine PRIVATE _USE_MATH_DEFINES)
 target_compile_options(audit_sound_engine PRIVATE -fexceptions)
-target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine ${ROOT}/engine/automix ${ROOT}/engine/catalog)
+target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine ${ROOT}/engine/automix ${ROOT}/engine/catalog ${ROOT}/engine/selector)
 target_include_directories(audit_sound_engine PRIVATE
   ${ROOT}/engine/sinks
   ${ROOT}/third_party/dr_libs
@@ -86,3 +87,7 @@ target_link_libraries(silence_test PRIVATE audit_sound_engine Threads::Threads)
 # Prueba del cliente Subsonic/Navidrome (M2): MD5, ping, listado, descarga.
 add_executable(subsonic_test ${ROOT}/tools/subsonic_test.cpp)
 target_link_libraries(subsonic_test PRIVATE audit_sound_engine Threads::Threads)
+
+# Prueba del selector inteligente (M4): armonía/tempo/energía/anti-repetición.
+add_executable(selector_test ${ROOT}/tools/selector_test.cpp)
+target_link_libraries(selector_test PRIVATE audit_sound_engine Threads::Threads)
