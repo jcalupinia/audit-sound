@@ -7,6 +7,8 @@ Dos previews, cada uno prueba una cosa distinta:
 | **A · Mezclador PRO** | DJ en el navegador (manual / asistido / automático), primer plano | **Application (Dockerfile)** | `deploy/pro/Dockerfile` |
 | **B · Streaming (Modo C)** | Escucha con **pantalla bloqueada** en iPhone (DJ automático) | **Docker Compose** | `deploy/docker-compose.yml` |
 
+> 📱 Para la prueba en el teléfono, ver la guía fija **[`deploy/PROBAR_IPHONE.md`](PROBAR_IPHONE.md)**.
+
 > **Importante (honestidad):** no puedo crear estos recursos ni darte una URL de Preview
 > verificada: el acceso a Coolify desde la sesión es de **solo lectura** y el despliegue es
 > tu acción en el panel. Esta guía te lleva por cada clic; **la URL la verás en Coolify**.
