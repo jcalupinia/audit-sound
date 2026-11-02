@@ -28,6 +28,8 @@
   .seg button.on{background:linear-gradient(180deg,var(--gold),#a9892b);color:#1a1300}
   .master{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:11px;color:var(--muted)}
   .master input{width:120px;accent-color:var(--gold)}
+  .vu{width:92px;height:9px;background:#06182b;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+  .vu i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ok) 0%,var(--gold) 70%,var(--red) 100%)}
 
   .board{display:grid;grid-template-columns:1fr 300px 1fr;gap:14px}
   @media(max-width:900px){.board{grid-template-columns:1fr}.mixer{order:3}}
@@ -148,7 +150,8 @@
       <button data-m="auto">AUTO · IA</button>
     </div>
     <button class="btn sm" id="midiBtn" style="margin-left:4px">🎹 MIDI</button>
-    <div class="master">MASTER <input type="range" id="master" min="0" max="1" step="0.01" value="0.9"></div>
+    <div class="master">MASTER <input type="range" id="master" min="0" max="1" step="0.01" value="0.9">
+      <div class="vu" title="Nivel de máster"><i id="vubar"></i></div></div>
   </div>
 
   <div class="midipanel hide" id="midipanel">
@@ -221,7 +224,10 @@
 
       <div class="fxpanel" id="fxpanel">
         <div style="font-weight:800;letter-spacing:.08em;font-size:11px;color:var(--muted);margin-bottom:8px">FX DE MÁSTER</div>
-        <div class="ctlrow">ECO <input type="range" id="fxEcho" min="0" max="1" step="0.01" value="0"></div>
+        <div class="ctlrow">ECO <input type="range" id="fxEcho" min="0" max="1" step="0.01" value="0">
+          <select id="echoDiv" title="Sincronizado al BPM" style="background:#0a1626;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:3px 6px;font-size:11px">
+            <option value="1">1/4</option><option value="0.75">3/16</option><option value="0.5" selected>1/8</option><option value="0.25">1/16</option>
+          </select></div>
         <div class="ctlrow">REVERB <input type="range" id="fxReverb" min="0" max="1" step="0.01" value="0"></div>
         <div class="ctlrow">FILTRO <input type="range" id="fxFilter" min="-1" max="1" step="0.01" value="0"></div>
         <div class="row">
@@ -293,6 +299,7 @@
 import { AudioBridge } from './audio_bridge.js';
 import { MidiController, TARGETS } from './midi.js';
 import { Copilot, camelot } from './copilot.js';
+import { CTRL } from './ring.js';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -302,7 +309,7 @@ const keyName = (k) => camelot(k);     // Camelot consistente con el copiloto
 
 const bridge = new AudioBridge();
 const copilot = new Copilot();
-const deckState = [{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:''},{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:''}];
+const deckState = [{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:'',beatOffset:0},{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:'',beatOffset:0}];
 const waves = [null,null];
 const hot = [[0,0,0,0],[0,0,0,0]];     // puntos (s) por pad; 0 = sin fijar
 const eqv = [{low:0,mid:0,high:0},{low:0,mid:0,high:0}];
@@ -353,10 +360,11 @@ function onLoaded(m){
   if (!m.ok) return;
   $('#bpm'+L).textContent = (m.bpm||0).toFixed(1);
   $('#key'+L).textContent = keyName(m.key);
-  const ds=deckState[m.deck]; ds.dur=m.dur||0; ds.bpm=m.bpm||0; ds.key=(m.key??-1)|0; ds.energy=m.energy||0; ds.name=m.name;
+  const ds=deckState[m.deck]; ds.dur=m.dur||0; ds.bpm=m.bpm||0; ds.key=(m.key??-1)|0; ds.energy=m.energy||0; ds.name=m.name; ds.beatOffset=m.beatOffset||0;
   if (m.wave){ waves[m.deck]=m.wave; }
   hot[m.deck]=[0,0,0,0]; refreshPads(m.deck);
   drawWave(m.deck);
+  syncEcho();
   if (mode === 'asistido') refreshSuggestions(true);
 }
 
@@ -491,7 +499,14 @@ function renderLearn(){
 }
 
 /* ---- FX de máster + grabación (P2b) ---- */
-$('#fxEcho').addEventListener('input', (e)=> bridge.fxEcho(parseFloat(e.target.value)));
+$('#fxEcho').addEventListener('input', (e)=>{ bridge.fxEcho(parseFloat(e.target.value)); syncEcho(); });
+$('#echoDiv').addEventListener('change', syncEcho);
+// Eco sincronizado al BPM: el tiempo de retardo = (60/BPM) * división de la pista que suena.
+function syncEcho(){
+  const d = deckState[0].playing ? 0 : (deckState[1].playing ? 1 : -1);
+  const bpm = d>=0 ? deckState[d].bpm : 0;
+  if (bpm>0){ const beat=60/bpm, factor=parseFloat($('#echoDiv').value)||0.5; bridge.fxEchoTime(beat*factor); }
+}
 $('#fxReverb').addEventListener('input', (e)=> bridge.fxReverb(parseFloat(e.target.value)));
 $('#fxFilter').addEventListener('input', (e)=> bridge.fxFilter(parseFloat(e.target.value)));
 $('#fxFilter').addEventListener('dblclick', (e)=>{ e.target.value=0; bridge.fxFilter(0); });
@@ -541,6 +556,17 @@ function drawWave(d){
   const wv = waves[d];
   if (!wv){ return; }
   const n=wv.bins, mid=h/2;
+  // Beatgrid: líneas verticales en cada beat (más marcada cada 4 = inicio de compás).
+  const st=deckState[d];
+  if (st.bpm>0 && st.dur>0){
+    const beat=60/st.bpm, off=((st.beatOffset%beat)+beat)%beat;
+    for (let t=off, k=0; t<st.dur; t+=beat, k++){
+      const x=(t/st.dur)*w, downbeat=(k%4===0);
+      ctx.strokeStyle = downbeat ? 'rgba(199,168,60,.55)' : 'rgba(255,255,255,.10)';
+      ctx.lineWidth = downbeat ? 1.4 : 1;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+    }
+  }
   ctx.strokeStyle=col; ctx.globalAlpha=.9; ctx.lineWidth=1;
   ctx.beginPath();
   for (let i=0;i<n;i++){ const x=i/n*w; const mn=wv.min[i], mx=wv.max[i];
@@ -553,8 +579,14 @@ function drawPlayhead(d){
   const x = (st.pos/st.dur)*cv.width;
   ctx.strokeStyle='#C7A83C'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,cv.height); ctx.stroke();
 }
+const vuCtrl = new Int32Array(bridge._buffers.ctrl);
+let vuLevel = 0;
 function tickUI(){
   for (let d=0; d<2; d++){ if (waves[d]){ drawWave(d); drawPlayhead(d); } }
+  // VU de máster: pico del último cuadro (se lee y se resetea para medir en vivo) + caída.
+  let peak = 0; try { peak = (Atomics.load(vuCtrl, CTRL.PEAK)||0)/1e6; Atomics.store(vuCtrl, CTRL.PEAK, 0); } catch(e){}
+  vuLevel = Math.max(peak, vuLevel*0.86);
+  const bar=$('#vubar'); if (bar) bar.style.width = Math.min(100, vuLevel*100).toFixed(0)+'%';
   requestAnimationFrame(tickUI);
 }
 window.addEventListener('resize', ()=>{ drawWave(0); drawWave(1); });

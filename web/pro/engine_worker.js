@@ -151,6 +151,7 @@ onmessage = async (e) => {
           dur: M.ccall('dj_duration', 'number', ['number', 'number'], [eng, m.deck]),
           bpm: M.ccall('dj_get_bpm', 'number', ['number', 'number'], [eng, m.deck]),
           key: M.ccall('dj_get_key', 'number', ['number', 'number'], [eng, m.deck]),
+          beatOffset: M.ccall('dj_get_beat_offset', 'number', ['number', 'number'], [eng, m.deck]),
           energy,
           wave: ok ? getWaveform(m.deck) : null,
           err: ok ? '' : (M.ccall('dj_last_error', 'string', [], []) || ''),
