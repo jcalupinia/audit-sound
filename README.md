@@ -11,11 +11,17 @@ de auditoría técnica. El motor es un **fork del motor C++ de
 en Linux y emitir su salida como stream MP3 vía Icecast, en lugar de reproducir
 por Oboe (Android).
 
-> **Estado:** issues **A1** (andamiaje) y **C1** (build headless en Linux)
-> completados. El motor **compila y corre headless en Linux sin Oboe** y
-> reproduce audio a través de un `OfflineSink` de pruebas (ver más abajo). Falta
-> el sink de streaming (MP3 → Icecast, D1/D2) y el cerebro autónomo (M3). No es
-> aún un producto; es la base verificada del runtime.
+> **Estado:** **M1–M5 implementados y verificados.** El motor compila y corre
+> headless en Linux (sin Oboe), decodifica WAV/MP3/FLAC/Ogg/AAC, encodea MP3 y
+> transmite por **Icecast** (sinks D1/D2); tiene **AutoMix** (M3), **selector
+> inteligente** (M4) y **Control API + frontend web** (M5). Además hay un
+> **mezclador PRO en el navegador** (motor compilado a **WebAssembly**) con
+> biblioteca persistente (IndexedDB), carga desde **Navidrome/Subsonic** y música
+> libre (**Jamendo**), y un **convertidor a Opus** (WebCodecs). El despliegue en
+> Coolify (streaming en un solo dominio, `deploy/`) está listo. **Pendiente:** la
+> puesta en producción y el gate M1 en dispositivo real (audio con pantalla
+> bloqueada en iPhone/Android), más M6 (handoff) y M7 (endurecimiento) — ver la
+> hoja de ruta.
 
 ## Compilar y probar (Linux)
 
@@ -69,25 +75,30 @@ terceros están en [`NOTICE`](NOTICE).
 
 ```
 engine/          Motor de audio C++ (fork de SideDeck native/engine)
-  sinks/         Backends de salida (StreamSink, etc.) — a implementar
+  sinks/         Backends de salida (MP3, Icecast, OfflineSink) — D1/D2
+  automix/       AutoMix (port del Auto DJ de Mixxx) — M3
+  selector/      Selector inteligente (Camelot + BPM + energía) — M4
+wasm/            Build del motor a WebAssembly (mezclador PRO en el navegador)
 third_party/     Dependencias vendorizadas (qm-dsp, Signalsmith, dr_libs,
                  opus/ogg/opusfile). Oboe se excluye a propósito (Android-only).
-deploy/          Despliegue en Coolify (Icecast, Navidrome, compose) — a implementar
-web/             App web de prueba y, luego, el frontend — a implementar
+deploy/          Despliegue en Coolify: mezclador PRO (deploy/pro) y streaming
+                 (Icecast + engine + web). Guías: COOLIFY_GUIA.md, PROBAR_IPHONE.md
+web/             Frontend: consola de streaming (web/) y mezclador PRO (web/pro/)
 ```
 
 ## Hoja de ruta (MVP — fase 2, Opción B)
 
-- **M1** *Vertical slice*: el motor headless emite un archivo en bucle como stream
-  MP3 por Icecast y suena en segundo plano (pantalla bloqueada) en iPhone
-  (Safari/WebKit) y Android (Chrome). Retira el riesgo de background-audio en iOS.
-- **M2** Decodificación completa (incl. AAC/M4A vía FFmpeg) + catálogo Navidrome +
+- ✅ **M1** *Vertical slice*: el motor headless emite un stream MP3 por Icecast; la
+  web lo reproduce con `<audio>` + Media Session. **Código listo**; el gate que retira
+  el riesgo de background-audio en iOS se confirma en **dispositivo real** (pendiente).
+- ✅ **M2** Decodificación completa (incl. AAC/M4A vía FFmpeg) + catálogo Navidrome +
   análisis (BPM/tonalidad/silencio/energía) cacheado.
-- **M3** AutoMix (port del Auto DJ de Mixxx) + continuidad + sync de tempo.
-- **M4** Selector musical inteligente (armonía Camelot + BPM + energía + anti-repetición).
-- **M5** Login + Control API (WebSocket) + frontend web.
-- **M6** Multi-dispositivo / handoff.
-- **M7** Endurecimiento, dimensionamiento y despliegue → MVP.
+- ✅ **M3** AutoMix (port del Auto DJ de Mixxx) + continuidad + sync de tempo.
+- ✅ **M4** Selector musical inteligente (armonía Camelot + BPM + energía + anti-repetición).
+- ✅ **M5** Login + Control API + frontend web (y mezclador PRO en WebAssembly).
+- ⬜ **M6** Multi-dispositivo / handoff (el streaming ya es multi-dispositivo; falta el
+  traspaso de *control* — hoy la Control API usa un token compartido).
+- ⬜ **M7** Endurecimiento, dimensionamiento y despliegue en producción → MVP.
 
 El detalle completo está en los documentos de planificación de la auditoría.
 
