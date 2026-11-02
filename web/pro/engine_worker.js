@@ -26,6 +26,8 @@ const CHUNK = 512;                  // cuadros por llamada a dj_render (grano fi
 // sobra frente al jitter de setTimeout (que refresca cada 3 ms). Ajustable.
 const TARGET_BACKLOG = 2048;        // cuadros (~43 ms @48k, ~46 ms @44.1k)
 let renderPtr = 0;                  // buffer en el heap WASM para dj_render
+let autoCtl = 0;                    // controlador del modo automatico (AutoMix+Selector, P1)
+let autoTimer = null;               // intervalo que llama a dj_auto_tick (sin hilo)
 
 function freeFrames() {
   const w = Atomics.load(ctrl, CTRL.WRITE);
@@ -75,10 +77,22 @@ function statusTick() {
     dur: M.ccall('dj_duration', 'number', ['number', 'number'], [eng, d]),
     bpm: M.ccall('dj_get_bpm', 'number', ['number', 'number'], [eng, d]),
   }));
-  postMessage({ type: 'status', decks, under: Atomics.load(ctrl, CTRL.UNDER) });
+  const autoState = autoCtl ? M.ccall('dj_auto_state', 'number', ['number'], [autoCtl]) : 0;
+  postMessage({ type: 'status', decks, under: Atomics.load(ctrl, CTRL.UNDER), autoState });
 }
 
 const call = (fn, sig, args) => M.ccall(fn, 'void', sig, args);
+
+// Analiza una pista del FS virtual (BPM/tono/energía) para el selector del modo auto.
+function analyzeTrack(path) {
+  const pB = M._malloc(4), pK = M._malloc(4), pO = M._malloc(4), pE = M._malloc(4);
+  const pF = M._malloc(8), pL = M._malloc(8);
+  M.ccall('dj_analyze_file', 'number', ['string', 'number', 'number', 'number'], [path, pB, pK, pO]);
+  M.ccall('dj_analyze_silence', 'number', ['string', 'number', 'number', 'number'], [path, pF, pL, pE]);
+  const bpm = M.HEAPF32[pB >> 2], key = M.HEAP32[pK >> 2], energy = M.HEAPF32[pE >> 2];
+  M._free(pB); M._free(pK); M._free(pO); M._free(pE); M._free(pF); M._free(pL);
+  return { bpm, key, energy };
+}
 
 async function onInit(msg) {
   M = await AuditEngine();
@@ -89,6 +103,7 @@ async function onInit(msg) {
   // Fija la tasa del motor a la real del AudioContext (corrige el tono en 44.1 kHz).
   if (msg.sampleRate > 0)
     M.ccall('dj_set_output_sample_rate', 'void', ['number', 'number'], [eng, msg.sampleRate | 0]);
+  autoCtl = M.ccall('dj_auto_create', 'number', ['number'], [eng]);  // modo automatico (P1)
   renderPtr = M._malloc(CHUNK * CHANNELS * 4);
   Atomics.store(ctrl, CTRL.RUN, 1);
   running = true;
@@ -138,6 +153,29 @@ onmessage = async (e) => {
       case 'hotcue_clear': call('dj_clear_hotcue', ['number', 'number', 'number'], [eng, m.deck, m.index]); break;
       case 'loop':     call('dj_set_loop', ['number', 'number', 'number', 'number'], [eng, m.deck, m.on ? 1 : 0, m.bars]); break;
       case 'beatjump': call('dj_beat_jump', ['number', 'number', 'number'], [eng, m.deck, m.beats]); break;
+      // ---- Modo automatico (AutoMix+Selector compartidos en WASM, P1) ----
+      case 'auto_add': {
+        const path = writeFile(m.bytes);
+        const a = analyzeTrack(path);
+        M.ccall('dj_auto_add_track', 'void', ['number', 'string', 'number', 'number', 'number'],
+                [autoCtl, path, a.bpm, a.key, a.energy]);
+        postMessage({ type: 'auto_added', name: m.name, bpm: a.bpm, key: a.key, energy: a.energy });
+        break;
+      }
+      case 'auto_transition': call('dj_auto_set_transition', ['number', 'number'], [autoCtl, m.seconds]); break;
+      case 'auto_skip':       call('dj_auto_skip', ['number'], [autoCtl]); break;
+      case 'auto_enable': {
+        if (m.on) {
+          const ok = M.ccall('dj_auto_begin', 'number', ['number'], [autoCtl]);
+          if (ok && !autoTimer) autoTimer = setInterval(() => M.ccall('dj_auto_tick', 'void', ['number'], [autoCtl]), 50);
+          postMessage({ type: 'auto_enabled', ok: !!ok });
+        } else {
+          if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+          M.ccall('dj_auto_end', 'void', ['number'], [autoCtl]);  // deja de conducir; el audio sigue
+          postMessage({ type: 'auto_enabled', ok: false });
+        }
+        break;
+      }
       case 'stop':     running = false; Atomics.store(ctrl, CTRL.RUN, 0); Atomics.notify(ctrl, CTRL.WAKE); break;
     }
   } catch (err) {
