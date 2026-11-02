@@ -25,14 +25,30 @@ const OM = {
   maxBytes: parseInt(process.env.OPENMUSIC_MAX_BYTES || String(60 * 1024 * 1024), 10), // 60 MB tope
 };
 
-// config.js para la landing/mezclador: URL de streaming y bandera de música libre.
+// --- Internet Archive (API abierta, sin clave) ---
+const IA = {
+  apiBase: (process.env.ARCHIVE_API_BASE || 'https://archive.org').replace(/\/+$/, ''),
+  enabled: process.env.ARCHIVE_ENABLED !== 'false',  // activado por defecto (no necesita clave)
+  maxBytes: parseInt(process.env.ARCHIVE_MAX_BYTES || String(80 * 1024 * 1024), 10), // 80 MB tope
+};
+// Host de descarga permitido: archive.org y sus nodos *.archive.org (o el host del apiBase,
+// útil para pruebas con un servidor simulado).
+function iaHostOk(host) {
+  host = (host || '').toLowerCase();
+  if (host === 'archive.org' || host.endsWith('.archive.org')) return true;
+  try { return host === new URL(IA.apiBase).host.toLowerCase(); } catch (e) { return false; }
+}
+
+// config.js para la landing/mezclador: URL de streaming y banderas de fuentes libres.
 try {
   const listen = process.env.LISTEN_URL || '';
   let body = listen ? `window.AUDIT_SOUND_LISTEN=${JSON.stringify(listen)};\n` : '/* sin LISTEN_URL */\n';
   body += `window.AUDIT_SOUND_OPENMUSIC=${OM.clientId ? 'true' : 'false'};\n`;
+  body += `window.AUDIT_SOUND_ARCHIVE=${IA.enabled ? 'true' : 'false'};\n`;
   fs.writeFileSync(path.join(ROOT, 'config.js'), body);
   if (listen) console.log('config.js: LISTEN_URL=' + listen);
   console.log('config.js: música libre ' + (OM.clientId ? 'ACTIVADA (Jamendo)' : 'desactivada (sin JAMENDO_CLIENT_ID)'));
+  console.log('config.js: Internet Archive ' + (IA.enabled ? 'ACTIVADO' : 'desactivado'));
 } catch (e) { /* no crítico */ }
 
 const TYPES = {
@@ -91,12 +107,66 @@ async function handleAudio(u, res) {
   res.end(buf);
 }
 
+// --- Proxy: búsqueda en Internet Archive (advancedsearch, solo audio) ---
+async function handleArchiveSearch(u, res) {
+  if (!IA.enabled) return sendJson(res, 503, { error: 'Internet Archive desactivado en el servidor.' });
+  const q = (u.searchParams.get('q') || '').trim();
+  const limit = Math.min(50, Math.max(1, parseInt(u.searchParams.get('limit') || '30', 10)));
+  // Sin término: mostrar colecciones de netlabels (música libre). Con término: audio.
+  const query = q ? `(${q}) AND mediatype:audio` : 'collection:netlabels AND mediatype:audio';
+  const api = `${IA.apiBase}/advancedsearch.php?q=${encodeURIComponent(query)}` +
+    `&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=licenseurl&rows=${limit}&page=1&output=json`;
+  let r;
+  try { r = await fetch(api); } catch (e) { return sendJson(res, 502, { error: 'no se pudo consultar Internet Archive: ' + (e.message || e) }); }
+  if (!r.ok) return sendJson(res, 502, { error: 'Internet Archive respondió HTTP ' + r.status });
+  let j; try { j = await r.json(); } catch (e) { return sendJson(res, 502, { error: 'respuesta no válida de Internet Archive' }); }
+  const docs = (j.response && j.response.docs) || [];
+  const results = docs.filter((d) => d.identifier).map((d) => ({
+    id: String(d.identifier),
+    title: d.title || d.identifier,
+    artist: Array.isArray(d.creator) ? d.creator.join(', ') : (d.creator || ''),
+    license: d.licenseurl || '',
+  }));
+  sendJson(res, 200, { results });
+}
+
+// --- Proxy: audio de un item de Internet Archive (metadata -> elige archivo -> stream) ---
+const IA_AUDIO_RE = /\.(mp3|ogg|oga|flac|m4a|wav)$/i;
+async function handleArchiveAudio(u, res) {
+  if (!IA.enabled) return sendJson(res, 503, { error: 'Internet Archive desactivado en el servidor.' });
+  const id = u.searchParams.get('id') || '';
+  if (!/^[A-Za-z0-9._-]+$/.test(id)) return sendJson(res, 400, { error: 'identificador inválido' });
+  let meta;
+  try { meta = await (await fetch(`${IA.apiBase}/metadata/${encodeURIComponent(id)}`)).json(); }
+  catch (e) { return sendJson(res, 502, { error: 'no se pudo leer metadata: ' + (e.message || e) }); }
+  const files = (meta && meta.files) || [];
+  // Preferir MP3 (original, no derivados de muestra), luego ogg/flac/otros.
+  const pick = files.find((f) => /mp3/i.test(f.format || '') && IA_AUDIO_RE.test(f.name || '')) ||
+               files.find((f) => IA_AUDIO_RE.test(f.name || ''));
+  if (!pick) return sendJson(res, 404, { error: 'el item no tiene un archivo de audio reproducible' });
+  const dl = `${IA.apiBase}/download/${encodeURIComponent(id)}/` +
+    pick.name.split('/').map(encodeURIComponent).join('/');
+  let target;
+  try { target = new URL(dl); } catch (e) { return sendJson(res, 400, { error: 'url inválida' }); }
+  if (!iaHostOk(target.host)) return sendJson(res, 403, { error: 'host de audio no permitido: ' + target.host });
+  let r;
+  try { r = await fetch(target.href, { redirect: 'follow' }); } catch (e) { return sendJson(res, 502, { error: 'no se pudo descargar: ' + (e.message || e) }); }
+  if (!r.ok) return sendJson(res, 502, { error: 'la fuente respondió HTTP ' + r.status });
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (buf.length > IA.maxBytes) return sendJson(res, 413, { error: 'archivo demasiado grande' });
+  const ct = r.headers.get('content-type') || 'audio/mpeg';
+  res.writeHead(200, headers(ct.includes('audio') ? ct : 'audio/mpeg'));
+  res.end(buf);
+}
+
 http.createServer((req, res) => {
   const u = new URL(req.url || '/', `http://localhost:${PORT}`);
   const pathname = decodeURIComponent(u.pathname);
   if (pathname === '/healthz') return send(res, 200, 'ok\n', 'text/plain');
   if (pathname === '/api/openmusic/search') { handleSearch(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
   if (pathname === '/api/openmusic/audio') { handleAudio(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
+  if (pathname === '/api/archive/search') { handleArchiveSearch(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
+  if (pathname === '/api/archive/audio') { handleArchiveAudio(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
 
   const rel = pathname.replace(/^\/+/, '') || 'index.html';
   const file = path.normalize(path.join(ROOT, rel));

@@ -269,6 +269,7 @@
             <input type="file" accept="audio/*" multiple id="libAdd"></label>
           <button class="btn sm" id="ndToggle" title="Cargar desde tu servidor Navidrome/Subsonic">☁ Navidrome</button>
           <button class="btn sm" id="omToggle" title="Buscar música libre (Creative Commons)">♪ Libre</button>
+          <button class="btn sm" id="iaToggle" title="Buscar en Internet Archive">📚 Archive</button>
           <button class="btn sm" id="convToggle" title="Convertir archivos a Opus 160 y descargarlos">♻ Convertir</button>
           <button class="btn sm" id="libToAuto" style="margin-left:auto" title="Carga la biblioteca en el DJ automático">→ AUTO</button>
         </div>
@@ -316,6 +317,16 @@
           <div class="ndstatus" id="omStatus"></div>
           <div class="liblist" id="omList"></div>
           <div class="libnote">Música Creative Commons vía Jamendo (a través del backend). Respeta la licencia de cada pista (atribución). Si está desactivado, configura <b>JAMENDO_CLIENT_ID</b> en Coolify.</div>
+        </div>
+
+        <div class="ndpanel hide" id="iapanel">
+          <div class="ndsearch">
+            <input type="search" id="iaQuery" placeholder="Buscar en Internet Archive (sin término: netlabels)…">
+            <button class="btn sm" id="iaSearchBtn">Buscar</button>
+          </div>
+          <div class="ndstatus" id="iaStatus"></div>
+          <div class="liblist" id="iaList"></div>
+          <div class="libnote">Internet Archive (archive.org) vía backend; sin clave. Las licencias <b>varían</b> (dominio público, CC y a veces «todos los derechos reservados»): revisa la de cada item antes de usarla en público.</div>
         </div>
       </div>
 
@@ -387,6 +398,7 @@ import { CTRL } from './ring.js';
 import * as LIB from './library.js';
 import { SubsonicClient, saveConfig, loadConfig, clearConfig } from './subsonic.js';
 import * as OM from './openmusic.js';
+import * as IA from './archive.js';
 import * as CONV from './converter.js';
 
 const $ = (s, r=document) => r.querySelector(s);
@@ -933,6 +945,58 @@ async function omSave(song, btn){
   } catch(e){ omSetStatus('no se pudo guardar: '+(e.message||e), 'err'); btn.disabled=false; btn.textContent=t0; }
 }
 
+/* ---- Internet Archive (vía backend) ---- */
+let iaSongs = [];
+function iaSetStatus(text, cls){ const el=$('#iaStatus'); el.textContent=text||''; el.className='ndstatus'+(cls?(' '+cls):''); }
+$('#iaToggle').addEventListener('click', ()=>{
+  const p=$('#iapanel'); p.classList.toggle('hide');
+  if (!p.classList.contains('hide') && !IA.enabled())
+    iaSetStatus('Internet Archive desactivado en el servidor (ARCHIVE_ENABLED=false).', 'err');
+});
+async function iaSearch(){
+  if (!IA.enabled()){ iaSetStatus('Internet Archive desactivado.', 'err'); return; }
+  const q=$('#iaQuery').value.trim();
+  iaSetStatus('buscando…');
+  try { iaSongs = await IA.search(q, 30); iaSetStatus(iaSongs.length+' resultado(s)', iaSongs.length?'ok':''); renderIa(); }
+  catch(e){ iaSetStatus('error: '+(e.message||e), 'err'); }
+}
+$('#iaSearchBtn').addEventListener('click', iaSearch);
+$('#iaQuery').addEventListener('keydown', (e)=>{ if (e.key==='Enter') iaSearch(); });
+function renderIa(){
+  const host=$('#iaList'); host.innerHTML='';
+  if (!iaSongs.length){ host.innerHTML='<div class="libempty">Sin resultados. Busca por artista, título o colección.</div>'; return; }
+  iaSongs.forEach(song => {
+    const name = IA.filename(song);
+    const row=document.createElement('div'); row.className='lib';
+    row.innerHTML = `<span class="nm" title="${name}">${song.title}${song.artist?' · '+song.artist:''}</span><span class="mt">IA</span>`;
+    const a=document.createElement('button'); a.className='btn sm la'; a.textContent='▶ A'; a.addEventListener('click',()=>iaLoad(song,0,a));
+    const b=document.createElement('button'); b.className='btn sm lb'; b.textContent='▶ B'; b.addEventListener('click',()=>iaLoad(song,1,b));
+    const s=document.createElement('button'); s.className='btn sm ls'; s.textContent='＋'; s.title='Guardar en la biblioteca'; s.addEventListener('click',()=>iaSave(song,s));
+    row.append(a,b,s); host.appendChild(row);
+  });
+}
+async function iaLoad(song, deck, btn){
+  const name = IA.filename(song);
+  const t0=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try { const bytes = await IA.getBytes(song.id); $('#title'+(deck?'B':'A')).textContent='cargando…'; await bridge.load(deck, bytes, name); }
+  catch(e){ iaSetStatus('no se pudo cargar: '+(e.message||e), 'err'); }
+  btn.disabled=false; btn.textContent=t0;
+}
+async function iaSave(song, btn){
+  if (!LIB.available()){ alert('Este navegador no permite guardar la biblioteca.'); return; }
+  const name = IA.filename(song);
+  const t0=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try {
+    const bytes = await IA.getBytes(song.id);
+    await addToLibrary(name, bytes, bytes.byteLength, '');
+    $('#libCount').textContent = libRows.length+(libRows.length===1?' pista':' pistas');
+    $('#copCount').textContent = copilot.size()+' pistas';
+    libSentToAuto=false; renderLib();
+    if (mode==='asistido') refreshSuggestions(true);
+    btn.textContent='✓';
+  } catch(e){ iaSetStatus('no se pudo guardar: '+(e.message||e), 'err'); btn.disabled=false; btn.textContent=t0; }
+}
+
 /* ---- Convertidor a Opus 160 (WebCodecs) ---- */
 // Si el navegador no puede codificar Opus, desactivamos las funciones y avisamos.
 if (!CONV.available()){
@@ -978,6 +1042,7 @@ window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mod
   refreshSuggestions, lib:LIB, libRows:()=>libRows, hydrateLibrary, renderLib,
   subsonic:{ client:()=>nd, songs:()=>ndSongs, connect:ndConnect, search:ndSearch, SubsonicClient },
   openmusic:{ enabled:OM.enabled, songs:()=>omSongs, search:omSearch },
+  archive:{ enabled:IA.enabled, songs:()=>iaSongs, search:iaSearch },
   converter:CONV, setConvertOnSave:(v)=>{ $('#ocOpus').checked=!!v; } };
 </script>
 </body>
