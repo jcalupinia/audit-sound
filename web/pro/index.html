@@ -107,6 +107,15 @@
   .ov button{background:linear-gradient(180deg,var(--gold),#a9892b);color:#1a1300;border:0;border-radius:12px;
       padding:14px 28px;font-weight:800;letter-spacing:.08em;cursor:pointer;font-size:14px}
   .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:14px}
+  .midipanel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  .midipanel.hide{display:none}
+  .midihead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .midihint{font-size:11px;color:var(--muted);margin:8px 0}
+  .learnlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;max-height:220px;overflow:auto}
+  .lrow{display:flex;align-items:center;gap:8px;background:#09203a;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px}
+  .lrow .lbl{flex:1}.lrow .map{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .lrow button{padding:4px 8px;font-size:11px}
+  .lrow button.learning{background:var(--gold);color:#1a1300;border-color:transparent}
 </style>
 </head>
 <body>
@@ -124,7 +133,18 @@
       <button data-m="manual" class="on">MANUAL</button>
       <button data-m="auto">AUTO · IA</button>
     </div>
+    <button class="btn sm" id="midiBtn" style="margin-left:4px">🎹 MIDI</button>
     <div class="master">MASTER <input type="range" id="master" min="0" max="1" step="0.01" value="0.9"></div>
+  </div>
+
+  <div class="midipanel hide" id="midipanel">
+    <div class="midihead">
+      <button class="btn sm" id="midiConnect">Conectar MIDI</button>
+      <span id="midiDevices" style="font-size:11px;color:var(--muted)">sin conectar</span>
+      <button class="btn sm" id="midiReset" style="margin-left:auto">Restablecer mapa</button>
+    </div>
+    <div class="midihint">Pulsa «Aprender» y mueve la perilla/fader/botón del controlador para asignarlo.</div>
+    <div class="learnlist" id="learnlist"></div>
   </div>
 
   <div class="board">
@@ -246,6 +266,7 @@
 
 <script type="module">
 import { AudioBridge } from './audio_bridge.js';
+import { MidiController, TARGETS } from './midi.js';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -455,8 +476,37 @@ function tickUI(){
 }
 window.addEventListener('resize', ()=>{ drawWave(0); drawWave(1); });
 
+/* ---- MIDI (P2c) ---- */
+const midi = new MidiController(bridge, { getPlaying:(d)=>deckState[d].playing });
+function buildLearnList(){
+  const host=$('#learnlist'); host.innerHTML='';
+  for (const [id,t] of Object.entries(TARGETS)){
+    const row=document.createElement('div'); row.className='lrow';
+    const key=midi.mappingFor(id);
+    row.innerHTML = `<span class="lbl">${t.label}</span><span class="map" data-map="${id}">${key||'—'}</span>`;
+    const btn=document.createElement('button'); btn.className='btn sm'; btn.textContent='Aprender';
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('#learnlist button').forEach(b=>b.classList.remove('learning'));
+      btn.classList.add('learning'); midi.learn(id);
+    });
+    row.appendChild(btn); host.appendChild(row);
+  }
+}
+midi.onLearned=(key,id)=>{
+  const el=document.querySelector(`.map[data-map="${id}"]`); if (el) el.textContent=key;
+  document.querySelectorAll('#learnlist button').forEach(b=>b.classList.remove('learning'));
+};
+midi.onDevices=(names)=>{ $('#midiDevices').textContent = names.length? names.join(', ') : 'sin dispositivos'; };
+$('#midiBtn').addEventListener('click',()=>{ $('#midipanel').classList.toggle('hide'); });
+$('#midiConnect').addEventListener('click',async()=>{
+  try{ const names=await midi.connect(); $('#midiDevices').textContent=names.length?names.join(', '):'sin dispositivos (mueve un control)'; }
+  catch(e){ $('#midiDevices').textContent='no disponible: '+(e.message||e); }
+});
+$('#midiReset').addEventListener('click',()=>{ midi.resetMap(); buildLearnList(); });
+buildLearnList();
+
 // Exponer para pruebas automatizadas (Playwright)
-window.__auditSound = { bridge, deckState, waves, getMode:()=>manual?'manual':'auto', autoOn:()=>autoOn };
+window.__auditSound = { bridge, midi, deckState, waves, getMode:()=>manual?'manual':'auto', autoOn:()=>autoOn };
 </script>
 </body>
 </html>
