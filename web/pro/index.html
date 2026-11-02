@@ -87,6 +87,19 @@
   .xf input{width:100%;accent-color:var(--gold)}
 
   /* AUTO panel */
+  .copilotpanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .copilotpanel.hide{display:none}
+  .suggestions{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .sug{background:#09203a;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .sug.top{border-color:var(--gold)}
+  .sug .l1{display:flex;align-items:center;gap:8px}
+  .sug .nm{font-weight:700;font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sug .kc{font-size:10px;font-weight:800;color:#1a1300;background:var(--gold);border-radius:6px;padding:2px 6px}
+  .sug .kc.warn{background:#caa24a}
+  .sug .sc{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .sug .l2{font-size:11px;color:var(--muted);margin-top:3px}
+  .sug .prep{margin-top:6px}
+  .coplearn{font-size:10px;color:var(--muted);margin-top:10px}
   .fxpanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   #recBtn.on{background:var(--red);color:#fff;border-color:transparent}
   .autopanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
@@ -131,6 +144,7 @@
     <div class="brand">AUDIT <span class="g">SOUND</span></div>
     <div class="seg" id="modeSeg">
       <button data-m="manual" class="on">MANUAL</button>
+      <button data-m="asistido">ASISTIDO · IA</button>
       <button data-m="auto">AUTO · IA</button>
     </div>
     <button class="btn sm" id="midiBtn" style="margin-left:4px">🎹 MIDI</button>
@@ -217,6 +231,17 @@
         </div>
       </div>
 
+      <div class="copilotpanel hide" id="copilotpanel">
+        <div style="font-weight:800;letter-spacing:.08em;font-size:12px">COPILOTO · IA <span style="color:var(--muted);font-weight:500">(sugiere; tú decides)</span></div>
+        <div class="nowp" id="copNow">carga tu biblioteca y reproduce una pista</div>
+        <label class="btn load" style="display:inline-block">Biblioteca
+          <input type="file" accept="audio/*" multiple id="copLib"></label>
+        <span id="copCount" style="font-size:11px;color:var(--muted);margin-left:8px">0 pistas</span>
+        <button class="btn sm" id="copRefresh" style="margin-left:6px">↻ Recomendar</button>
+        <div class="suggestions" id="suggestions"></div>
+        <div class="coplearn" id="copLearn"></div>
+      </div>
+
       <div class="autopanel hide" id="autopanel">
         <div style="font-weight:800;letter-spacing:.08em;font-size:12px">DJ AUTOMÁTICO · IA</div>
         <div class="nowp"><span class="statedot" id="autodot"></span><span id="nowPlaying">en espera</span></div>
@@ -267,19 +292,22 @@
 <script type="module">
 import { AudioBridge } from './audio_bridge.js';
 import { MidiController, TARGETS } from './midi.js';
+import { Copilot, camelot } from './copilot.js';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const KEYS = ['8A','8B','9A','9B','10A','10B','11A','11B','12A','12B','1A','1B','2A','2B','3A','3B','4A','4B','5A','5B','6A','6B','7A','7B'];
 const fmt = (s) => { s=Math.max(0,s|0); return `${(s/60)|0}:${String(s%60).padStart(2,'0')}`; };
-const keyName = (k) => (k>=0 && k<24) ? KEYS[k] : '—';
+const keyName = (k) => camelot(k);     // Camelot consistente con el copiloto
 
 const bridge = new AudioBridge();
-const deckState = [{dur:0,pos:0,playing:false},{dur:0,pos:0,playing:false}];
+const copilot = new Copilot();
+const deckState = [{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:''},{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:''}];
 const waves = [null,null];
 const hot = [[0,0,0,0],[0,0,0,0]];     // puntos (s) por pad; 0 = sin fijar
 const eqv = [{low:0,mid:0,high:0},{low:0,mid:0,high:0}];
-let manual = true, autoOn = false, libCount = 0;
+const copFiles = new Map();            // nombre -> File (para "Preparar" sin re-subir)
+let mode = 'manual', autoOn = false, libCount = 0, lastRecKey = '';
 
 /* ---- Arranque (gesto del usuario) ---- */
 $('#startBtn').addEventListener('click', async () => {
@@ -302,11 +330,14 @@ $('#modeSeg').addEventListener('click', (e) => {
   setMode(b.dataset.m);
 });
 function setMode(m){
-  manual = (m === 'manual');
+  mode = m;
   $$('#modeSeg button').forEach(x => x.classList.toggle('on', x.dataset.m === m));
-  $('#autopanel').classList.toggle('hide', manual);
-  $$('.manualonly').forEach(x => x.classList.toggle('hide', !manual));
-  if (manual && autoOn) { bridge.autoEnable(false); autoOn = false; $('#autoToggle').textContent='▶ Activar AUTO'; }
+  // El DJ mezcla a mano en MANUAL y ASISTIDO; en AUTO conduce la IA.
+  $$('.manualonly').forEach(x => x.classList.toggle('hide', m === 'auto'));
+  $('#autopanel').classList.toggle('hide', m !== 'auto');
+  $('#copilotpanel').classList.toggle('hide', m !== 'asistido');
+  if (m !== 'auto' && autoOn){ bridge.autoEnable(false); autoOn = false; $('#autoToggle').textContent='▶ Activar AUTO'; }
+  if (m === 'asistido') refreshSuggestions(true);
 }
 
 /* ---- Carga por deck ---- */
@@ -322,10 +353,11 @@ function onLoaded(m){
   if (!m.ok) return;
   $('#bpm'+L).textContent = (m.bpm||0).toFixed(1);
   $('#key'+L).textContent = keyName(m.key);
-  deckState[m.deck].dur = m.dur||0;
+  const ds=deckState[m.deck]; ds.dur=m.dur||0; ds.bpm=m.bpm||0; ds.key=(m.key??-1)|0; ds.energy=m.energy||0; ds.name=m.name;
   if (m.wave){ waves[m.deck]=m.wave; }
   hot[m.deck]=[0,0,0,0]; refreshPads(m.deck);
   drawWave(m.deck);
+  if (mode === 'asistido') refreshSuggestions(true);
 }
 
 /* ---- Transporte / toggles ---- */
@@ -408,6 +440,56 @@ $('#autoToggle').addEventListener('click', ()=>{
 });
 $('#skipBtn').addEventListener('click', ()=> bridge.autoSkip());
 
+/* ---- Modo B: copiloto IA (P3) — recomienda, NO ejecuta ---- */
+bridge.onAnalyzed = (m) => {
+  copilot.addTrack({ name:m.name, bpm:m.bpm, key:m.key, energy:m.energy });
+  $('#copCount').textContent = copilot.size()+' pistas';
+  if (mode==='asistido') refreshSuggestions(true);
+};
+$('#copLib').addEventListener('change', async (e)=>{
+  for (const f of e.target.files){ copFiles.set(f.name, f); await bridge.analyze(f, f.name); }
+});
+$('#copRefresh').addEventListener('click', ()=> refreshSuggestions(true));
+function playingDeck(){ return deckState[0].playing ? 0 : (deckState[1].playing ? 1 : -1); }
+function current(){ const d=playingDeck(); if (d<0) return null; const s=deckState[d];
+  return s.name ? {name:s.name,bpm:s.bpm,key:s.key,energy:s.energy,deck:d} : null; }
+function refreshSuggestions(force){
+  if (mode!=='asistido') return;
+  const cur = current();
+  const sig = cur ? (cur.name+'|'+cur.bpm.toFixed(1)) : 'none';
+  if (!force && sig===lastRecKey) return; lastRecKey=sig;
+  const host=$('#suggestions'); host.innerHTML='';
+  if (!cur){ $('#copNow').textContent = copilot.size()? 'reproduce una pista para recibir sugerencias' : 'carga tu biblioteca y reproduce una pista'; renderLearn(); return; }
+  const freeDeck = 1-cur.deck;
+  $('#copNow').innerHTML = `suena <b>${cur.name}</b> · ${camelot(cur.key)} · ${cur.bpm.toFixed(1)} BPM`;
+  const recs = copilot.recommend(cur, 5);
+  if (!recs.length){ host.innerHTML = '<div class="sug"><div class="l2">añade pistas a la biblioteca para recibir recomendaciones</div></div>'; renderLearn(); return; }
+  recs.forEach((r,i)=>{
+    const row=document.createElement('div'); row.className='sug'+(i===0?' top':'');
+    row.innerHTML = `<div class="l1"><span class="nm">${r.track.name}</span>`+
+      `<span class="kc${r.harmonic?'':' warn'}">${camelot(r.track.key)}</span>`+
+      `<span class="sc">${r.track.bpm.toFixed(0)} BPM · ${(r.score*100|0)}%</span></div>`+
+      `<div class="l2">${r.reason} · ${copilot.suggestTransition(cur,r)}</div>`;
+    const btn=document.createElement('button'); btn.className='btn sm prep';
+    btn.textContent = '▶ Preparar en '+(freeDeck?'B':'A');
+    btn.addEventListener('click', ()=> prepare(r, freeDeck, cur));
+    row.appendChild(btn); host.appendChild(row);
+  });
+  renderLearn();
+}
+// Ejecuta SOLO cuando el DJ lo pide: carga la pista en el deck libre y deja el cue.
+async function prepare(rec, deck, cur){
+  const f = copFiles.get(rec.track.name); if (!f) return;
+  $('#title'+(deck?'B':'A')).textContent = 'preparando…';
+  await bridge.load(deck, f, rec.track.name);
+  copilot.accept(cur, rec);           // aprendizaje: el DJ aceptó esta sugerencia
+  renderLearn();
+}
+function renderLearn(){
+  const p=copilot.prefs;
+  $('#copLearn').textContent = `Aprendizaje: ${p.accepts||0} aceptadas · sesgo energía ${p.energyBias>=0?'+':''}${p.energyBias.toFixed(2)} · tolerancia ${p.bpmTol.toFixed(1)} BPM`;
+}
+
 /* ---- FX de máster + grabación (P2b) ---- */
 $('#fxEcho').addEventListener('input', (e)=> bridge.fxEcho(parseFloat(e.target.value)));
 $('#fxReverb').addEventListener('input', (e)=> bridge.fxReverb(parseFloat(e.target.value)));
@@ -441,12 +523,13 @@ function onStatus(m){
   });
   // AUTO: estado + now-playing
   const dot=$('#autodot'); dot.className='statedot'+(m.autoState===1?' idle':m.autoState===2?' fade':'');
-  if (!manual){
+  if (mode==='auto'){
     const names=[$('#titleA').textContent,$('#titleB').textContent];
     $('#nowPlaying').innerHTML = m.autoState? ('sonando · <b>'+(deckState[0].playing?names[0]:names[1])+'</b>'+(m.autoState===2?' · mezclando…':'')) : 'en espera';
+    m.decks.forEach(dk => { if (dk.loaded && !waves[dk.deck]) bridge.requestWaveform(dk.deck); });
   }
-  // Si auto cambió de deck, refrescar su forma de onda
-  if (!manual) m.decks.forEach(dk => { if (dk.loaded && !waves[dk.deck]) bridge.requestWaveform(dk.deck); });
+  // ASISTIDO: si cambió la pista que suena, recalcular sugerencias (sin ejecutar nada)
+  if (mode==='asistido') refreshSuggestions(false);
 }
 
 /* ---- Dibujo de formas de onda + playhead ---- */
@@ -506,7 +589,7 @@ $('#midiReset').addEventListener('click',()=>{ midi.resetMap(); buildLearnList()
 buildLearnList();
 
 // Exponer para pruebas automatizadas (Playwright)
-window.__auditSound = { bridge, midi, deckState, waves, getMode:()=>manual?'manual':'auto', autoOn:()=>autoOn };
+window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn, refreshSuggestions };
 </script>
 </body>
 </html>

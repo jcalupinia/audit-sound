@@ -37,6 +37,7 @@ export class AudioBridge {
       else if (m.type === 'status' && this.onStatus) this.onStatus(m);
       else if (m.type === 'loaded' && this.onLoaded) this.onLoaded(m);
       else if (m.type === 'waveform' && this.onWaveform) this.onWaveform(m);
+      else if (m.type === 'analyzed' && this.onAnalyzed) this.onAnalyzed(m);
       else if (m.type === 'auto_added' && this.onAutoAdded) this.onAutoAdded(m);
       else if (m.type === 'auto_enabled' && this.onAutoEnabled) this.onAutoEnabled(m);
       else if (m.type === 'error' && this.onError) this.onError(m.message);
@@ -78,6 +79,11 @@ export class AudioBridge {
   loop(deck, on, bars)   { this._send({ type: 'loop', deck, on, bars }); }
   beatjump(deck, beats)  { this._send({ type: 'beatjump', deck, beats }); }
   requestWaveform(deck)  { this._send({ type: 'waveform', deck }); }
+  // Modo B (copiloto): analiza una pista (bpm/tono/energía) sin cargarla ni ejecutarla.
+  async analyze(fileOrBytes, name) {
+    const bytes = fileOrBytes instanceof ArrayBuffer ? fileOrBytes : await fileOrBytes.arrayBuffer();
+    this._send({ type: 'analyze', bytes, name: name || (fileOrBytes.name || 'track') });
+  }
 
   // ---- Modo automático (AutoMix+Selector compartidos en WASM, P1) ----
   // Añade una pista a la biblioteca del selector (File/Blob/ArrayBuffer).
