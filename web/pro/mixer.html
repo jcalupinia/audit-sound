@@ -268,6 +268,7 @@
           <label class="btn load sm" style="display:inline-block">+ Añadir
             <input type="file" accept="audio/*" multiple id="libAdd"></label>
           <button class="btn sm" id="ndToggle" title="Cargar desde tu servidor Navidrome/Subsonic">☁ Navidrome</button>
+          <button class="btn sm" id="omToggle" title="Buscar música libre (Creative Commons)">♪ Libre</button>
           <button class="btn sm" id="libToAuto" style="margin-left:auto" title="Carga la biblioteca en el DJ automático">→ AUTO</button>
         </div>
         <div class="liblist" id="libList"></div>
@@ -292,6 +293,16 @@
           </div>
           <div class="liblist" id="ndList"></div>
           <div class="libnote">La contraseña se usa una vez para el token y no se guarda en claro. El servidor necesita HTTPS y CORS habilitado.</div>
+        </div>
+
+        <div class="ndpanel hide" id="ompanel">
+          <div class="ndsearch">
+            <input type="search" id="omQuery" placeholder="Buscar música libre (Creative Commons)…">
+            <button class="btn sm" id="omSearchBtn">Buscar</button>
+          </div>
+          <div class="ndstatus" id="omStatus"></div>
+          <div class="liblist" id="omList"></div>
+          <div class="libnote">Música Creative Commons vía Jamendo (a través del backend). Respeta la licencia de cada pista (atribución). Si está desactivado, configura <b>JAMENDO_CLIENT_ID</b> en Coolify.</div>
         </div>
       </div>
 
@@ -353,6 +364,8 @@
   <div class="hint">Modo MANUAL: mezcla tú. Modo AUTO · IA: el motor elige, mezcla y encadena. El cambio de modo no corta el audio.</div>
 </div>
 
+<!-- Config del backend (LISTEN_URL, bandera de música libre). Clásico y síncrono: corre antes del módulo. -->
+<script src="./config.js" onerror="void 0"></script>
 <script type="module">
 import { AudioBridge } from './audio_bridge.js';
 import { MidiController, TARGETS } from './midi.js';
@@ -360,6 +373,7 @@ import { Copilot, camelot } from './copilot.js';
 import { CTRL } from './ring.js';
 import * as LIB from './library.js';
 import { SubsonicClient, saveConfig, loadConfig, clearConfig } from './subsonic.js';
+import * as OM from './openmusic.js';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -843,10 +857,67 @@ async function ndSave(song, btn){
 // Al arrancar, si hay config guardada, deja la URL/usuario a la vista (sin conectar aún).
 (function(){ const c=loadConfig(); if (c){ $('#ndUrl').value=c.url; $('#ndUser').value=c.user; } })();
 
+/* ---- Música libre (Jamendo vía backend) ---- */
+let omSongs = [];
+function omSetStatus(text, cls){ const el=$('#omStatus'); el.textContent=text||''; el.className='ndstatus'+(cls?(' '+cls):''); }
+$('#omToggle').addEventListener('click', ()=>{
+  const p=$('#ompanel'); p.classList.toggle('hide');
+  if (!p.classList.contains('hide') && !OM.enabled())
+    omSetStatus('Música libre desactivada: configura JAMENDO_CLIENT_ID en el servidor (Coolify).', 'err');
+});
+async function omSearch(){
+  if (!OM.enabled()){ omSetStatus('Música libre desactivada (sin JAMENDO_CLIENT_ID en el servidor).', 'err'); return; }
+  const q=$('#omQuery').value.trim();
+  omSetStatus('buscando…');
+  try { omSongs = await OM.search(q, 30); omSetStatus(omSongs.length+' resultado(s)', omSongs.length?'ok':''); renderOm(); }
+  catch(e){ omSetStatus('error: '+(e.message||e), 'err'); }
+}
+$('#omSearchBtn').addEventListener('click', omSearch);
+$('#omQuery').addEventListener('keydown', (e)=>{ if (e.key==='Enter') omSearch(); });
+function renderOm(){
+  const host=$('#omList'); host.innerHTML='';
+  if (!omSongs.length){ host.innerHTML='<div class="libempty">Sin resultados. Busca por artista, título o estilo.</div>'; return; }
+  omSongs.forEach(song => {
+    const name = OM.filename(song);
+    const row=document.createElement('div'); row.className='lib';
+    row.innerHTML = `<span class="nm" title="${name}${song.license?' · '+song.license:''}">${song.title}${song.artist?' · '+song.artist:''}</span>`+
+      `<span class="mt">CC</span>`;
+    const a=document.createElement('button'); a.className='btn sm la'; a.textContent='▶ A';
+    a.addEventListener('click',()=>omLoad(song,0,a));
+    const b=document.createElement('button'); b.className='btn sm lb'; b.textContent='▶ B';
+    b.addEventListener('click',()=>omLoad(song,1,b));
+    const s=document.createElement('button'); s.className='btn sm ls'; s.textContent='＋'; s.title='Guardar en la biblioteca';
+    s.addEventListener('click',()=>omSave(song,s));
+    row.append(a,b,s); host.appendChild(row);
+  });
+}
+async function omLoad(song, deck, btn){
+  const name = OM.filename(song);
+  const t0=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try { const bytes = await OM.getBytes(song.audio); $('#title'+(deck?'B':'A')).textContent='cargando…'; await bridge.load(deck, bytes, name); }
+  catch(e){ omSetStatus('no se pudo cargar: '+(e.message||e), 'err'); }
+  btn.disabled=false; btn.textContent=t0;
+}
+async function omSave(song, btn){
+  if (!LIB.available()){ alert('Este navegador no permite guardar la biblioteca.'); return; }
+  const name = OM.filename(song);
+  const t0=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try {
+    const bytes = await OM.getBytes(song.audio);
+    await addToLibrary(name, bytes, bytes.byteLength, '');
+    $('#libCount').textContent = libRows.length+(libRows.length===1?' pista':' pistas');
+    $('#copCount').textContent = copilot.size()+' pistas';
+    libSentToAuto=false; renderLib();
+    if (mode==='asistido') refreshSuggestions(true);
+    btn.textContent='✓';
+  } catch(e){ omSetStatus('no se pudo guardar: '+(e.message||e), 'err'); btn.disabled=false; btn.textContent=t0; }
+}
+
 // Exponer para pruebas automatizadas (Playwright)
 window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn,
   refreshSuggestions, lib:LIB, libRows:()=>libRows, hydrateLibrary, renderLib,
-  subsonic:{ client:()=>nd, songs:()=>ndSongs, connect:ndConnect, search:ndSearch, SubsonicClient } };
+  subsonic:{ client:()=>nd, songs:()=>ndSongs, connect:ndConnect, search:ndSearch, SubsonicClient },
+  openmusic:{ enabled:OM.enabled, songs:()=>omSongs, search:omSearch } };
 </script>
 </body>
 </html>
