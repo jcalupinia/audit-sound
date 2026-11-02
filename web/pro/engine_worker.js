@@ -165,7 +165,7 @@ onmessage = async (e) => {
       case 'analyze': {  // Modo B (copiloto): analiza metadatos sin cargar ni tocar el selector
         const path = writeFile(m.bytes);
         const a = analyzeTrack(path);
-        postMessage({ type: 'analyzed', name: m.name, bpm: a.bpm, key: a.key, energy: a.energy });
+        postMessage({ type: 'analyzed', name: m.name, bpm: a.bpm, key: a.key, energy: a.energy, reqId: m.reqId });
         break;
       }
       case 'play':     call('dj_play', ['number', 'number', 'number'], [eng, m.deck, m.on ? 1 : 0]); break;
