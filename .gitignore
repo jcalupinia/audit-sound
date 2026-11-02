@@ -1,0 +1,36 @@
+# Build
+/build/
+**/build/
+*.o
+*.a
+*.so
+*.dylib
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Audio/análisis generado en pruebas
+*.mp3
+*.wav
+*.pcm
+/web/test-media/
+
+# Artefactos WASM generados (se compilan en wasm/build y se copian al desplegar)
+/web/pro/audit_engine.js
+/web/pro/audit_engine.wasm
+/web/pro/audit_engine.data
+*.wasm
+
+# Entorno y secretos (NUNCA versionar — van en variables de entorno de Coolify)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,48 @@
+name: CI
+
+# Esqueleto de CI (issue A1). El cableado real de build para Linux llega en C1
+# (CMake headless sin Oboe + libmp3lame/libshout). Por ahora validamos estructura.
+
+on:
+  push:
+    branches: [ main, "claude/**" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  structure:
+    name: Verificar estructura y licencia
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar archivos de licencia y atribución
+        run: |
+          test -f LICENSE
+          test -f NOTICE
+          grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE
+          echo "LICENSE y NOTICE presentes."
+      - name: Comprobar que Oboe no está vendorizado (build de servidor)
+        run: |
+          if [ -d third_party/oboe ]; then
+            echo "ERROR: third_party/oboe no debe estar en el build de servidor"; exit 1
+          fi
+          echo "OK: sin Oboe."
+      - name: Comprobar motor forkeado presente
+        run: |
+          test -f engine/dj_engine.cpp
+          test -f engine/dj_engine.h
+          echo "Motor presente."
+
+  build:
+    name: Build headless del motor (Linux) + selftest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libcurl4-openssl-dev libmicrohttpd-dev
+      - name: Configurar y compilar (sin Oboe)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build build -j"$(nproc)"
+      - name: Autoprueba headless (arranque del motor + OfflineSink)
+        run: ./build/engine_selftest
