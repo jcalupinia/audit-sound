@@ -1,6 +1,6 @@
 # web
 
-Frontend de AUDIT SOUND (escuchar.audit-ia.ec).
+Frontend de AUDIT SOUND (audit-sound.audit-ia.ec).
 
 - **E1 (hecho):** `index.html` — página mínima autónoma (sin dependencias externas)
   con botón **"Escuchar"** (gesto requerido por iOS), un `<audio playsinline>` que

@@ -2,7 +2,7 @@
 
 **DJ autónomo** que corre en el servidor, mezcla desde una biblioteca propia
 (Navidrome/Subsonic) y **transmite el audio ya mezclado** a una app web
-(escuchar.audit-ia.ec) donde el usuario entra con usuario y clave y lo escucha/controla
+(audit-sound.audit-ia.ec) donde el usuario entra con usuario y clave y lo escucha/controla
 desde cualquier navegador (iPhone, Android, computadora).
 
 Arquitectura **Opción B** (motor en servidor + streaming), elegida en la fase 1

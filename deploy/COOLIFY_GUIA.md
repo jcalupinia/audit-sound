@@ -19,15 +19,15 @@ Dos previews, cada uno prueba una cosa distinta:
 1. **GitHub App de Coolify** instalada sobre `jcalupinia/audit-sound` (para que Coolify
    pueda clonar y, si quieres, publicar previews por PR).
    - Si no la tienes: en Coolify → *Sources* → GitHub App → instalar en el repo.
-2. **DNS**: apunta el dominio y los subdominios que vayas a usar al **IP del servidor
-   Hetzner** (el servidor `localhost` que ya tienes en Coolify):
-   - `audit-ia.ec`   → **la página** (landing + mezclador PRO). Registro `A` del dominio
-     raíz (apex) → IP del servidor. *(Si tu DNS no permite `A` en el apex, usa `ALIAS`/
-     `ANAME`, o pon la página en `www.audit-ia.ec` con `CNAME` y redirige el apex a `www`.)*
-   - `escuchar.audit-ia.ec`   → streaming, servicio `web` (opcional)
-   - `stream.audit-ia.ec`→ streaming, servicio `icecast` (opcional)
-   - Subdominios: registro `A` (o `CNAME`) → IP del servidor. El TLS lo emite Coolify
-     (Traefik + Let's Encrypt) en cuanto el DNS resuelva al servidor.
+2. **DNS**: apunta al **IP del servidor Hetzner** (el servidor `localhost` que ya tienes en
+   Coolify) el subdominio que vayas a usar. Lo más simple es **un solo subdominio por cada
+   preview** (registro `A` → IP del servidor; el TLS lo emite Coolify/Traefik + Let's Encrypt
+   en cuanto el DNS resuelva):
+   - `sound.audit-ia.ec`         → **A · Mezclador PRO** (landing + mezclador).
+   - `audit-sound.audit-ia.ec`   → **B · Streaming** (un solo dominio: la página **y** el
+     stream salen de aquí; Icecast queda interno, sin dominio).
+   - *(Elige los nombres que prefieras; estos son ejemplos. No uses el apex `audit-ia.ec`:
+     ya lo usan otras apps de la plataforma.)*
 3. Un **proyecto** en Coolify donde crear los recursos (o usa uno existente).
 
 ---
@@ -41,9 +41,9 @@ Dos previews, cada uno prueba una cosa distinta:
    - **Base Directory / Build Context:** `/` (raíz del repo).
 4. **Network / Port:** puerto expuesto **80**.
 5. **Healthcheck:** path **`/healthz`** (método GET, espera `200`).
-6. **Domains:** añade `https://audit-ia.ec` (o tu dominio). Coolify pedirá el TLS a
-   Let's Encrypt automáticamente.
-7. **Environment (opcional):** `LISTEN_URL = https://escuchar.audit-ia.ec` → enlaza la tarjeta
+6. **Domains:** añade `https://sound.audit-ia.ec` (o el dominio que elijas; **no** el apex
+   `audit-ia.ec`, que ya usan otras apps). Coolify pedirá el TLS a Let's Encrypt automáticamente.
+7. **Environment (opcional):** `LISTEN_URL = https://audit-sound.audit-ia.ec` → enlaza la tarjeta
    **«Escuchar en vivo»** de la landing con el Preview de streaming (Preview B). Si no la
    pones, esa tarjeta queda deshabilitada.
 8. **Deploy.** La primera build **compila el motor a WASM** (tarda unos minutos).
@@ -52,8 +52,8 @@ Dos previews, cada uno prueba una cosa distinta:
 > **Escuchar en vivo** (→ `LISTEN_URL`). Así un solo dominio es la puerta de entrada.
 
 **Comprobar (antes del iPhone):**
-- `https://audit-ia.ec/healthz` → `200 ok`.
-- Abre `https://audit-ia.ec/` en el escritorio: debe cargar el mezclador. En la consola
+- `https://sound.audit-ia.ec/healthz` → `200 ok`.
+- Abre `https://sound.audit-ia.ec/` en el escritorio: debe cargar el mezclador. En la consola
   del navegador, `self.crossOriginIsolated` debe ser `true` (si es `false`, algún
   proxy/CDN está quitando las cabeceras COOP/COEP → ver *Problemas*).
 
@@ -69,34 +69,40 @@ bloqueada**; para audio con pantalla bloqueada usa el Preview B.)*
 1. **Coolify → tu proyecto → + New Resource → Docker Compose.**
 2. **Source:** GitHub (la App) → `jcalupinia/audit-sound` → rama `main`.
    - **Compose file:** `deploy/docker-compose.yml` · **Base Directory:** `/`.
+   **Recomendado — UNA sola URL:** el servicio `web` sirve la página **y** hace de proxy
+   del stream (`/stream.mp3`) hacia el Icecast interno. Así todo vive en **un solo dominio**
+   (mismo origen, HTTPS), Icecast **no se expone** y **no hay mezcla de contenido** (la causa
+   nº1 de que iOS no reproduzca). El `icecast` **no necesita dominio público**.
+
 3. **Environment variables** (en Coolify, nunca en el repo — plantilla en
    `deploy/.env.example`):
    ```
    ICECAST_SOURCE_PASSWORD = (una clave fuerte)
    ICECAST_ADMIN_PASSWORD  = (otra clave fuerte)
-   ICECAST_HOSTNAME        = stream.audit-ia.ec
-   STREAM_URL              = https://stream.audit-ia.ec/stream.mp3
+   # STREAM_URL NO hace falta en el modo de un solo dominio: la página usa el mismo
+   # origen (/stream.mp3), servido por el proxy del propio `web`.
    # Opcionales (panel de control):
    AUDIT_SOUND_API_USER    = dj
    AUDIT_SOUND_API_PASS    = (clave)
    # La demo viene activada: AUDIT_SOUND_DEMO=1 (sin tocar nada suena una demo sintética)
    ```
-4. **Domains por servicio:**
-   - servicio **`web`** → `https://escuchar.audit-ia.ec`
-   - servicio **`icecast`** → `https://stream.audit-ia.ec`
-   - Coolify emite TLS para **ambos**.
+4. **Domain (uno solo):**
+   - servicio **`web`** → `https://audit-sound.audit-ia.ec` (o el dominio que elijas).
+   - servicio **`icecast`** → **sin dominio** (interno; el `web` lo proxya).
+   - Coolify emite el TLS del único dominio.
 5. **Deploy.** El `engine` reintenta hasta que Icecast está listo; con la demo, el stream
    suena en cuanto arranca.
 
 **⚠️ Mezcla de contenido (clave para iOS):** una página **HTTPS** no puede reproducir un
-stream **HTTP**. Por eso `STREAM_URL` debe ser `https://…` y el servicio `icecast` debe
-tener su **propio dominio con TLS**. Si lo dejas en HTTP, el iPhone no reproduce.
+stream **HTTP**. Con el modo de un solo dominio esto **se resuelve solo**: el stream sale
+por el mismo `https://…/stream.mp3`. *(Solo si eligieras exponer Icecast en su propio
+dominio, ese dominio también tendría que ser HTTPS y definirías `STREAM_URL=https://…`.)*
 
 **Comprobar:**
-- `https://stream.audit-ia.ec/stream.mp3` reproduce en un navegador de escritorio.
-- `https://escuchar.audit-ia.ec` → **Escuchar** → suena la demo.
+- `https://audit-sound.audit-ia.ec/stream.mp3` reproduce en un navegador de escritorio.
+- `https://audit-sound.audit-ia.ec` → **Escuchar** → suena la demo.
 
-**En el iPhone (gate móvil de la auditoría):** abre `https://escuchar.audit-ia.ec` → **Escuchar**
+**En el iPhone (gate móvil de la auditoría):** abre `https://audit-sound.audit-ia.ec` → **Escuchar**
 → **bloquea la pantalla** → el audio **sigue**, con controles en la pantalla de bloqueo
 (Media Session). Eso confirma la reproducción en segundo plano.
 

@@ -2,10 +2,10 @@
 # Tres servicios: icecast (stream), engine (DJ autónomo), web (frontend).
 #
 # En Coolify: crear un recurso "Docker Compose", apuntar a este archivo, definir
-# las variables de entorno (ver deploy/.env.example) y asignar dominios a los
-# servicios `web` (p.ej. escuchar.audit-ia.ec) e `icecast` (p.ej. stream.audit-ia.ec). Coolify
-# pone el proxy y el TLS (Let's Encrypt) delante; no publiques puertos a mano en
-# producción salvo que no uses el proxy.
+# las variables de entorno (ver deploy/.env.example). UN SOLO DOMINIO: asigna dominio solo
+# al servicio `web` (p.ej. audit-sound.audit-ia.ec); el `web` sirve la página y proxya el
+# stream en /stream.mp3, así que `icecast` queda INTERNO (sin dominio). Coolify pone el
+# proxy y el TLS (Let's Encrypt) delante; no publiques puertos a mano en producción.
 #
 # IMPORTANTE: las contraseñas van en variables de entorno de Coolify, NUNCA aquí.
 
