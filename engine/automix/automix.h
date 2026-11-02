@@ -27,6 +27,12 @@ int automix_enable(AutoMix am, int on);  // arranca/para el hilo. 1 = ok
 void automix_skip(AutoMix am);           // fuerza la transición ya
 int automix_state(AutoMix am);           // 0 disabled, 1 idle, 2 fading
 
+// Telemetría para la Control API (M5).
+int automix_current_path(AutoMix am, char* out, int cap);  // ruta de la pista que suena
+double automix_get_transition_time(AutoMix am);
+int automix_get_mode(AutoMix am);
+int automix_from_deck(AutoMix am);  // índice del deck que suena (0/1)
+
 #ifdef __cplusplus
 }
 #endif

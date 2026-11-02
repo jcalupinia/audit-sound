@@ -8,7 +8,10 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
+#include <mutex>
+#include <string>
 #include <thread>
 
 namespace {
@@ -31,6 +34,9 @@ struct AutoMixImpl {
   double deckFirst[2] = {0.0, 0.0};
   double deckLast[2] = {-1.0, -1.0};
   bool deckLoaded[2] = {false, false};
+  std::string deckPath[2];
+  std::string currentPath;  // pista que suena (bajo infoMu)
+  std::mutex infoMu;        // protege deckPath/currentPath para los getters
   int fromDeck = 0;
   double fadeBeginSec = 0, fadeEndSec = 0, toStartSec = 0;
 
@@ -48,6 +54,10 @@ struct AutoMixImpl {
     deckFirst[d] = first;
     deckLast[d] = last > 0 ? last : dj_duration(engine, d);
     deckLoaded[d] = true;
+    {
+      std::lock_guard<std::mutex> lk(infoMu);
+      deckPath[d] = path;
+    }
     dj_seek(engine, d, first);  // cue al primer sonido
     LOGI("automix: pista en deck %d (dur=%.1f first=%.2f last=%.2f bpm=%.1f)", d,
          dj_duration(engine, d), first, deckLast[d], dj_get_bpm(engine, d));
@@ -88,6 +98,10 @@ struct AutoMixImpl {
     dj_seek(engine, 0, deckFirst[0]);
     dj_set_xfader(engine, 0.0f);  // deck 0 a tope
     dj_play(engine, 0, 1);
+    {
+      std::lock_guard<std::mutex> lk(infoMu);
+      currentPath = deckPath[0];
+    }
     loadInto(1);  // precarga deck 1 (cued)
     computeTransition();
     state = ST_IDLE;
@@ -136,6 +150,10 @@ struct AutoMixImpl {
           deckLoaded[fromDeck] = false;
           const int oldFrom = fromDeck;
           fromDeck = toDeck;
+          {
+            std::lock_guard<std::mutex> lk(infoMu);
+            currentPath = deckPath[toDeck];
+          }
           loadInto(oldFrom);  // precarga la siguiente en el deck liberado
           computeTransition();
           LOGI("automix: fin transición; ahora suena deck %d", fromDeck);
@@ -196,5 +214,24 @@ int automix_enable(AutoMix am, int on) {
 void automix_skip(AutoMix am) { static_cast<AutoMixImpl*>(am)->skipReq = true; }
 
 int automix_state(AutoMix am) { return static_cast<AutoMixImpl*>(am)->state.load(); }
+
+int automix_current_path(AutoMix am, char* out, int cap) {
+  auto* a = static_cast<AutoMixImpl*>(am);
+  std::lock_guard<std::mutex> lk(a->infoMu);
+  if (a->currentPath.empty() || cap <= 0) {
+    if (cap > 0) out[0] = 0;
+    return 0;
+  }
+  std::snprintf(out, (size_t)cap, "%s", a->currentPath.c_str());
+  return 1;
+}
+
+double automix_get_transition_time(AutoMix am) {
+  return static_cast<AutoMixImpl*>(am)->transitionTime.load();
+}
+
+int automix_get_mode(AutoMix am) { return static_cast<AutoMixImpl*>(am)->mode.load(); }
+
+int automix_from_deck(AutoMix am) { return static_cast<AutoMixImpl*>(am)->fromDeck; }
 
 }  // extern "C"

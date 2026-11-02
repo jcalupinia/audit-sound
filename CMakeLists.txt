@@ -39,6 +39,9 @@ pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
 # libcurl (cliente Subsonic/Navidrome, issue M2).
 pkg_check_modules(CURL REQUIRED IMPORTED_TARGET libcurl)
 
+# libmicrohttpd (Control API, issue M5).
+pkg_check_modules(MHD REQUIRED IMPORTED_TARGET libmicrohttpd)
+
 # Dependencias vendorizadas (cada una con su propio CMake).
 add_subdirectory(${ROOT}/third_party/qm-dsp qm-dsp-build)
 include(${ROOT}/third_party/opus_stack.cmake)   # define: ogg, opus, opusfile
@@ -50,10 +53,11 @@ add_library(audit_sound_engine STATIC
   ${ROOT}/engine/automix/automix.cpp
   ${ROOT}/engine/catalog/subsonic.cpp
   ${ROOT}/engine/selector/selector.cpp
+  ${ROOT}/engine/api/control_api.cpp
 )
 target_compile_definitions(audit_sound_engine PRIVATE _USE_MATH_DEFINES)
 target_compile_options(audit_sound_engine PRIVATE -fexceptions)
-target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine ${ROOT}/engine/automix ${ROOT}/engine/catalog ${ROOT}/engine/selector)
+target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine ${ROOT}/engine/automix ${ROOT}/engine/catalog ${ROOT}/engine/selector ${ROOT}/engine/api)
 target_include_directories(audit_sound_engine PRIVATE
   ${ROOT}/engine/sinks
   ${ROOT}/third_party/dr_libs
@@ -63,7 +67,7 @@ target_include_directories(audit_sound_engine PRIVATE
   ${LAME_INCLUDE_DIR}
   ${SHOUT_INCLUDE_DIR}
 )
-target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY} ${SHOUT_LIBRARY} PkgConfig::FFMPEG PkgConfig::CURL)
+target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY} ${SHOUT_LIBRARY} PkgConfig::FFMPEG PkgConfig::CURL PkgConfig::MHD)
 
 # Autoprueba headless: crea el motor, arranca el sink, opcionalmente carga
 # un archivo y comprueba que la posición avanza (pipeline vivo).

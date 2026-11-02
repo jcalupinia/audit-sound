@@ -34,6 +34,11 @@
   button:active{transform:scale(.98)}
   button.stop{background:var(--btn); color:var(--text)}
   button:disabled{filter:grayscale(.5) opacity(.6); cursor:default}
+  #panel input, #panel select{width:100%; padding:11px 12px; margin:6px 0; border-radius:10px; border:1px solid #1e3a5c; background:#0b2138; color:var(--text); font-size:15px}
+  #loginMsg{color:#f85149; font-size:13px; min-height:16px}
+  #np{font-size:16px; color:var(--text); margin-bottom:12px; font-weight:600}
+  .ctl{display:block; text-align:left; font-size:13px; color:var(--muted); margin-top:14px}
+  .ctl input[type=range]{margin-top:6px}
   #status{margin-top:14px; font-size:13px; color:var(--muted); min-height:18px}
   .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--muted); margin-right:6px; vertical-align:middle}
   .dot.live{background:#3fb950}
@@ -49,6 +54,27 @@
     <div id="now">Listo para escuchar tu sesión.</div>
     <button id="btn">▶ Escuchar</button>
     <div id="status"><span class="dot" id="dot"></span><span id="statusText">Detenido</span></div>
+  </div>
+
+  <!-- Panel de control (M5): visible si hay API configurada (config.js o ?api=). -->
+  <div class="card" id="panel" hidden>
+    <div id="login">
+      <input id="u" placeholder="usuario" autocomplete="username">
+      <input id="pw" type="password" placeholder="clave" autocomplete="current-password">
+      <button id="loginBtn">Entrar al control</button>
+      <div id="loginMsg"></div>
+    </div>
+    <div id="controls" hidden>
+      <div id="np">—</div>
+      <button id="skipBtn" class="stop">⏭ Siguiente pista</button>
+      <label class="ctl">Transición: <span id="ttVal">8</span> s
+        <input id="tt" type="range" min="2" max="20" value="8"></label>
+      <label class="ctl">Modo de mezcla:
+        <select id="mode">
+          <option value="0">Saltar silencio</option>
+          <option value="1">Pista completa</option>
+        </select></label>
+    </div>
   </div>
 
   <footer>Stream MP3 vía Icecast · AUDIT SOUND</footer>
@@ -150,8 +176,49 @@
   player.addEventListener('stalled', function(){ setStatus('Reconectando…'); });
   player.addEventListener('error', function(){ setStatus('Error de stream', 'err'); });
 
+  // --- Panel de control (M5) ---
+  var API = params.get('api') ||
+            (typeof window.AUDIT_SOUND_API === 'string' && window.AUDIT_SOUND_API) || '';
+  var token = null, pollTimer = null;
+  var panel = document.getElementById('panel');
+  if (API) panel.hidden = false;
+
+  function byId(x){ return document.getElementById(x); }
+  function cmd(action, value){
+    var u = API + '/api/command?token=' + token + '&action=' + action +
+            (value != null ? '&value=' + encodeURIComponent(value) : '');
+    return fetch(u, { method: 'POST' });
+  }
+  function poll(){
+    fetch(API + '/api/status?token=' + token).then(function(r){ return r.json(); })
+      .then(function(d){
+        byId('np').textContent = (d.nowPlaying || '—') +
+          (d.bpm > 0 ? ' · ' + Math.round(d.bpm) + ' BPM' : '');
+      }).catch(function(){});
+  }
+  function startPoll(){ if (pollTimer) clearInterval(pollTimer); poll(); pollTimer = setInterval(poll, 2000); }
+
+  if (API) {
+    byId('loginBtn').addEventListener('click', function(){
+      var u = byId('u').value, pw = byId('pw').value;
+      fetch(API + '/api/login?user=' + encodeURIComponent(u) + '&pass=' + encodeURIComponent(pw),
+            { method: 'POST' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.token){ token = d.token; byId('login').hidden = true; byId('controls').hidden = false; startPoll(); }
+          else byId('loginMsg').textContent = 'Credenciales inválidas';
+        })
+        .catch(function(){ byId('loginMsg').textContent = 'No se pudo conectar con el control'; });
+    });
+    byId('skipBtn').addEventListener('click', function(){ cmd('skip'); });
+    var tt = byId('tt');
+    tt.addEventListener('input', function(){ byId('ttVal').textContent = tt.value; });
+    tt.addEventListener('change', function(){ cmd('set_transition', tt.value); });
+    byId('mode').addEventListener('change', function(){ cmd('set_mode', this.value); });
+  }
+
   // Exponer para pruebas automatizadas (headless).
-  window.__auditSound = { start: start, stop: stop, el: player, streamUrl: STREAM };
+  window.__auditSound = { start: start, stop: stop, el: player, streamUrl: STREAM, api: API };
 })();
 </script>
 </body>

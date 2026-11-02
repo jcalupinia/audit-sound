@@ -12,6 +12,7 @@
 //   AUDIT_SOUND_SUBSONIC_URL / _USER / _PASS [ / _PLAYLIST ]
 
 #include "automix.h"
+#include "control_api.h"
 #include "dj_engine.h"
 #include "selector.h"
 #include "subsonic.h"
@@ -161,8 +162,21 @@ int main(int argc, char** argv) {
   }
 
   automix_enable(am, 1);
+
+  // Control API (M5): login + estado + comandos para el frontend.
+  ControlApi api = nullptr;
+  const char* apiUser = std::getenv("AUDIT_SOUND_API_USER");
+  const char* apiPass = std::getenv("AUDIT_SOUND_API_PASS");
+  if (apiUser && apiUser[0]) {
+    const char* portEnv = std::getenv("AUDIT_SOUND_API_PORT");
+    const int apiPort = (portEnv && portEnv[0]) ? std::atoi(portEnv) : 8787;
+    api = control_api_start(apiPort, apiUser, apiPass ? apiPass : "", e, am);
+    if (api) std::printf("Control API en el puerto %d (usuario '%s')\n", apiPort, apiUser);
+  }
+
   for (;;) std::this_thread::sleep_for(std::chrono::seconds(3600));
 
+  control_api_stop(api);
   automix_destroy(am);
   delete subClient;
   dj_stop(e);

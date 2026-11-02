@@ -44,6 +44,13 @@ services:
       AUDIT_SOUND_SUBSONIC_PLAYLIST: ${AUDIT_SOUND_SUBSONIC_PLAYLIST:-}
       AUDIT_SOUND_TRANSITION: ${AUDIT_SOUND_TRANSITION:-8}
       AUDIT_SOUND_MIX_MODE: ${AUDIT_SOUND_MIX_MODE:-0}
+      # Control API (M5): login + comandos para el frontend.
+      AUDIT_SOUND_API_USER: ${AUDIT_SOUND_API_USER:-}
+      AUDIT_SOUND_API_PASS: ${AUDIT_SOUND_API_PASS:-}
+      AUDIT_SOUND_API_PORT: "8787"
+    # Para probar sin el proxy de Coolify, descomentar (y asignar dominio api.audit-ia):
+    # ports:
+    #   - "8787:8787"
     volumes:
       - ${MUSIC_DIR:-./music}:/music:ro          # tu biblioteca (solo lectura)
     restart: unless-stopped
@@ -55,6 +62,8 @@ services:
     environment:
       # URL PÚBLICA del stream (dominio del servicio icecast en Coolify):
       STREAM_URL: ${STREAM_URL:-}
+      # URL PÚBLICA de la Control API (dominio del puerto 8787 del engine en Coolify):
+      API_URL: ${API_URL:-}
     # Para probar sin el proxy de Coolify, descomentar:
     # ports:
     #   - "8080:80"
