@@ -23,6 +23,9 @@ include(${ROOT}/third_party/opus_stack.cmake)   # ogg, opus, opusfile
 add_executable(audit_engine
   ${ROOT}/engine/dj_engine.cpp
   ${ROOT}/engine/last_error.cpp
+  ${ROOT}/engine/automix/automix.cpp       # AutoMix (M3) compartido en WASM (P1)
+  ${ROOT}/engine/selector/selector.cpp     # Selector inteligente (M4) compartido (P1)
+  ${ROOT}/engine/auto_facade.cpp           # fachada C que une Selector+AutoMix (P1)
   ${CMAKE_CURRENT_SOURCE_DIR}/wasm_main.c
 )
 target_compile_definitions(audit_engine PRIVATE _USE_MATH_DEFINES)
@@ -36,12 +39,10 @@ target_include_directories(audit_engine PRIVATE
 target_link_libraries(audit_engine PRIVATE qm_dsp opusfile)
 
 # El frontend instancia el modulo dentro de un Worker dedicado (engine_worker.js).
-# PROXY_TO_PTHREAD mueve el "main" del runtime a un pthread del pool: solo desde ahi
-# dj_load puede crear el hilo del chunk_cache sin "unwind" (crear el pthread desde el
-# hilo que instancia el runtime -sea el principal del navegador o un Worker- hace
-# unwind). El salto de proxy en dj_render es despreciable: se llama en lotes grandes
-# (2048 cuadros) con ~0.68 s de colchon en el ring. -sEXPORT_ES6 para importarlo como
-# modulo desde el Worker.
+# Motor single-thread (chunk_cache_ram decodifica a RAM, AutoMix usa begin()/tick()
+# sin hilo): asi se evita el "unwind" de crear un std::thread desde el hilo del
+# runtime del navegador, sin necesidad de PROXY_TO_PTHREAD. -sEXPORT_ES6 para
+# importarlo como modulo desde el Worker.
 target_link_options(audit_engine PRIVATE
   -sMODULARIZE=1
   -sEXPORT_NAME=AuditEngine
@@ -51,8 +52,8 @@ target_link_options(audit_engine PRIVATE
   # defecto de Emscripten (64 KB) se desborda. 8 MB da margen holgado.
   -sSTACK_SIZE=8MB
   -sEXIT_RUNTIME=0
-  -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPF32,HEAPU8,FS
-  -sEXPORTED_FUNCTIONS=_dj_create,_dj_destroy,_dj_start,_dj_stop,_dj_load,_dj_play,_dj_seek,_dj_set_cue,_dj_jump_cue,_dj_set_gain,_dj_set_eq,_dj_set_filter,_dj_set_fader,_dj_set_xfader,_dj_set_master,_dj_set_rate,_dj_set_keylock,_dj_get_bpm,_dj_get_key,_dj_get_beat_offset,_dj_position,_dj_duration,_dj_playing,_dj_loaded,_dj_set_loop,_dj_set_hotcue,_dj_jump_hotcue,_dj_clear_hotcue,_dj_beat_jump,_dj_waveform_bins,_dj_waveform_copy,_dj_render,_dj_set_output_sample_rate,_dj_last_error,_malloc,_free
+  -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPF32,HEAP32,HEAPU8,FS
+  -sEXPORTED_FUNCTIONS=_dj_create,_dj_destroy,_dj_start,_dj_stop,_dj_load,_dj_play,_dj_seek,_dj_set_cue,_dj_jump_cue,_dj_set_gain,_dj_set_eq,_dj_set_filter,_dj_set_fader,_dj_set_xfader,_dj_set_master,_dj_set_rate,_dj_set_keylock,_dj_get_bpm,_dj_get_key,_dj_get_beat_offset,_dj_position,_dj_duration,_dj_playing,_dj_loaded,_dj_set_loop,_dj_set_hotcue,_dj_jump_hotcue,_dj_clear_hotcue,_dj_beat_jump,_dj_waveform_bins,_dj_waveform_copy,_dj_render,_dj_set_output_sample_rate,_dj_analyze_file,_dj_analyze_silence,_dj_auto_create,_dj_auto_destroy,_dj_auto_add_track,_dj_auto_set_transition,_dj_auto_begin,_dj_auto_tick,_dj_auto_end,_dj_auto_skip,_dj_auto_state,_dj_auto_current,_dj_last_error,_malloc,_free
 )
 set_target_properties(audit_engine PROPERTIES OUTPUT_NAME "audit_engine")
 
