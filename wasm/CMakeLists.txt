@@ -52,7 +52,7 @@ target_link_options(audit_engine PRIVATE
   -sSTACK_SIZE=8MB
   -sEXIT_RUNTIME=0
   -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPF32,HEAPU8,FS
-  -sEXPORTED_FUNCTIONS=_dj_create,_dj_destroy,_dj_start,_dj_stop,_dj_load,_dj_play,_dj_seek,_dj_set_cue,_dj_jump_cue,_dj_set_gain,_dj_set_eq,_dj_set_filter,_dj_set_fader,_dj_set_xfader,_dj_set_master,_dj_set_rate,_dj_set_keylock,_dj_get_bpm,_dj_get_key,_dj_get_beat_offset,_dj_position,_dj_duration,_dj_playing,_dj_loaded,_dj_set_loop,_dj_set_hotcue,_dj_jump_hotcue,_dj_clear_hotcue,_dj_beat_jump,_dj_waveform_bins,_dj_waveform_copy,_dj_render,_dj_last_error,_malloc,_free
+  -sEXPORTED_FUNCTIONS=_dj_create,_dj_destroy,_dj_start,_dj_stop,_dj_load,_dj_play,_dj_seek,_dj_set_cue,_dj_jump_cue,_dj_set_gain,_dj_set_eq,_dj_set_filter,_dj_set_fader,_dj_set_xfader,_dj_set_master,_dj_set_rate,_dj_set_keylock,_dj_get_bpm,_dj_get_key,_dj_get_beat_offset,_dj_position,_dj_duration,_dj_playing,_dj_loaded,_dj_set_loop,_dj_set_hotcue,_dj_jump_hotcue,_dj_clear_hotcue,_dj_beat_jump,_dj_waveform_bins,_dj_waveform_copy,_dj_render,_dj_set_output_sample_rate,_dj_last_error,_malloc,_free
 )
 set_target_properties(audit_engine PROPERTIES OUTPUT_NAME "audit_engine")
 

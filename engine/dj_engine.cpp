@@ -963,6 +963,18 @@ int dj_render(DjEngine engine, float* out, int frames, int channels) {
   asEngine(engine)->renderInterleaved(out, frames, channels);
   return frames;
 }
+
+// Ajusta la tasa de salida del motor a la real del AudioContext (44100 o 48000).
+// Debe llamarse tras dj_start y antes de cargar pistas. Corrige el desajuste de
+// tono (defecto W2 de F0): el motor abre la pista a esta tasa y el AudioWorklet la
+// consume 1:1, así que ya no hay cambio de velocidad/tono en contextos a 44.1 kHz.
+void dj_set_output_sample_rate(DjEngine engine, int sampleRate) {
+  if (!engine || sampleRate < 8000 || sampleRate > 384000) return;
+  auto* e = asEngine(engine);
+  e->engineSampleRate.store(sampleRate);
+  e->engineChannels.store(2);
+  e->applyLoadedDeckSampleRate(sampleRate);
+}
 #endif
 
 int dj_set_output_mode(DjEngine engine, int mode) {

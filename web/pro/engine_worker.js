@@ -19,7 +19,12 @@ let audioF32 = null, ctrl = null;
 let running = false;
 let nextFileId = 1;
 
-const CHUNK = 2048;                 // cuadros por llamada a dj_render
+const CHUNK = 512;                  // cuadros por llamada a dj_render (grano fino)
+// Backlog objetivo del ring: el productor NO llena todo el anillo (eso daba ~0.7 s
+// de latencia de control, defecto W1 de F0), sino que mantiene solo ~43 ms por
+// delante. Así un cambio de EQ/crossfader se oye casi de inmediato, con colchón de
+// sobra frente al jitter de setTimeout (que refresca cada 3 ms). Ajustable.
+const TARGET_BACKLOG = 2048;        // cuadros (~43 ms @48k, ~46 ms @44.1k)
 let renderPtr = 0;                  // buffer en el heap WASM para dj_render
 
 function freeFrames() {
@@ -48,12 +53,16 @@ function pump() {
   // colchón enorme frente al periodo de rellamada (~5 ms), así que no hay underrun
   // tras el arranque. NO se usa Atomics.wait aquí: bloquearía los comandos.
   if (!running || Atomics.load(ctrl, CTRL.RUN) !== 1) return;
+  // Rellena solo hasta TARGET_BACKLOG cuadros por delante del cabezal de lectura
+  // (latencia baja), sin pasar nunca de la capacidad del anillo.
   while (running && freeFrames() >= CHUNK) {
+    const backlog = Atomics.load(ctrl, CTRL.WRITE) - Atomics.load(ctrl, CTRL.READ);
+    if (backlog >= TARGET_BACKLOG) break;
     M.ccall('dj_render', 'number', ['number', 'number', 'number', 'number'],
             [eng, renderPtr, CHUNK, CHANNELS]);
     pushToRing(CHUNK);
   }
-  setTimeout(pump, 5);
+  setTimeout(pump, 3);
 }
 
 function statusTick() {
@@ -77,6 +86,9 @@ async function onInit(msg) {
   ctrl = new Int32Array(msg.ctrl);
   eng = M.ccall('dj_create', 'number', [], []);
   M.ccall('dj_start', 'number', ['number'], [eng]);
+  // Fija la tasa del motor a la real del AudioContext (corrige el tono en 44.1 kHz).
+  if (msg.sampleRate > 0)
+    M.ccall('dj_set_output_sample_rate', 'void', ['number', 'number'], [eng, msg.sampleRate | 0]);
   renderPtr = M._malloc(CHUNK * CHANNELS * 4);
   Atomics.store(ctrl, CTRL.RUN, 1);
   running = true;

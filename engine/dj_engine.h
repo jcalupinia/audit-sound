@@ -81,6 +81,10 @@ const char* dj_last_error(void);
 /** WASM: el AudioWorklet de Web Audio llama a esto para obtener audio
  *  (interleaved float). Devuelve los cuadros escritos. */
 int dj_render(DjEngine engine, float* out, int frames, int channels);
+
+/** WASM: fija la tasa de salida del motor a la del AudioContext (44100/48000).
+ *  Llamar tras dj_start y antes de cargar pistas (evita el desajuste de tono). */
+void dj_set_output_sample_rate(DjEngine engine, int sampleRate);
 #endif
 
 #ifdef __cplusplus
