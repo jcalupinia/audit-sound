@@ -302,11 +302,15 @@
             </div>
           </div>
           <div class="ndsearch">
-            <input type="search" id="ndQuery" placeholder="Buscar en tu biblioteca Navidrome…">
+            <input type="search" id="ndQuery" placeholder="Artista o género (p. ej. merengue)…">
             <button class="btn sm" id="ndSearchBtn">Buscar</button>
           </div>
+          <div class="ndsearch" style="margin-top:6px">
+            <button class="btn sm" id="ndSetBtn" title="Busca y arma una mezcla automática con ese artista/género" style="flex:1">🎶 Armar set y mezclar</button>
+            <input type="number" id="ndSetCount" min="2" max="30" value="10" title="nº de pistas" style="width:64px;flex:0 0 auto">
+          </div>
           <div class="liblist" id="ndList"></div>
-          <div class="libnote">La contraseña se usa una vez para el token y no se guarda en claro. El servidor necesita HTTPS y CORS habilitado.</div>
+          <div class="libnote">«Armar set»: busca ese artista/género en tu Navidrome, lo carga en el DJ automático y empieza a mezclar solo. La contraseña se usa una vez para el token y no se guarda en claro; el servidor necesita HTTPS y CORS.</div>
         </div>
 
         <div class="ndpanel hide" id="ompanel">
@@ -886,6 +890,36 @@ async function ndSave(song, btn){
     btn.textContent='✓';
   } catch(e){ ndSetStatus('no se pudo guardar: '+(e.message||e), 'err'); btn.disabled=false; btn.textContent=t0; }
 }
+// "Armar set": busca por artista/género, carga las pistas en el DJ automático y arranca la mezcla.
+$('#ndSetBtn').addEventListener('click', ndBuildSet);
+async function ndBuildSet(){
+  if (!nd.configured){ ndSetStatus('conecta primero', 'err'); return; }
+  const term=$('#ndQuery').value.trim();
+  const n = Math.min(30, Math.max(2, parseInt($('#ndSetCount').value,10)||10));
+  ndSetStatus('armando set…');
+  let songs=[];
+  try {
+    const byText = await nd.search(term, n);                       // artista/título/álbum
+    let byGenre=[]; if (term){ try { byGenre = await nd.songsByGenre(term, n); } catch(e){} }  // género
+    const seen=new Set();
+    songs=[...byText,...byGenre].filter(s=>{ if(!s.id||seen.has(s.id)) return false; seen.add(s.id); return true; }).slice(0,n);
+  } catch(e){ ndSetStatus('error: '+(e.message||e), 'err'); return; }
+  if (!songs.length){ ndSetStatus('sin resultados para «'+term+'»', 'err'); return; }
+  setMode('auto');                                                  // pasa a DJ automático
+  let added=0;
+  for (const s of songs){
+    ndSetStatus('añadiendo '+(added+1)+'/'+songs.length+' «'+(s.title||s.id)+'»…');
+    try {
+      const bytes = await nd.getBytes(s.id);
+      await bridge.autoAdd(bytes, SubsonicClient.filename(s));
+      added++; libCount++; $('#libcount').textContent = libCount+' pistas';
+    } catch(e){ /* salta la pista que falle */ }
+    if (added===2 && !autoOn){ autoOn=true; bridge.autoEnable(true); $('#autoToggle').textContent='⏸ Detener AUTO'; }  // arranca ya con 2
+  }
+  if (added>0 && !autoOn){ autoOn=true; bridge.autoEnable(true); $('#autoToggle').textContent='⏸ Detener AUTO'; }
+  ndSetStatus(added? ('set en marcha: '+added+' pistas mezclándose en AUTO') : 'no se pudo cargar ninguna pista', added?'ok':'err');
+}
+
 // Al arrancar, si hay config guardada, deja la URL/usuario a la vista (sin conectar aún).
 (function(){ const c=loadConfig(); if (c){ $('#ndUrl').value=c.url; $('#ndUser').value=c.user; } })();
 
@@ -1040,7 +1074,7 @@ $('#convIn').addEventListener('change', async (e)=>{
 // Exponer para pruebas automatizadas (Playwright)
 window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn,
   refreshSuggestions, lib:LIB, libRows:()=>libRows, hydrateLibrary, renderLib,
-  subsonic:{ client:()=>nd, songs:()=>ndSongs, connect:ndConnect, search:ndSearch, SubsonicClient },
+  subsonic:{ client:()=>nd, songs:()=>ndSongs, connect:ndConnect, search:ndSearch, buildSet:ndBuildSet, SubsonicClient },
   openmusic:{ enabled:OM.enabled, songs:()=>omSongs, search:omSearch },
   archive:{ enabled:IA.enabled, songs:()=>iaSongs, search:iaSearch },
   converter:CONV, setConvertOnSave:(v)=>{ $('#ocOpus').checked=!!v; } };
