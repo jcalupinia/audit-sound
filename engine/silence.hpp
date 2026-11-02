@@ -4,6 +4,7 @@
 // Umbral −60 dB = 0.001 lineal, el mismo criterio que Mixxx AnalyzerSilence.
 // Funciones puras sobre buffers float intercalados estéreo.
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -12,38 +13,41 @@ namespace silence {
 constexpr float kThreshold = 0.001f;  // −60 dB
 
 inline int holdSamples(float sampleRate) {
-  return (int)(0.002f * sampleRate);  // ~2 ms, anti-click (mejora sobre Mixxx)
+  // Tamaño de la VENTANA de análisis (~2 ms). Se mide el pico dentro de la ventana,
+  // no muestras consecutivas por encima del umbral: toda onda cruza el cero (un seno
+  // baja de 0.001 en cada cruce), así que exigir N muestras seguidas por encima del
+  // umbral NUNCA se cumple para contenido tonal y el archivo se ve "sin silencio".
+  // Medir el pico de la ventana evita ese falso negativo (bug detectado en F0).
+  return (int)(0.002f * sampleRate);
 }
 
-// Índice del primer cuadro cuyo pico supera el umbral sostenido `hold` cuadros.
-// -1 si no hay sonido.
+// Primer cuadro con sonido: primera VENTANA de `hold` cuadros cuyo pico supera el
+// umbral. Devuelve el inicio de esa ventana, o -1 si no hay sonido.
 inline int64_t firstSoundFrame(const float* inter, int64_t frames, int ch, int hold) {
-  int64_t run = 0;
-  for (int64_t f = 0; f < frames; ++f) {
+  const int64_t win = hold > 0 ? hold : 1;
+  for (int64_t w = 0; w < frames; w += win) {
+    const int64_t end = std::min(frames, w + win);
     float peak = 0.0f;
-    for (int c = 0; c < ch; ++c) peak = std::fmax(peak, std::fabs(inter[f * ch + c]));
-    if (peak >= kThreshold) {
-      if (++run >= hold) return f - (run - 1);
-    } else {
-      run = 0;
-    }
+    for (int64_t f = w; f < end; ++f)
+      for (int c = 0; c < ch; ++c) peak = std::fmax(peak, std::fabs(inter[f * ch + c]));
+    if (peak >= kThreshold) return w;
   }
   return -1;
 }
 
-// Índice del último cuadro con sonido sostenido (escaneo hacia atrás). -1 si no hay.
+// Último cuadro con sonido: última VENTANA cuyo pico supera el umbral (devuelve su
+// último cuadro). -1 si no hay sonido.
 inline int64_t lastSoundFrame(const float* inter, int64_t frames, int ch, int hold) {
-  int64_t run = 0;
-  for (int64_t f = frames - 1; f >= 0; --f) {
+  const int64_t win = hold > 0 ? hold : 1;
+  int64_t last = -1;
+  for (int64_t w = 0; w < frames; w += win) {
+    const int64_t end = std::min(frames, w + win);
     float peak = 0.0f;
-    for (int c = 0; c < ch; ++c) peak = std::fmax(peak, std::fabs(inter[f * ch + c]));
-    if (peak >= kThreshold) {
-      if (++run >= hold) return f + (run - 1);
-    } else {
-      run = 0;
-    }
+    for (int64_t f = w; f < end; ++f)
+      for (int c = 0; c < ch; ++c) peak = std::fmax(peak, std::fabs(inter[f * ch + c]));
+    if (peak >= kThreshold) last = end - 1;
   }
-  return -1;
+  return last;
 }
 
 // RMS (0..1) de un buffer intercalado estéreo.
