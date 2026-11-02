@@ -42,7 +42,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
       - name: Configurar y compilar (sin Oboe)
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build build -j"$(nproc)"
       - name: Autoprueba headless (arranque del motor + OfflineSink)
         run: ./build/engine_selftest

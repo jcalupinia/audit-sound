@@ -9,6 +9,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
+# Algunas libs vendorizadas (ogg, qm-dsp) declaran cmake_minimum_required < 3.5.
+# CMake >= 4 eliminó esa compatibilidad; esto permite configurarlas igual.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 set(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(Threads REQUIRED)
