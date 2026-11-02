@@ -25,7 +25,8 @@ MP3, D1), **`libshout3-dev`** (source client de Icecast, D2), **FFmpeg dev**
 
 ```bash
 sudo apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev \
-     libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libcurl4-openssl-dev
+     libavcodec-dev libavformat-dev libavutil-dev libswresample-dev \
+     libcurl4-openssl-dev libmicrohttpd-dev
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 

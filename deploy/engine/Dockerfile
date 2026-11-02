@@ -6,7 +6,7 @@ FROM ubuntu:24.04 AS build
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
       cmake g++ make ca-certificates pkg-config \
-      libmp3lame-dev libshout3-dev libcurl4-openssl-dev \
+      libmp3lame-dev libshout3-dev libcurl4-openssl-dev libmicrohttpd-dev \
       libavcodec-dev libavformat-dev libavutil-dev libswresample-dev \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
@@ -21,7 +21,7 @@ RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      libmp3lame0 libshout3 ca-certificates libcurl4t64 \
+      libmp3lame0 libshout3 ca-certificates libcurl4t64 libmicrohttpd12 \
       libavcodec60 libavformat60 libavutil58 libswresample4 \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /src/build/audit_sound_server /usr/local/bin/audit_sound_server
