@@ -269,10 +269,23 @@
             <input type="file" accept="audio/*" multiple id="libAdd"></label>
           <button class="btn sm" id="ndToggle" title="Cargar desde tu servidor Navidrome/Subsonic">☁ Navidrome</button>
           <button class="btn sm" id="omToggle" title="Buscar música libre (Creative Commons)">♪ Libre</button>
+          <button class="btn sm" id="convToggle" title="Convertir archivos a Opus 160 y descargarlos">♻ Convertir</button>
           <button class="btn sm" id="libToAuto" style="margin-left:auto" title="Carga la biblioteca en el DJ automático">→ AUTO</button>
         </div>
+        <label class="libnote" id="ocLabel" style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:8px">
+          <input type="checkbox" id="ocOpus" style="accent-color:var(--gold)"> Guardar como <b style="color:var(--text)">Opus 160</b> (ahorra espacio)</label>
         <div class="liblist" id="libList"></div>
         <div class="libnote" id="libNote">Las pistas se guardan en este navegador (IndexedDB) y se recuerdan entre sesiones.</div>
+
+        <div class="ndpanel hide" id="convpanel">
+          <div class="rowb" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label class="btn load sm" style="display:inline-block">Elegir archivos
+              <input type="file" accept="audio/*" multiple id="convIn"></label>
+            <span class="ndstatus" id="convStatus"></span>
+          </div>
+          <div class="liblist" id="convList"></div>
+          <div class="libnote">Convierte a Opus 160 kbps en tu navegador (Chrome/Edge) y te deja descargar el <b>.opus</b>. Nada se sube a ningún servidor.</div>
+        </div>
 
         <div class="ndpanel hide" id="ndpanel">
           <div class="ndform">
@@ -374,6 +387,7 @@ import { CTRL } from './ring.js';
 import * as LIB from './library.js';
 import { SubsonicClient, saveConfig, loadConfig, clearConfig } from './subsonic.js';
 import * as OM from './openmusic.js';
+import * as CONV from './converter.js';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -745,7 +759,13 @@ async function removeFromLib(t){
 }
 // Guarda una pista (bytes) en la biblioteca persistente: la analiza, la almacena,
 // actualiza la lista y alimenta al copiloto. Reutilizado por "+ Añadir" y Navidrome.
+function convertOnSave(){ return $('#ocOpus').checked && CONV.available(); }
 async function addToLibrary(name, bytes, size, type){
+  // Convertir a Opus 160 al guardar (si está activado y no es ya .opus)
+  if (convertOnSave() && !/\.opus$/i.test(name)){
+    try { const r = await CONV.toOpus(bytes, name, { bitrate:160000 }); bytes = r.bytes; name = r.name; type='audio/ogg'; size=bytes.byteLength; }
+    catch(e){ $('#libNote').textContent = 'no se pudo convertir a Opus («'+name+'»), se guarda el original: '+(e.message||e); }
+  }
   const a = await bridge.analyzeAwait(bytes.slice(0), name);  // copia para el worker; conserva `bytes` para guardar
   const meta = await LIB.putTrack({ name, bpm:a.bpm, key:a.key, energy:a.energy, size:size||bytes.byteLength, type:type||'', bytes });
   libRows = libRows.filter(r => r.id !== meta.id).concat(meta);  // reemplaza si ya existía ese nombre
@@ -913,11 +933,52 @@ async function omSave(song, btn){
   } catch(e){ omSetStatus('no se pudo guardar: '+(e.message||e), 'err'); btn.disabled=false; btn.textContent=t0; }
 }
 
+/* ---- Convertidor a Opus 160 (WebCodecs) ---- */
+// Si el navegador no puede codificar Opus, desactivamos las funciones y avisamos.
+if (!CONV.available()){
+  $('#ocOpus').checked=false; $('#ocOpus').disabled=true;
+  $('#ocLabel').title='Disponible en Chrome/Edge (computadora o Android). No en iPhone/Safari.';
+  $('#ocLabel').style.opacity='.55';
+}
+$('#convToggle').addEventListener('click', ()=>{
+  const p=$('#convpanel'); p.classList.toggle('hide');
+  if (!p.classList.contains('hide') && !CONV.available())
+    $('#convStatus').textContent='No disponible en este navegador (usa Chrome/Edge en computadora).';
+});
+const convRevoke = [];
+$('#convIn').addEventListener('change', async (e)=>{
+  const files=Array.from(e.target.files); e.target.value='';
+  if (!CONV.available()){ $('#convStatus').textContent='Este navegador no puede codificar Opus.'; return; }
+  const host=$('#convList');
+  for (const f of files){
+    $('#convStatus').textContent='convirtiendo «'+f.name+'»…';
+    const row=document.createElement('div'); row.className='lib';
+    row.innerHTML=`<span class="nm" title="${f.name}">${f.name}</span><span class="mt">…</span>`;
+    host.appendChild(row);
+    try {
+      const r = await CONV.toOpus(await f.arrayBuffer(), f.name, { bitrate:160000, onProgress:(x)=>{ row.querySelector('.mt').textContent=Math.round(x*100)+'%'; } });
+      const url=URL.createObjectURL(new Blob([r.bytes], {type:'audio/ogg'})); convRevoke.push(url);
+      const kb=(r.bytes.byteLength/1024)|0;
+      row.querySelector('.mt').textContent=kb+' KB';
+      const a=document.createElement('a'); a.className='btn sm ls'; a.textContent='⤓'; a.title='Descargar .opus'; a.href=url; a.download=r.name; a.style.textDecoration='none';
+      const g=document.createElement('button'); g.className='btn sm la'; g.textContent='＋'; g.title='Guardar en la biblioteca';
+      g.addEventListener('click', async ()=>{ g.disabled=true; g.textContent='…';
+        try { await addToLibrary(r.name, r.bytes.slice(0), r.bytes.byteLength, 'audio/ogg');
+          $('#libCount').textContent=libRows.length+(libRows.length===1?' pista':' pistas'); $('#copCount').textContent=copilot.size()+' pistas';
+          libSentToAuto=false; renderLib(); g.textContent='✓'; } catch(x){ g.disabled=false; g.textContent='＋'; }
+      });
+      row.append(a,g);
+    } catch(err){ row.querySelector('.mt').textContent='error'; row.title=err.message||String(err); }
+  }
+  $('#convStatus').textContent='listo';
+});
+
 // Exponer para pruebas automatizadas (Playwright)
 window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn,
   refreshSuggestions, lib:LIB, libRows:()=>libRows, hydrateLibrary, renderLib,
   subsonic:{ client:()=>nd, songs:()=>ndSongs, connect:ndConnect, search:ndSearch, SubsonicClient },
-  openmusic:{ enabled:OM.enabled, songs:()=>omSongs, search:omSearch } };
+  openmusic:{ enabled:OM.enabled, songs:()=>omSongs, search:omSearch },
+  converter:CONV, setConvertOnSave:(v)=>{ $('#ocOpus').checked=!!v; } };
 </script>
 </body>
 </html>
