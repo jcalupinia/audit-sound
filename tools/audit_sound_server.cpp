@@ -171,7 +171,15 @@ int main(int argc, char** argv) {
     const char* portEnv = std::getenv("AUDIT_SOUND_API_PORT");
     const int apiPort = (portEnv && portEnv[0]) ? std::atoi(portEnv) : 8787;
     api = control_api_start(apiPort, apiUser, apiPass ? apiPass : "", e, am);
-    if (api) std::printf("Control API en el puerto %d (usuario '%s')\n", apiPort, apiUser);
+    if (api) {
+      // Catálogo para el modo manual (pistas locales).
+      for (const auto& f : local.files) {
+        const std::string title = fs::path(f).stem().string();
+        control_api_add_track(api, title.c_str(), f.c_str());
+      }
+      std::printf("Control API en el puerto %d (usuario '%s', %zu pistas)\n", apiPort, apiUser,
+                  local.files.size());
+    }
   }
 
   for (;;) std::this_thread::sleep_for(std::chrono::seconds(3600));

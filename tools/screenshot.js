@@ -11,14 +11,18 @@ const { chromium } = require('playwright');
   const url = `http://localhost:${webPort}/index.html?api=${encodeURIComponent(api)}`;
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForTimeout(600);
-  await page.screenshot({ path: out + '/01_home.png' });
 
-  // Login para mostrar el panel de control poblado.
+  // Login.
   await page.fill('#u', 'dj');
   await page.fill('#pw', 'clave123');
   await page.click('#loginBtn');
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: out + '/01_auto.png', fullPage: true });
+
+  // Pasar a MANUAL (mezcladora con dos platos y controles).
+  await page.click('#modeSeg button[data-m="manual"]');
   await page.waitForTimeout(2500);
-  await page.screenshot({ path: out + '/02_control.png' });
+  await page.screenshot({ path: out + '/02_manual.png', fullPage: true });
 
   await browser.close();
   console.log('screenshots en', out);

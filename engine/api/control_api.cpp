@@ -1,4 +1,4 @@
-// Control API (issue M5) con libmicrohttpd.
+// Control API (issues M5 + mezcladora manual) con libmicrohttpd.
 
 #include "control_api.h"
 
@@ -8,23 +8,30 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <mutex>
 #include <random>
 #include <string>
+#include <vector>
 
 #include "platform_log.hpp"
 
-// Compat: algunas versiones nombran el tipo de retorno MHD_Result; otras int.
-#ifndef MHD_HTTP_OK
-#define MHD_HTTP_OK 200
-#endif
-
 namespace {
+
+struct Catalog {
+  std::vector<std::string> titles;
+  std::vector<std::string> paths;
+};
 
 struct Api {
   struct MHD_Daemon* daemon = nullptr;
   DjEngine engine = nullptr;
   AutoMix automix = nullptr;
   std::string user, pass, token;
+  Catalog cat;
+  std::mutex mu;
+  bool manual = false;
+  float xfader = 0.5f;
+  std::string deckTitle[2];
 };
 
 std::string randomToken() {
@@ -35,25 +42,40 @@ std::string randomToken() {
   return s;
 }
 
+std::string jsonEsc(const std::string& in) {
+  std::string o;
+  for (char c : in) {
+    if (c == '"' || c == '\\') o += '\'';
+    else if ((unsigned char)c < 0x20) o += ' ';
+    else o += c;
+  }
+  return o;
+}
+
 std::string basenameNoExt(const std::string& path) {
   size_t a = path.find_last_of('/');
   std::string b = a == std::string::npos ? path : path.substr(a + 1);
   size_t d = b.find_last_of('.');
   if (d != std::string::npos) b = b.substr(0, d);
-  std::string out;
-  for (char c : b) out += (c == '"' || c == '\\') ? '\'' : c;  // escape mínimo JSON
-  return out;
+  return jsonEsc(b);
 }
 
 const char* arg(struct MHD_Connection* c, const char* key) {
   return MHD_lookup_connection_value(c, MHD_GET_ARGUMENT_KIND, key);
 }
+int argi(struct MHD_Connection* c, const char* key, int def) {
+  const char* v = arg(c, key);
+  return v ? std::atoi(v) : def;
+}
+double argf(struct MHD_Connection* c, const char* key, double def) {
+  const char* v = arg(c, key);
+  return v ? std::atof(v) : def;
+}
 
-MHD_Result reply(struct MHD_Connection* c, int code, const std::string& body,
-                 const char* ctype = "application/json") {
+MHD_Result reply(struct MHD_Connection* c, int code, const std::string& body) {
   struct MHD_Response* r =
       MHD_create_response_from_buffer(body.size(), (void*)body.data(), MHD_RESPMEM_MUST_COPY);
-  MHD_add_response_header(r, "Content-Type", ctype);
+  MHD_add_response_header(r, "Content-Type", "application/json");
   MHD_add_response_header(r, "Access-Control-Allow-Origin", "*");
   MHD_add_response_header(r, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   MHD_add_response_header(r, "Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -62,65 +84,125 @@ MHD_Result reply(struct MHD_Connection* c, int code, const std::string& body,
   return ret;
 }
 
+std::string deckJson(Api* api, int d) {
+  DjEngine e = api->engine;
+  // En modo auto, el título de la pista que suena viene del AutoMix.
+  std::string title = api->deckTitle[d];
+  if (!api->manual && automix_from_deck(api->automix) == d) {
+    char p[4096];
+    p[0] = 0;
+    if (automix_current_path(api->automix, p, (int)sizeof(p))) title = basenameNoExt(p);
+  }
+  char buf[640];
+  std::snprintf(buf, sizeof(buf),
+                "{\"title\":\"%s\",\"loaded\":%d,\"playing\":%d,\"pos\":%.2f,\"dur\":%.2f,"
+                "\"bpm\":%.1f,\"key\":%d}",
+                title.c_str(), dj_loaded(e, d), dj_playing(e, d), dj_position(e, d),
+                dj_duration(e, d), dj_get_bpm(e, d), dj_get_key(e, d));
+  return buf;
+}
+
 MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const char* method,
                    const char*, const char*, size_t* upload_size, void** con_cls) {
   auto* api = static_cast<Api*>(cls);
-
-  if (0 == std::strcmp(method, "OPTIONS")) return reply(c, 200, "");
-
-  // Patrón de ciclo de petición de MHD (consume el cuerpo de POST, que ignoramos).
-  if (*con_cls == nullptr) {
-    *con_cls = (void*)1;
-    return MHD_YES;
-  }
-  if (0 == std::strcmp(method, "POST") && *upload_size != 0) {
-    *upload_size = 0;
-    return MHD_YES;
-  }
+  if (0 == std::strcmp(method, "OPTIONS")) return reply(c, 200, "{}");
+  if (*con_cls == nullptr) { *con_cls = (void*)1; return MHD_YES; }
+  if (0 == std::strcmp(method, "POST") && *upload_size != 0) { *upload_size = 0; return MHD_YES; }
 
   const std::string path = url;
 
   if (path == "/api/login" && 0 == std::strcmp(method, "POST")) {
     const char* u = arg(c, "user");
     const char* p = arg(c, "pass");
-    if (u && p && api->user == u && api->pass == p) {
+    if (u && p && api->user == u && api->pass == p)
       return reply(c, 200, "{\"token\":\"" + api->token + "\"}");
-    }
     return reply(c, 401, "{\"error\":\"credenciales inválidas\"}");
   }
 
-  // El resto exige token.
   const char* tok = arg(c, "token");
-  if (!tok || api->token != tok) {
-    return reply(c, 401, "{\"error\":\"no autorizado\"}");
+  if (!tok || api->token != tok) return reply(c, 401, "{\"error\":\"no autorizado\"}");
+
+  if (path == "/api/tracks" && 0 == std::strcmp(method, "GET")) {
+    std::lock_guard<std::mutex> lk(api->mu);
+    std::string out = "{\"tracks\":[";
+    for (size_t i = 0; i < api->cat.titles.size(); ++i) {
+      if (i) out += ",";
+      out += "{\"i\":" + std::to_string(i) + ",\"title\":\"" + jsonEsc(api->cat.titles[i]) + "\"}";
+    }
+    out += "]}";
+    return reply(c, 200, out);
   }
 
   if (path == "/api/status" && 0 == std::strcmp(method, "GET")) {
-    char nowp[4096];
-    nowp[0] = 0;
-    automix_current_path(api->automix, nowp, (int)sizeof(nowp));
-    const std::string title = basenameNoExt(nowp);
-    const int deck = automix_from_deck(api->automix);
-    const float bpm = dj_get_bpm(api->engine, deck);
-    char buf[512];
-    std::snprintf(buf, sizeof(buf),
-                  "{\"nowPlaying\":\"%s\",\"state\":%d,\"mode\":%d,\"transition\":%.1f,"
-                  "\"bpm\":%.1f}",
-                  title.c_str(), automix_state(api->automix), automix_get_mode(api->automix),
-                  automix_get_transition_time(api->automix), bpm);
-    return reply(c, 200, buf);
+    std::lock_guard<std::mutex> lk(api->mu);
+    char head[256];
+    std::snprintf(head, sizeof(head),
+                  "{\"mode\":\"%s\",\"xfader\":%.3f,\"state\":%d,\"transition\":%.1f,"
+                  "\"mixmode\":%d,\"decks\":[",
+                  api->manual ? "manual" : "auto", api->xfader, automix_state(api->automix),
+                  automix_get_transition_time(api->automix), automix_get_mode(api->automix));
+    std::string out = head;
+    out += deckJson(api, 0) + "," + deckJson(api, 1) + "]}";
+    return reply(c, 200, out);
   }
 
   if (path == "/api/command" && 0 == std::strcmp(method, "POST")) {
     const char* action = arg(c, "action");
-    const char* value = arg(c, "value");
     if (!action) return reply(c, 400, "{\"error\":\"falta action\"}");
-    if (0 == std::strcmp(action, "skip")) {
+    std::lock_guard<std::mutex> lk(api->mu);
+    DjEngine e = api->engine;
+    const int d = argi(c, "deck", 0) == 1 ? 1 : 0;
+
+    if (0 == std::strcmp(action, "set_mode_dj")) {
+      const char* v = arg(c, "value");
+      const bool manual = v && 0 == std::strcmp(v, "manual");
+      api->manual = manual;
+      automix_enable(api->automix, manual ? 0 : 1);
+      if (manual) {  // cargar 2 pistas para empezar
+        if (api->cat.paths.size() >= 1 && !api->deckTitle[0].size()) {
+          dj_load(e, 0, api->cat.paths[0].c_str());
+          api->deckTitle[0] = api->cat.titles[0];
+        }
+        if (api->cat.paths.size() >= 2 && !api->deckTitle[1].size()) {
+          dj_load(e, 1, api->cat.paths[1].c_str());
+          api->deckTitle[1] = api->cat.titles[1];
+        }
+        api->xfader = 0.5f;
+        dj_set_xfader(e, 0.5f);
+      }
+    } else if (0 == std::strcmp(action, "deck_load")) {
+      const int t = argi(c, "track", -1);
+      if (t >= 0 && t < (int)api->cat.paths.size()) {
+        dj_load(e, d, api->cat.paths[t].c_str());
+        api->deckTitle[d] = api->cat.titles[t];
+      }
+    } else if (0 == std::strcmp(action, "deck_play")) {
+      dj_play(e, d, 1);
+    } else if (0 == std::strcmp(action, "deck_pause")) {
+      dj_play(e, d, 0);
+    } else if (0 == std::strcmp(action, "deck_cue")) {
+      dj_play(e, d, 0);
+      dj_jump_cue(e, d);
+    } else if (0 == std::strcmp(action, "deck_set_cue")) {
+      dj_set_cue(e, d);
+    } else if (0 == std::strcmp(action, "xfader")) {
+      api->xfader = (float)argf(c, "value", 0.5);
+      dj_set_xfader(e, api->xfader);
+    } else if (0 == std::strcmp(action, "eq")) {
+      dj_set_eq(e, d, (float)argf(c, "low", 0), (float)argf(c, "mid", 0),
+                (float)argf(c, "high", 0));
+    } else if (0 == std::strcmp(action, "filter")) {
+      dj_set_filter(e, d, (float)argf(c, "value", 0));
+    } else if (0 == std::strcmp(action, "rate")) {
+      dj_set_rate(e, d, (float)argf(c, "value", 1.0));
+    } else if (0 == std::strcmp(action, "gain")) {
+      dj_set_gain(e, d, (float)argf(c, "value", 1.0));
+    } else if (0 == std::strcmp(action, "skip")) {
       automix_skip(api->automix);
-    } else if (0 == std::strcmp(action, "set_transition") && value) {
-      automix_set_transition_time(api->automix, std::atof(value));
-    } else if (0 == std::strcmp(action, "set_mode") && value) {
-      automix_set_mode(api->automix, std::atoi(value));
+    } else if (0 == std::strcmp(action, "set_transition")) {
+      automix_set_transition_time(api->automix, argf(c, "value", 8));
+    } else if (0 == std::strcmp(action, "set_mode")) {
+      automix_set_mode(api->automix, argi(c, "value", 0));
     } else {
       return reply(c, 400, "{\"error\":\"acción desconocida\"}");
     }
@@ -151,6 +233,14 @@ ControlApi control_api_start(int port, const char* user, const char* pass, DjEng
   }
   LOGI("control_api: escuchando en el puerto %d", port);
   return api;
+}
+
+void control_api_add_track(ControlApi h, const char* title, const char* path) {
+  auto* api = static_cast<Api*>(h);
+  if (!api || !title || !path) return;
+  std::lock_guard<std::mutex> lk(api->mu);
+  api->cat.titles.push_back(title);
+  api->cat.paths.push_back(path);
 }
 
 void control_api_stop(ControlApi h) {

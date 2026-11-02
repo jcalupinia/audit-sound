@@ -7,205 +7,225 @@
 <style>
   :root{
     --bg:#060d16; --panel:#0A1B2E; --panel2:#0E2742; --line:#13304f;
-    --gold:#C7A83C; --text:#EAF1F8; --muted:#7f97b3;
-    --a:#2ec5ff; --b:#ff7ac2;   /* colores de deck A / B */
+    --gold:#C7A83C; --text:#EAF1F8; --muted:#7f97b3; --a:#2ec5ff; --b:#ff7ac2;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
-  body{
-    background:radial-gradient(1200px 600px at 50% -10%,#0d2036 0,var(--bg) 60%);
-    color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    padding:14px 14px 28px; max-width:560px; margin:0 auto;
-  }
-  header{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px}
-  .brand{font-weight:800; letter-spacing:.04em; font-size:20px}
-  .brand .g{color:var(--gold)}
-  .live{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em}
+  body{background:radial-gradient(1200px 600px at 50% -10%,#0d2036 0,var(--bg) 60%);
+    color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:14px 14px 30px;max-width:580px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px}
+  .brand{font-weight:800;letter-spacing:.04em;font-size:20px}.brand .g{color:var(--gold)}
+  .live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
   .live .dot{width:9px;height:9px;border-radius:50%;background:#30425a}
-  .live.on .dot{background:#3fb950; box-shadow:0 0 10px #3fb950}
+  .live.on .dot{background:#3fb950;box-shadow:0 0 10px #3fb950}
+  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{background:transparent;color:var(--muted);border:none;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;width:auto}
+  .seg button.on{background:var(--gold);color:#0f1d2e}
 
-  .deck{background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line);
-        border-radius:16px; padding:12px 14px; margin-bottom:10px; position:relative; overflow:hidden}
-  .deck.dim{opacity:.55}
-  .deck .tag{position:absolute; top:10px; right:12px; font-size:11px; font-weight:800; letter-spacing:.1em;
-             padding:3px 8px; border-radius:7px}
-  .deck.A .tag{color:var(--a); background:rgba(46,197,255,.12)}
-  .deck.B .tag{color:var(--b); background:rgba(255,122,194,.12)}
-  .deck .title{font-size:16px; font-weight:700; margin:2px 40px 2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .deck .meta{font-size:12px; color:var(--muted); display:flex; gap:14px; margin-bottom:8px}
-  .deck .meta b{color:var(--text); font-variant-numeric:tabular-nums}
-  canvas.wave{display:block; width:100%; height:64px}
+  .deck{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:16px;padding:12px 14px;margin-bottom:10px;position:relative;overflow:hidden}
+  .deck .tag{position:absolute;top:10px;right:12px;font-size:11px;font-weight:800;letter-spacing:.1em;padding:3px 8px;border-radius:7px}
+  .deck.A .tag{color:var(--a);background:rgba(46,197,255,.12)}
+  .deck.B .tag{color:var(--b);background:rgba(255,122,194,.12)}
+  .deck .title{font-size:15px;font-weight:700;margin:2px 44px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .deck .meta{font-size:11px;color:var(--muted);display:flex;gap:12px;margin-bottom:6px}
+  .deck .meta b{color:var(--text);font-variant-numeric:tabular-nums}
+  canvas.wave{display:block;width:100%;height:52px;margin-bottom:8px}
+  .transport{display:flex;gap:8px;margin-bottom:8px}
+  .transport select{flex:1;min-width:0;background:#0a1626;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px;font-size:13px}
+  .transport button{width:auto;padding:9px 13px;font-size:14px;border-radius:9px;background:var(--panel);color:var(--text);border:1px solid var(--line)}
+  .transport button.play{background:var(--gold);color:#0f1d2e;font-weight:800}
+  .eqrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .eqrow .k{font-size:10px;color:var(--muted);text-align:center;letter-spacing:.08em}
+  input[type=range]{width:100%;accent-color:var(--gold)}
+  .tempo{font-size:11px;color:var(--muted);margin-top:8px}
 
-  .xf{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px}
-  .xf .row{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); letter-spacing:.1em; margin-bottom:6px}
-  .xftrack{height:10px; border-radius:6px; background:linear-gradient(90deg,var(--a),#20405f 45%,#20405f 55%,var(--b)); position:relative}
-  .xfknob{position:absolute; top:50%; width:16px;height:16px;border-radius:50%; background:var(--gold);
-          transform:translate(-50%,-50%); box-shadow:0 0 10px rgba(199,168,60,.6); transition:left .25s linear}
+  .xf{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+  .xf .row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);letter-spacing:.1em;margin-bottom:6px}
+  #xf{accent-color:var(--gold)}
 
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:10px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:10px}
   #now{font-size:13px;color:var(--muted);margin-bottom:12px;text-align:center}
-  button{appearance:none;border:none;cursor:pointer;width:100%;font-weight:700;font-size:17px;
-         padding:15px;border-radius:12px;transition:transform .05s, filter .2s; color:#0f1d2e; background:var(--gold)}
-  button:active{transform:scale(.99)}
-  button.sec{background:var(--panel2); color:var(--text); border:1px solid var(--line)}
+  .big{appearance:none;border:none;cursor:pointer;width:100%;font-weight:700;font-size:17px;padding:15px;border-radius:12px;color:#0f1d2e;background:var(--gold)}
+  .big.sec{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
   #status{margin-top:10px;font-size:12px;color:var(--muted);text-align:center}
-  #panel input,#panel select{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid var(--line);
-         background:#0a1626;color:var(--text);font-size:15px}
+  #panel input{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid var(--line);background:#0a1626;color:var(--text);font-size:15px}
+  #panel .big{margin-top:6px}
   #loginMsg{color:#f85149;font-size:13px;min-height:16px}
-  .ctl{display:block;text-align:left;font-size:12px;color:var(--muted);margin-top:14px;letter-spacing:.04em}
-  .ctl input[type=range]{margin-top:6px}
+  .ctl{display:block;text-align:left;font-size:12px;color:var(--muted);margin-top:12px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hide{display:none}
   footer{font-size:11px;color:var(--muted);text-align:center;opacity:.7;margin-top:6px}
 </style>
 </head>
 <body>
   <header>
     <div class="brand">AUDIT <span class="g">SOUND</span></div>
-    <div class="live" id="live"><span class="dot"></span><span id="liveTxt">Fuera de línea</span></div>
+    <div class="seg" id="modeSeg"><button data-m="auto" class="on">AUTO</button><button data-m="manual">MANUAL</button></div>
+    <div class="live" id="live"><span class="dot"></span><span id="liveTxt">—</span></div>
   </header>
 
-  <!-- Deck A (el que suena) -->
+  <!-- DECK A -->
   <div class="deck A" id="deckA">
     <span class="tag">DECK A</span>
     <div class="title" id="titleA">—</div>
-    <div class="meta"><span>BPM <b id="bpmA">—</b></span><span>TONO <b id="keyA">—</b></span></div>
+    <div class="meta"><span>BPM <b id="bpmA">—</b></span><span>TONO <b id="keyA">—</b></span><span id="posA">0:00</span></div>
     <canvas class="wave" id="waveA"></canvas>
+    <div class="deckctl hide" data-deck="0">
+      <div class="transport">
+        <select class="loadsel"></select>
+        <button class="loadbtn">Cargar</button>
+        <button class="playbtn play">▶</button>
+        <button class="cuebtn">CUE</button>
+      </div>
+      <div class="eqrow">
+        <div><div class="k">GRAVES</div><input type="range" class="eqlow" min="-24" max="12" value="0"></div>
+        <div><div class="k">MEDIOS</div><input type="range" class="eqmid" min="-24" max="12" value="0"></div>
+        <div><div class="k">AGUDOS</div><input type="range" class="eqhigh" min="-24" max="12" value="0"></div>
+        <div><div class="k">FILTRO</div><input type="range" class="filter" min="-1" max="1" step="0.02" value="0"></div>
+      </div>
+      <div class="tempo">Tempo: <span class="tval">0.0</span>% <input type="range" class="rate" min="-8" max="8" step="0.1" value="0"></div>
+    </div>
   </div>
 
-  <!-- Crossfader (refleja la transición del AutoMix) -->
+  <!-- CROSSFADER -->
   <div class="xf">
     <div class="row"><span>A</span><span id="xfLabel">CROSSFADER</span><span>B</span></div>
-    <div class="xftrack"><div class="xfknob" id="xfknob" style="left:8%"></div></div>
+    <input type="range" id="xf" min="0" max="1" step="0.01" value="0.5">
   </div>
 
-  <!-- Deck B (en cola / entrando) -->
-  <div class="deck B dim" id="deckB">
+  <!-- DECK B -->
+  <div class="deck B" id="deckB">
     <span class="tag">DECK B</span>
-    <div class="title" id="titleB">En cola…</div>
-    <div class="meta"><span>BPM <b id="bpmB">—</b></span><span>TONO <b id="keyB">—</b></span></div>
+    <div class="title" id="titleB">—</div>
+    <div class="meta"><span>BPM <b id="bpmB">—</b></span><span>TONO <b id="keyB">—</b></span><span id="posB">0:00</span></div>
     <canvas class="wave" id="waveB"></canvas>
+    <div class="deckctl hide" data-deck="1">
+      <div class="transport">
+        <select class="loadsel"></select>
+        <button class="loadbtn">Cargar</button>
+        <button class="playbtn play">▶</button>
+        <button class="cuebtn">CUE</button>
+      </div>
+      <div class="eqrow">
+        <div><div class="k">GRAVES</div><input type="range" class="eqlow" min="-24" max="12" value="0"></div>
+        <div><div class="k">MEDIOS</div><input type="range" class="eqmid" min="-24" max="12" value="0"></div>
+        <div><div class="k">AGUDOS</div><input type="range" class="eqhigh" min="-24" max="12" value="0"></div>
+        <div><div class="k">FILTRO</div><input type="range" class="filter" min="-1" max="1" step="0.02" value="0"></div>
+      </div>
+      <div class="tempo">Tempo: <span class="tval">0.0</span>% <input type="range" class="rate" min="-8" max="8" step="0.1" value="0"></div>
+    </div>
   </div>
 
-  <!-- Reproductor del stream -->
+  <!-- Controles AUTO -->
+  <div class="card" id="autoctl">
+    <div class="grid2"><button id="skipBtn" class="big sec">⏭ Siguiente</button><button id="fadeBtn" class="big sec">⇋ Mezclar ya</button></div>
+    <label class="ctl">Transición: <span id="ttVal">8</span> s<input type="range" id="tt" min="2" max="20" value="8"></label>
+    <label class="ctl">Modo de mezcla:
+      <select id="mode" style="width:100%;padding:10px;margin-top:6px;border-radius:9px;background:#0a1626;color:var(--text);border:1px solid var(--line)">
+        <option value="0">Saltar silencio</option><option value="1">Pista completa</option></select></label>
+  </div>
+
+  <!-- Reproductor -->
   <div class="card">
-    <div id="now">Escuchá la sesión en vivo del DJ autónomo.</div>
-    <button id="btn">▶ Escuchar</button>
+    <div id="now">Escuchá la sesión en vivo.</div>
+    <button id="btn" class="big">▶ Escuchar</button>
     <div id="status">Detenido</div>
   </div>
 
-  <!-- Panel de control (login) -->
+  <!-- Login -->
   <div class="card" id="panel" hidden>
     <div id="login">
       <input id="u" placeholder="usuario" autocomplete="username">
       <input id="pw" type="password" placeholder="clave" autocomplete="current-password">
-      <button id="loginBtn">Entrar al control</button>
+      <button id="loginBtn" class="big">Entrar al control</button>
       <div id="loginMsg"></div>
     </div>
-    <div id="controls" hidden>
-      <div class="grid2">
-        <button id="skipBtn" class="sec">⏭ Siguiente</button>
-        <button id="fadeBtn" class="sec">⇋ Mezclar ya</button>
-      </div>
-      <label class="ctl">Transición: <span id="ttVal">8</span> s
-        <input id="tt" type="range" min="2" max="20" value="8"></label>
-      <label class="ctl">Modo de mezcla:
-        <select id="mode">
-          <option value="0">Saltar silencio</option>
-          <option value="1">Pista completa</option>
-        </select></label>
-    </div>
+    <div id="controls" hidden style="font-size:12px;color:var(--muted);text-align:center">Control conectado ✓</div>
   </div>
 
-  <footer>Consola del DJ autónomo · stream MP3 vía Icecast</footer>
-
+  <footer>Consola de DJ · AUDIT SOUND</footer>
   <audio id="player" preload="none" playsinline></audio>
   <script src="config.js" onerror="void 0"></script>
 <script>
 (function(){
-  var params = new URLSearchParams(location.search);
-  var STREAM = params.get('stream') ||
-               (typeof window.AUDIT_SOUND_STREAM === 'string' && window.AUDIT_SOUND_STREAM) ||
-               (location.origin + '/stream.mp3');
-  var API = params.get('api') ||
-            (typeof window.AUDIT_SOUND_API === 'string' && window.AUDIT_SOUND_API) || '';
-  function byId(x){ return document.getElementById(x); }
+  var params=new URLSearchParams(location.search);
+  var STREAM=params.get('stream')||(typeof window.AUDIT_SOUND_STREAM==='string'&&window.AUDIT_SOUND_STREAM)||(location.origin+'/stream.mp3');
+  var API=params.get('api')||(typeof window.AUDIT_SOUND_API==='string'&&window.AUDIT_SOUND_API)||'';
+  function $(s,r){return (r||document).querySelector(s);} function $all(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+  function byId(x){return document.getElementById(x);}
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+  function mmss(s){s=Math.max(0,s|0);return (s/60|0)+':'+('0'+(s%60)).slice(-2);}
+  function camelot(k){var m=[8,3,10,5,12,7,2,9,4,11,6,1];if(k<0||k>23)return'—';return k<=11?m[k]+'B':m[((k-12)+3)%12]+'A';}
 
-  // ---- Waveforms animadas (canvas) ----
-  function Wave(canvas, color){
-    var ctx = canvas.getContext('2d');
-    var bars = 64, data = [];
-    for (var i=0;i<bars;i++) data.push(0.15 + Math.random()*0.85);
-    var phase = 0, active = false;
-    function resize(){ canvas.width = canvas.clientWidth*2; canvas.height = canvas.height||128; }
-    function draw(){
-      resize();
-      var w = canvas.width, h = canvas.height, bw = w/bars;
-      ctx.clearRect(0,0,w,h);
-      for (var i=0;i<bars;i++){
-        var amp = data[i]*(active?(0.6+0.4*Math.abs(Math.sin(phase+i*0.4))):0.5);
-        var bh = amp*h*0.9;
-        ctx.fillStyle = (active && i < (phase*6)%bars) ? color : 'rgba(127,151,179,0.35)';
-        ctx.fillRect(i*bw+1, (h-bh)/2, bw-2, bh);
-      }
-      if (active) phase += 0.08;
-    }
-    return { draw:draw, set:function(a){active=a;} };
-  }
-  var wA = Wave(byId('waveA'), getCss('--a')), wB = Wave(byId('waveB'), getCss('--b'));
-  function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
-  function loop(){ wA.draw(); wB.draw(); requestAnimationFrame(loop); }
-  requestAnimationFrame(loop);
+  // Waveforms
+  function Wave(cv,color){var ctx=cv.getContext('2d'),bars=60,d=[];for(var i=0;i<bars;i++)d.push(.15+Math.random()*.85);var ph=0,act=false;
+    function draw(){cv.width=cv.clientWidth*2;cv.height=104;var w=cv.width,h=cv.height,bw=w/bars;ctx.clearRect(0,0,w,h);
+      for(var i=0;i<bars;i++){var a=d[i]*(act?(.6+.4*Math.abs(Math.sin(ph+i*.4))):.5),bh=a*h*.9;ctx.fillStyle=(act&&i<(ph*6)%bars)?color:'rgba(127,151,179,.3)';ctx.fillRect(i*bw+1,(h-bh)/2,bw-2,bh);}if(act)ph+=.08;}
+    return{draw:draw,set:function(x){act=x;}};}
+  var wA=Wave(byId('waveA'),css('--a')),wB=Wave(byId('waveB'),css('--b'));
+  (function loop(){wA.draw();wB.draw();requestAnimationFrame(loop);})();
 
-  // ---- Stream ----
-  var player = byId('player'), btn = byId('btn'), playing=false;
-  function start(){ player.src = STREAM + (STREAM.indexOf('?')>=0?'&':'?')+'t='+Date.now(); player.load();
-                    var p=player.play(); if(p&&p.catch)p.catch(function(e){byId('status').textContent='No se pudo iniciar: '+e.message;}); }
-  function stop(){ player.pause(); player.removeAttribute('src'); player.load(); }
-  btn.addEventListener('click', function(){ playing?stop():start(); });
-  player.addEventListener('playing', function(){ playing=true; btn.textContent='⏸ Detener'; btn.classList.add('sec'); byId('status').textContent='En vivo'; byId('live').classList.add('on'); byId('liveTxt').textContent='En vivo'; setupMediaSession(); setPlaybackState('playing'); });
-  player.addEventListener('pause', function(){ playing=false; btn.textContent='▶ Escuchar'; btn.classList.remove('sec'); byId('status').textContent='Detenido'; byId('live').classList.remove('on'); byId('liveTxt').textContent='Fuera de línea'; setPlaybackState('paused'); });
-  player.addEventListener('waiting', function(){ byId('status').textContent='Conectando…'; });
-  player.addEventListener('error', function(){ byId('status').textContent='Error de stream'; });
-
-  // ---- Media Session ----
+  // Stream
+  var player=byId('player'),btn=byId('btn'),playing=false;
+  function start(){player.src=STREAM+(STREAM.indexOf('?')>=0?'&':'?')+'t='+Date.now();player.load();var p=player.play();if(p&&p.catch)p.catch(function(e){byId('status').textContent='No se pudo iniciar: '+e.message;});}
+  function stop(){player.pause();player.removeAttribute('src');player.load();}
+  btn.addEventListener('click',function(){playing?stop():start();});
+  player.addEventListener('playing',function(){playing=true;btn.textContent='⏸ Detener';btn.classList.add('sec');byId('status').textContent='En vivo';byId('live').classList.add('on');byId('liveTxt').textContent='En vivo';ms();msState('playing');});
+  player.addEventListener('pause',function(){playing=false;btn.textContent='▶ Escuchar';btn.classList.remove('sec');byId('status').textContent='Detenido';byId('live').classList.remove('on');byId('liveTxt').textContent='—';msState('paused');});
+  player.addEventListener('waiting',function(){byId('status').textContent='Conectando…';});
+  player.addEventListener('error',function(){byId('status').textContent='Error de stream';});
   var ART='data:image/svg+xml;base64,'+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" fill="#060d16"/><circle cx="256" cy="256" r="150" fill="none" stroke="#C7A83C" stroke-width="20"/><circle cx="256" cy="256" r="52" fill="#C7A83C"/></svg>');
-  function setupMediaSession(){ if(!('mediaSession'in navigator))return; try{ navigator.mediaSession.metadata=new MediaMetadata({title:byId('titleA').textContent||'Sesión en vivo',artist:'AUDIT SOUND',album:'DJ autónomo',artwork:[{src:ART,sizes:'512x512',type:'image/svg+xml'}]}); navigator.mediaSession.setActionHandler('play',start); navigator.mediaSession.setActionHandler('pause',stop); navigator.mediaSession.setActionHandler('stop',stop);}catch(e){} }
-  function setPlaybackState(s){ if('mediaSession'in navigator){try{navigator.mediaSession.playbackState=s;}catch(e){}} }
+  function ms(){if(!('mediaSession'in navigator))return;try{navigator.mediaSession.metadata=new MediaMetadata({title:byId('titleA').textContent||'Sesión en vivo',artist:'AUDIT SOUND',album:'DJ',artwork:[{src:ART,sizes:'512x512',type:'image/svg+xml'}]});navigator.mediaSession.setActionHandler('play',start);navigator.mediaSession.setActionHandler('pause',stop);}catch(e){}}
+  function msState(s){if('mediaSession'in navigator){try{navigator.mediaSession.playbackState=s;}catch(e){}}}
 
-  // ---- Control API + telemetría a los decks ----
-  var token=null, pollTimer=null;
-  if (API) byId('panel').hidden=false;
-  function cmd(a,v){ return fetch(API+'/api/command?token='+token+'&action='+a+(v!=null?'&value='+encodeURIComponent(v):''),{method:'POST'}); }
-  function camelot(key){ var maj=[8,3,10,5,12,7,2,9,4,11,6,1]; if(key<0||key>23)return'—'; if(key<=11)return maj[key]+'B'; return maj[((key-12)+3)%12]+'A'; }
-  function poll(){
-    fetch(API+'/api/status?token='+token).then(function(r){return r.json();}).then(function(d){
-      byId('titleA').textContent = d.nowPlaying||'—';
-      byId('bpmA').textContent = d.bpm>0?Math.round(d.bpm):'—';
-      byId('now').textContent = 'Ahora suena: '+(d.nowPlaying||'—');
-      byId('ttVal').textContent = d.transition; byId('tt').value = d.transition;
-      byId('mode').value = d.mode;
-      var fading = d.state===2;         // transición en curso
-      wA.set(true); wB.set(fading);
-      byId('deckB').classList.toggle('dim', !fading);
-      byId('xfknob').style.left = (fading? 62 : 8) + '%';
-      byId('xfLabel').textContent = fading? 'MEZCLANDO…' : 'CROSSFADER';
-      if(fading){ byId('titleB').textContent='Entrando…'; } else { byId('titleB').textContent='En cola…'; byId('bpmB').textContent='—'; }
-    }).catch(function(){});
-  }
-  function startPoll(){ if(pollTimer)clearInterval(pollTimer); poll(); pollTimer=setInterval(poll,1500); }
-  if (API){
-    byId('loginBtn').addEventListener('click', function(){
+  // Control API
+  var token=null,pollTimer=null,manual=false,tracks=[];
+  if(API)byId('panel').hidden=false;
+  function cmd(a,extra){var u=API+'/api/command?token='+token+'&action='+a;if(extra)for(var k in extra)u+='&'+k+'='+encodeURIComponent(extra[k]);return fetch(u,{method:'POST'});}
+  function loadTracks(){fetch(API+'/api/tracks?token='+token).then(function(r){return r.json();}).then(function(d){tracks=d.tracks||[];$all('.loadsel').forEach(function(sel){sel.innerHTML='';tracks.forEach(function(t){var o=document.createElement('option');o.value=t.i;o.textContent=t.title;sel.appendChild(o);});});});}
+  function setMode(m){manual=(m==='manual');$all('#modeSeg button').forEach(function(b){b.classList.toggle('on',b.dataset.m===m);});
+    $all('.deckctl').forEach(function(x){x.classList.toggle('hide',!manual);});byId('autoctl').classList.toggle('hide',manual);
+    byId('xf').disabled=!manual; cmd('set_mode_dj',{value:m});}
+  function poll(){fetch(API+'/api/status?token='+token).then(function(r){return r.json();}).then(function(d){
+    manual=(d.mode==='manual');
+    var A=d.decks[0],B=d.decks[1];
+    byId('titleA').textContent=A.title||'—';byId('bpmA').textContent=A.bpm>0?Math.round(A.bpm):'—';byId('keyA').textContent=camelot(A.key);byId('posA').textContent=mmss(A.pos)+' / '+mmss(A.dur);
+    byId('titleB').textContent=B.title||'—';byId('bpmB').textContent=B.bpm>0?Math.round(B.bpm):'—';byId('keyB').textContent=camelot(B.key);byId('posB').textContent=mmss(B.pos)+' / '+mmss(B.dur);
+    wA.set(!!A.playing);wB.set(!!B.playing);
+    byId('deckA').style.opacity=A.playing?1:.6;byId('deckB').style.opacity=B.playing?1:.6;
+    if(!document.activeElement||document.activeElement.id!=='xf')byId('xf').value=d.xfader;
+    byId('xfLabel').textContent=(d.state===2&&!manual)?'MEZCLANDO…':'CROSSFADER';
+    byId('ttVal').textContent=d.transition;byId('tt').value=d.transition;byId('mode').value=d.mixmode;
+    byId('now').textContent='Ahora suena: '+(A.playing?A.title:(B.playing?B.title:'—'));
+  }).catch(function(){});}
+  function startPoll(){if(pollTimer)clearInterval(pollTimer);poll();pollTimer=setInterval(poll,1000);}
+
+  if(API){
+    byId('loginBtn').addEventListener('click',function(){
       fetch(API+'/api/login?user='+encodeURIComponent(byId('u').value)+'&pass='+encodeURIComponent(byId('pw').value),{method:'POST'})
-        .then(function(r){return r.json();}).then(function(d){ if(d&&d.token){token=d.token;byId('login').hidden=true;byId('controls').hidden=false;startPoll();}else byId('loginMsg').textContent='Credenciales inválidas'; })
-        .catch(function(){ byId('loginMsg').textContent='No se pudo conectar con el control'; });
+        .then(function(r){return r.json();}).then(function(d){if(d&&d.token){token=d.token;byId('login').hidden=true;byId('controls').hidden=false;loadTracks();startPoll();}else byId('loginMsg').textContent='Credenciales inválidas';})
+        .catch(function(){byId('loginMsg').textContent='No se pudo conectar con el control';});});
+    $all('#modeSeg button').forEach(function(b){b.addEventListener('click',function(){setMode(b.dataset.m);});});
+    byId('skipBtn').addEventListener('click',function(){cmd('skip');});
+    byId('fadeBtn').addEventListener('click',function(){cmd('skip');});
+    var tt=byId('tt');tt.addEventListener('input',function(){byId('ttVal').textContent=tt.value;});tt.addEventListener('change',function(){cmd('set_transition',{value:tt.value});});
+    byId('mode').addEventListener('change',function(){cmd('set_mode',{value:this.value});});
+    byId('xf').addEventListener('input',function(){cmd('xfader',{value:this.value});});
+    // Controles por deck
+    $all('.deckctl').forEach(function(box){
+      var deck=box.dataset.deck;
+      $('.loadbtn',box).addEventListener('click',function(){cmd('deck_load',{deck:deck,track:$('.loadsel',box).value});});
+      $('.playbtn',box).addEventListener('click',function(){var b=this;if(b.textContent==='▶'){cmd('deck_play',{deck:deck});b.textContent='⏸';}else{cmd('deck_pause',{deck:deck});b.textContent='▶';}});
+      $('.cuebtn',box).addEventListener('click',function(){cmd('deck_cue',{deck:deck});});
+      function sendEq(){cmd('eq',{deck:deck,low:$('.eqlow',box).value,mid:$('.eqmid',box).value,high:$('.eqhigh',box).value});}
+      $('.eqlow',box).addEventListener('input',sendEq);$('.eqmid',box).addEventListener('input',sendEq);$('.eqhigh',box).addEventListener('input',sendEq);
+      $('.filter',box).addEventListener('input',function(){cmd('filter',{deck:deck,value:this.value});});
+      var rate=$('.rate',box);rate.addEventListener('input',function(){$('.tval',box).textContent=(+rate.value).toFixed(1);cmd('rate',{deck:deck,value:(1+(+rate.value)/100).toFixed(4)});});
     });
-    byId('skipBtn').addEventListener('click', function(){ cmd('skip'); });
-    byId('fadeBtn').addEventListener('click', function(){ cmd('skip'); });
-    var tt=byId('tt'); tt.addEventListener('input',function(){byId('ttVal').textContent=tt.value;}); tt.addEventListener('change',function(){cmd('set_transition',tt.value);});
-    byId('mode').addEventListener('change', function(){ cmd('set_mode', this.value); });
   }
-
-  window.__auditSound = { start:start, stop:stop, el:player, streamUrl:STREAM, api:API };
+  window.__auditSound={start:start,stop:stop,el:player,streamUrl:STREAM,api:API};
 })();
 </script>
 </body>

@@ -20,6 +20,10 @@ ControlApi control_api_start(int port, const char* user, const char* pass, DjEng
                              AutoMix automix);
 void control_api_stop(ControlApi api);
 
+// Carga el catálogo (para el modo manual: elegir pista por deck). Llamar una vez
+// por pista antes/después de start.
+void control_api_add_track(ControlApi api, const char* title, const char* path);
+
 #ifdef __cplusplus
 }
 #endif
