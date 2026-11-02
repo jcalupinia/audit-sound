@@ -44,10 +44,11 @@ include(${ROOT}/third_party/opus_stack.cmake)   # define: ogg, opus, opusfile
 add_library(audit_sound_engine STATIC
   ${ROOT}/engine/dj_engine.cpp
   ${ROOT}/engine/last_error.cpp
+  ${ROOT}/engine/automix/automix.cpp
 )
 target_compile_definitions(audit_sound_engine PRIVATE _USE_MATH_DEFINES)
 target_compile_options(audit_sound_engine PRIVATE -fexceptions)
-target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine)
+target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine ${ROOT}/engine/automix)
 target_include_directories(audit_sound_engine PRIVATE
   ${ROOT}/engine/sinks
   ${ROOT}/third_party/dr_libs
