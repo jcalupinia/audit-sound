@@ -87,6 +87,8 @@
   .xf input{width:100%;accent-color:var(--gold)}
 
   /* AUTO panel */
+  .fxpanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  #recBtn.on{background:var(--red);color:#fff;border-color:transparent}
   .autopanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   .autopanel.hide,.manualonly.hide{display:none}
   .autopanel .nowp{font-size:12px;color:var(--muted);margin:8px 0}
@@ -181,6 +183,18 @@
       <div class="xf">
         <div class="lab"><span>A</span><span>CROSSFADER</span><span>B</span></div>
         <input type="range" id="xfader" min="0" max="1" step="0.01" value="0.5">
+      </div>
+
+      <div class="fxpanel" id="fxpanel">
+        <div style="font-weight:800;letter-spacing:.08em;font-size:11px;color:var(--muted);margin-bottom:8px">FX DE MÁSTER</div>
+        <div class="ctlrow">ECO <input type="range" id="fxEcho" min="0" max="1" step="0.01" value="0"></div>
+        <div class="ctlrow">REVERB <input type="range" id="fxReverb" min="0" max="1" step="0.01" value="0"></div>
+        <div class="ctlrow">FILTRO <input type="range" id="fxFilter" min="-1" max="1" step="0.01" value="0"></div>
+        <div class="row">
+          <button class="btn sm" id="recBtn">⏺ Grabar</button>
+          <a class="btn sm" id="recDl" style="display:none;text-decoration:none">⤓ Descargar</a>
+          <span id="recTime" style="font-size:11px;color:var(--muted)"></span>
+        </div>
       </div>
 
       <div class="autopanel hide" id="autopanel">
@@ -372,6 +386,28 @@ $('#autoToggle').addEventListener('click', ()=>{
   $('#autoToggle').textContent = autoOn ? '⏸ Detener AUTO' : '▶ Activar AUTO';
 });
 $('#skipBtn').addEventListener('click', ()=> bridge.autoSkip());
+
+/* ---- FX de máster + grabación (P2b) ---- */
+$('#fxEcho').addEventListener('input', (e)=> bridge.fxEcho(parseFloat(e.target.value)));
+$('#fxReverb').addEventListener('input', (e)=> bridge.fxReverb(parseFloat(e.target.value)));
+$('#fxFilter').addEventListener('input', (e)=> bridge.fxFilter(parseFloat(e.target.value)));
+$('#fxFilter').addEventListener('dblclick', (e)=>{ e.target.value=0; bridge.fxFilter(0); });
+let recT0=0, recTimer=null, recUrl=null;
+$('#recBtn').addEventListener('click', async ()=>{
+  const btn=$('#recBtn');
+  if (!bridge.recording()){
+    if (bridge.recordStart()){
+      btn.classList.add('on'); btn.textContent='⏹ Detener'; $('#recDl').style.display='none';
+      if (recUrl){ URL.revokeObjectURL(recUrl); recUrl=null; }
+      recT0=performance.now(); recTimer=setInterval(()=>{ $('#recTime').textContent=((performance.now()-recT0)/1000|0)+' s'; },500);
+    }
+  } else {
+    const blob=await bridge.recordStop();
+    btn.classList.remove('on'); btn.textContent='⏺ Grabar'; clearInterval(recTimer); $('#recTime').textContent='';
+    if (blob && blob.size){ recUrl=URL.createObjectURL(blob); const a=$('#recDl');
+      a.href=recUrl; a.download='audit-sound-'+Date.now()+'.webm'; a.style.display='inline-block'; }
+  }
+});
 
 /* ---- Estado (viene del Worker ~5/s) ---- */
 function onStatus(m){
