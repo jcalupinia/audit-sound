@@ -9,9 +9,15 @@ Este directorio trae todo lo necesario:
   `web/pro/` + el motor con un servidor estático que emite COOP/COEP y el MIME de `.wasm`.
 - `server.js` — el servidor estático (sin dependencias; `/healthz` para el healthcheck).
 
+La **raíz `/` es una landing** con dos entradas: **Mezclar** (→ `/mixer.html`, el
+mezclador PRO) y **Escuchar en vivo** (→ la consola de streaming). El enlace de escucha
+se configura con la variable **`LISTEN_URL`** (dominio del Preview de streaming); si no se
+define, esa tarjeta queda deshabilitada. El `server.js` genera `config.js` con esa URL.
+
 Verificado localmente (con el mismo `server.js` y el motor compilado): `/healthz`=200,
-cabeceras COOP/COEP presentes, `audit_engine.wasm` servido como `application/wasm`, y la
-página arranca con `self.crossOriginIsolated === true` y **0 errores** en Chromium.
+cabeceras COOP/COEP presentes, `audit_engine.wasm` servido como `application/wasm`, la
+landing enlaza a `./mixer.html` y a `LISTEN_URL`, y el mezclador arranca con
+`self.crossOriginIsolated === true` y **0 errores** en Chromium.
 
 > **Importante:** no puedo crear la aplicación en Coolify ni desplegar por ti (el acceso a
 > Coolify desde esta sesión es de **solo lectura**, y el despliegue es tu acción en el panel).

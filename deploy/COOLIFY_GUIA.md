@@ -41,7 +41,13 @@ Dos previews, cada uno prueba una cosa distinta:
 5. **Healthcheck:** path **`/healthz`** (método GET, espera `200`).
 6. **Domains:** añade `https://mix.audit-ia` (o tu dominio). Coolify pedirá el TLS a
    Let's Encrypt automáticamente.
-7. **Deploy.** La primera build **compila el motor a WASM** (tarda unos minutos).
+7. **Environment (opcional):** `LISTEN_URL = https://www.audit-ia` → enlaza la tarjeta
+   **«Escuchar en vivo»** de la landing con el Preview de streaming (Preview B). Si no la
+   pones, esa tarjeta queda deshabilitada.
+8. **Deploy.** La primera build **compila el motor a WASM** (tarda unos minutos).
+
+> La raíz `/` es una **landing** con dos botones: **Mezclar** (→ `/mixer.html`) y
+> **Escuchar en vivo** (→ `LISTEN_URL`). Así un solo dominio es la puerta de entrada.
 
 **Comprobar (antes del iPhone):**
 - `https://mix.audit-ia/healthz` → `200 ok`.

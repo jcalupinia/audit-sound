@@ -8,6 +8,15 @@ const path = require('path');
 
 const ROOT = path.resolve(process.env.WEB_ROOT || '/app/web');
 const PORT = parseInt(process.env.PORT || '80', 10);
+
+// config.js para la landing: URL de la consola de streaming ("Escuchar en vivo").
+// Se define con la variable LISTEN_URL (dominio del Preview de streaming). Opcional.
+try {
+  const listen = process.env.LISTEN_URL || '';
+  const body = listen ? `window.AUDIT_SOUND_LISTEN=${JSON.stringify(listen)};\n` : '/* sin LISTEN_URL */\n';
+  fs.writeFileSync(path.join(ROOT, 'config.js'), body);
+  if (listen) console.log('config.js: LISTEN_URL=' + listen);
+} catch (e) { /* no crítico */ }
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.wasm': 'application/wasm',
