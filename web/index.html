@@ -6,57 +6,94 @@
 <title>AUDIT SOUND</title>
 <style>
   :root{
-    --bg:#071B2F; --card:#0A2342; --btn:#0E2C50; --gold:#C7A83C;
-    --text:#E8EEF5; --muted:#8FA6BF;
+    --bg:#060d16; --panel:#0A1B2E; --panel2:#0E2742; --line:#13304f;
+    --gold:#C7A83C; --text:#EAF1F8; --muted:#7f97b3;
+    --a:#2ec5ff; --b:#ff7ac2;   /* colores de deck A / B */
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{
-    background:var(--bg); color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:16px; gap:28px; text-align:center;
+    background:radial-gradient(1200px 600px at 50% -10%,#0d2036 0,var(--bg) 60%);
+    color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:14px 14px 28px; max-width:560px; margin:0 auto;
   }
-  .brand{letter-spacing:.18em; font-size:14px; color:var(--muted); text-transform:uppercase}
-  h1{margin:0; font-size:clamp(28px,8vw,44px); font-weight:700}
-  h1 .gold{color:var(--gold)}
-  .card{
-    background:var(--card); border-radius:18px; padding:26px 22px; width:100%; max-width:420px;
-    box-shadow:0 10px 40px rgba(0,0,0,.35);
-  }
-  #now{font-size:15px; color:var(--muted); min-height:20px; margin-bottom:18px}
-  #now b{color:var(--text)}
-  button{
-    appearance:none; border:none; cursor:pointer; width:100%;
-    background:var(--gold); color:#13233a; font-weight:700; font-size:18px;
-    padding:16px 20px; border-radius:12px; transition:transform .05s ease, filter .2s;
-  }
-  button:active{transform:scale(.98)}
-  button.stop{background:var(--btn); color:var(--text)}
-  button:disabled{filter:grayscale(.5) opacity(.6); cursor:default}
-  #panel input, #panel select{width:100%; padding:11px 12px; margin:6px 0; border-radius:10px; border:1px solid #1e3a5c; background:#0b2138; color:var(--text); font-size:15px}
-  #loginMsg{color:#f85149; font-size:13px; min-height:16px}
-  #np{font-size:16px; color:var(--text); margin-bottom:12px; font-weight:600}
-  .ctl{display:block; text-align:left; font-size:13px; color:var(--muted); margin-top:14px}
+  header{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px}
+  .brand{font-weight:800; letter-spacing:.04em; font-size:20px}
+  .brand .g{color:var(--gold)}
+  .live{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em}
+  .live .dot{width:9px;height:9px;border-radius:50%;background:#30425a}
+  .live.on .dot{background:#3fb950; box-shadow:0 0 10px #3fb950}
+
+  .deck{background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line);
+        border-radius:16px; padding:12px 14px; margin-bottom:10px; position:relative; overflow:hidden}
+  .deck.dim{opacity:.55}
+  .deck .tag{position:absolute; top:10px; right:12px; font-size:11px; font-weight:800; letter-spacing:.1em;
+             padding:3px 8px; border-radius:7px}
+  .deck.A .tag{color:var(--a); background:rgba(46,197,255,.12)}
+  .deck.B .tag{color:var(--b); background:rgba(255,122,194,.12)}
+  .deck .title{font-size:16px; font-weight:700; margin:2px 40px 2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .deck .meta{font-size:12px; color:var(--muted); display:flex; gap:14px; margin-bottom:8px}
+  .deck .meta b{color:var(--text); font-variant-numeric:tabular-nums}
+  canvas.wave{display:block; width:100%; height:64px}
+
+  .xf{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px}
+  .xf .row{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); letter-spacing:.1em; margin-bottom:6px}
+  .xftrack{height:10px; border-radius:6px; background:linear-gradient(90deg,var(--a),#20405f 45%,#20405f 55%,var(--b)); position:relative}
+  .xfknob{position:absolute; top:50%; width:16px;height:16px;border-radius:50%; background:var(--gold);
+          transform:translate(-50%,-50%); box-shadow:0 0 10px rgba(199,168,60,.6); transition:left .25s linear}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:10px}
+  #now{font-size:13px;color:var(--muted);margin-bottom:12px;text-align:center}
+  button{appearance:none;border:none;cursor:pointer;width:100%;font-weight:700;font-size:17px;
+         padding:15px;border-radius:12px;transition:transform .05s, filter .2s; color:#0f1d2e; background:var(--gold)}
+  button:active{transform:scale(.99)}
+  button.sec{background:var(--panel2); color:var(--text); border:1px solid var(--line)}
+  #status{margin-top:10px;font-size:12px;color:var(--muted);text-align:center}
+  #panel input,#panel select{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid var(--line);
+         background:#0a1626;color:var(--text);font-size:15px}
+  #loginMsg{color:#f85149;font-size:13px;min-height:16px}
+  .ctl{display:block;text-align:left;font-size:12px;color:var(--muted);margin-top:14px;letter-spacing:.04em}
   .ctl input[type=range]{margin-top:6px}
-  #status{margin-top:14px; font-size:13px; color:var(--muted); min-height:18px}
-  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--muted); margin-right:6px; vertical-align:middle}
-  .dot.live{background:#3fb950}
-  .dot.err{background:#f85149}
-  footer{font-size:11px; color:var(--muted); opacity:.7}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  footer{font-size:11px;color:var(--muted);text-align:center;opacity:.7;margin-top:6px}
 </style>
 </head>
 <body>
-  <div class="brand">DJ autónomo</div>
-  <h1>AUDIT <span class="gold">SOUND</span></h1>
+  <header>
+    <div class="brand">AUDIT <span class="g">SOUND</span></div>
+    <div class="live" id="live"><span class="dot"></span><span id="liveTxt">Fuera de línea</span></div>
+  </header>
 
-  <div class="card">
-    <div id="now">Listo para escuchar tu sesión.</div>
-    <button id="btn">▶ Escuchar</button>
-    <div id="status"><span class="dot" id="dot"></span><span id="statusText">Detenido</span></div>
+  <!-- Deck A (el que suena) -->
+  <div class="deck A" id="deckA">
+    <span class="tag">DECK A</span>
+    <div class="title" id="titleA">—</div>
+    <div class="meta"><span>BPM <b id="bpmA">—</b></span><span>TONO <b id="keyA">—</b></span></div>
+    <canvas class="wave" id="waveA"></canvas>
   </div>
 
-  <!-- Panel de control (M5): visible si hay API configurada (config.js o ?api=). -->
+  <!-- Crossfader (refleja la transición del AutoMix) -->
+  <div class="xf">
+    <div class="row"><span>A</span><span id="xfLabel">CROSSFADER</span><span>B</span></div>
+    <div class="xftrack"><div class="xfknob" id="xfknob" style="left:8%"></div></div>
+  </div>
+
+  <!-- Deck B (en cola / entrando) -->
+  <div class="deck B dim" id="deckB">
+    <span class="tag">DECK B</span>
+    <div class="title" id="titleB">En cola…</div>
+    <div class="meta"><span>BPM <b id="bpmB">—</b></span><span>TONO <b id="keyB">—</b></span></div>
+    <canvas class="wave" id="waveB"></canvas>
+  </div>
+
+  <!-- Reproductor del stream -->
+  <div class="card">
+    <div id="now">Escuchá la sesión en vivo del DJ autónomo.</div>
+    <button id="btn">▶ Escuchar</button>
+    <div id="status">Detenido</div>
+  </div>
+
+  <!-- Panel de control (login) -->
   <div class="card" id="panel" hidden>
     <div id="login">
       <input id="u" placeholder="usuario" autocomplete="username">
@@ -65,8 +102,10 @@
       <div id="loginMsg"></div>
     </div>
     <div id="controls" hidden>
-      <div id="np">—</div>
-      <button id="skipBtn" class="stop">⏭ Siguiente pista</button>
+      <div class="grid2">
+        <button id="skipBtn" class="sec">⏭ Siguiente</button>
+        <button id="fadeBtn" class="sec">⇋ Mezclar ya</button>
+      </div>
       <label class="ctl">Transición: <span id="ttVal">8</span> s
         <input id="tt" type="range" min="2" max="20" value="8"></label>
       <label class="ctl">Modo de mezcla:
@@ -77,148 +116,96 @@
     </div>
   </div>
 
-  <footer>Stream MP3 vía Icecast · AUDIT SOUND</footer>
+  <footer>Consola del DJ autónomo · stream MP3 vía Icecast</footer>
 
-  <!-- El audio es un stream continuo tipo radio (Opción B): suena también con la
-       pantalla bloqueada, porque es un <audio> que reproduce un stream, no
-       procesamiento Web Audio del lado cliente. -->
   <audio id="player" preload="none" playsinline></audio>
-
-  <!-- config.js lo genera el contenedor web a partir de STREAM_URL (Coolify).
-       Opcional: si no existe, se usa ?stream= o <origin>/stream.mp3. -->
   <script src="config.js" onerror="void 0"></script>
 <script>
 (function(){
-  // URL del stream: ?stream=... o, por defecto, mismo host /stream.mp3.
-  // En producción se sirve desde el Icecast en Coolify (p.ej. https://stream.audit-ia/stream.mp3).
   var params = new URLSearchParams(location.search);
   var STREAM = params.get('stream') ||
                (typeof window.AUDIT_SOUND_STREAM === 'string' && window.AUDIT_SOUND_STREAM) ||
                (location.origin + '/stream.mp3');
-
-  var player = document.getElementById('player');
-  var btn = document.getElementById('btn');
-  var dot = document.getElementById('dot');
-  var statusText = document.getElementById('statusText');
-  var now = document.getElementById('now');
-  var playing = false;
-
-  function setStatus(text, cls){
-    statusText.textContent = text;
-    dot.className = 'dot' + (cls ? ' ' + cls : '');
-  }
-
-  // --- Media Session API (E2): metadatos + controles de pantalla de bloqueo ---
-  // Un escudo dorado inline (data URI) como carátula; sin recursos externos.
-  var ARTWORK = 'data:image/svg+xml;base64,' + btoa(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">' +
-    '<rect width="512" height="512" fill="#071B2F"/>' +
-    '<circle cx="256" cy="256" r="150" fill="none" stroke="#C7A83C" stroke-width="20"/>' +
-    '<circle cx="256" cy="256" r="52" fill="#C7A83C"/></svg>');
-
-  function setupMediaSession(){
-    if (!('mediaSession' in navigator)) return;
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: 'Sesión en vivo',
-        artist: 'AUDIT SOUND',
-        album: 'DJ autónomo',
-        artwork: [
-          { src: ARTWORK, sizes: '512x512', type: 'image/svg+xml' }
-        ]
-      });
-      navigator.mediaSession.setActionHandler('play', function(){ start(); });
-      navigator.mediaSession.setActionHandler('pause', function(){ stop(); });
-      navigator.mediaSession.setActionHandler('stop', function(){ stop(); });
-    } catch (e) { /* algunos navegadores no soportan todos los handlers */ }
-  }
-  function setPlaybackState(state){
-    if ('mediaSession' in navigator) {
-      try { navigator.mediaSession.playbackState = state; } catch (e) {}
-    }
-  }
-
-  function start(){
-    // Cache-busting para forzar reconexión limpia al stream en vivo.
-    player.src = STREAM + (STREAM.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
-    player.load();
-    var p = player.play();
-    if (p && p.catch) p.catch(function(err){ setStatus('No se pudo iniciar: ' + err.message, 'err'); });
-  }
-  function stop(){
-    player.pause();
-    player.removeAttribute('src');
-    player.load();
-  }
-
-  btn.addEventListener('click', function(){
-    if (!playing) start(); else stop();
-  });
-
-  player.addEventListener('playing', function(){
-    playing = true;
-    btn.textContent = '⏸ Detener';
-    btn.classList.add('stop');
-    setStatus('En vivo', 'live');
-    now.innerHTML = 'Reproduciendo <b>tu sesión AUDIT SOUND</b>';
-    setupMediaSession();
-    setPlaybackState('playing');
-  });
-  player.addEventListener('pause', function(){
-    playing = false;
-    btn.textContent = '▶ Escuchar';
-    btn.classList.remove('stop');
-    setStatus('Detenido');
-    now.textContent = 'Listo para escuchar tu sesión.';
-    setPlaybackState('paused');
-  });
-  player.addEventListener('waiting', function(){ setStatus('Conectando…'); });
-  player.addEventListener('stalled', function(){ setStatus('Reconectando…'); });
-  player.addEventListener('error', function(){ setStatus('Error de stream', 'err'); });
-
-  // --- Panel de control (M5) ---
   var API = params.get('api') ||
             (typeof window.AUDIT_SOUND_API === 'string' && window.AUDIT_SOUND_API) || '';
-  var token = null, pollTimer = null;
-  var panel = document.getElementById('panel');
-  if (API) panel.hidden = false;
-
   function byId(x){ return document.getElementById(x); }
-  function cmd(action, value){
-    var u = API + '/api/command?token=' + token + '&action=' + action +
-            (value != null ? '&value=' + encodeURIComponent(value) : '');
-    return fetch(u, { method: 'POST' });
-  }
-  function poll(){
-    fetch(API + '/api/status?token=' + token).then(function(r){ return r.json(); })
-      .then(function(d){
-        byId('np').textContent = (d.nowPlaying || '—') +
-          (d.bpm > 0 ? ' · ' + Math.round(d.bpm) + ' BPM' : '');
-      }).catch(function(){});
-  }
-  function startPoll(){ if (pollTimer) clearInterval(pollTimer); poll(); pollTimer = setInterval(poll, 2000); }
 
-  if (API) {
+  // ---- Waveforms animadas (canvas) ----
+  function Wave(canvas, color){
+    var ctx = canvas.getContext('2d');
+    var bars = 64, data = [];
+    for (var i=0;i<bars;i++) data.push(0.15 + Math.random()*0.85);
+    var phase = 0, active = false;
+    function resize(){ canvas.width = canvas.clientWidth*2; canvas.height = canvas.height||128; }
+    function draw(){
+      resize();
+      var w = canvas.width, h = canvas.height, bw = w/bars;
+      ctx.clearRect(0,0,w,h);
+      for (var i=0;i<bars;i++){
+        var amp = data[i]*(active?(0.6+0.4*Math.abs(Math.sin(phase+i*0.4))):0.5);
+        var bh = amp*h*0.9;
+        ctx.fillStyle = (active && i < (phase*6)%bars) ? color : 'rgba(127,151,179,0.35)';
+        ctx.fillRect(i*bw+1, (h-bh)/2, bw-2, bh);
+      }
+      if (active) phase += 0.08;
+    }
+    return { draw:draw, set:function(a){active=a;} };
+  }
+  var wA = Wave(byId('waveA'), getCss('--a')), wB = Wave(byId('waveB'), getCss('--b'));
+  function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  function loop(){ wA.draw(); wB.draw(); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+
+  // ---- Stream ----
+  var player = byId('player'), btn = byId('btn'), playing=false;
+  function start(){ player.src = STREAM + (STREAM.indexOf('?')>=0?'&':'?')+'t='+Date.now(); player.load();
+                    var p=player.play(); if(p&&p.catch)p.catch(function(e){byId('status').textContent='No se pudo iniciar: '+e.message;}); }
+  function stop(){ player.pause(); player.removeAttribute('src'); player.load(); }
+  btn.addEventListener('click', function(){ playing?stop():start(); });
+  player.addEventListener('playing', function(){ playing=true; btn.textContent='⏸ Detener'; btn.classList.add('sec'); byId('status').textContent='En vivo'; byId('live').classList.add('on'); byId('liveTxt').textContent='En vivo'; setupMediaSession(); setPlaybackState('playing'); });
+  player.addEventListener('pause', function(){ playing=false; btn.textContent='▶ Escuchar'; btn.classList.remove('sec'); byId('status').textContent='Detenido'; byId('live').classList.remove('on'); byId('liveTxt').textContent='Fuera de línea'; setPlaybackState('paused'); });
+  player.addEventListener('waiting', function(){ byId('status').textContent='Conectando…'; });
+  player.addEventListener('error', function(){ byId('status').textContent='Error de stream'; });
+
+  // ---- Media Session ----
+  var ART='data:image/svg+xml;base64,'+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" fill="#060d16"/><circle cx="256" cy="256" r="150" fill="none" stroke="#C7A83C" stroke-width="20"/><circle cx="256" cy="256" r="52" fill="#C7A83C"/></svg>');
+  function setupMediaSession(){ if(!('mediaSession'in navigator))return; try{ navigator.mediaSession.metadata=new MediaMetadata({title:byId('titleA').textContent||'Sesión en vivo',artist:'AUDIT SOUND',album:'DJ autónomo',artwork:[{src:ART,sizes:'512x512',type:'image/svg+xml'}]}); navigator.mediaSession.setActionHandler('play',start); navigator.mediaSession.setActionHandler('pause',stop); navigator.mediaSession.setActionHandler('stop',stop);}catch(e){} }
+  function setPlaybackState(s){ if('mediaSession'in navigator){try{navigator.mediaSession.playbackState=s;}catch(e){}} }
+
+  // ---- Control API + telemetría a los decks ----
+  var token=null, pollTimer=null;
+  if (API) byId('panel').hidden=false;
+  function cmd(a,v){ return fetch(API+'/api/command?token='+token+'&action='+a+(v!=null?'&value='+encodeURIComponent(v):''),{method:'POST'}); }
+  function camelot(key){ var maj=[8,3,10,5,12,7,2,9,4,11,6,1]; if(key<0||key>23)return'—'; if(key<=11)return maj[key]+'B'; return maj[((key-12)+3)%12]+'A'; }
+  function poll(){
+    fetch(API+'/api/status?token='+token).then(function(r){return r.json();}).then(function(d){
+      byId('titleA').textContent = d.nowPlaying||'—';
+      byId('bpmA').textContent = d.bpm>0?Math.round(d.bpm):'—';
+      byId('now').textContent = 'Ahora suena: '+(d.nowPlaying||'—');
+      byId('ttVal').textContent = d.transition; byId('tt').value = d.transition;
+      byId('mode').value = d.mode;
+      var fading = d.state===2;         // transición en curso
+      wA.set(true); wB.set(fading);
+      byId('deckB').classList.toggle('dim', !fading);
+      byId('xfknob').style.left = (fading? 62 : 8) + '%';
+      byId('xfLabel').textContent = fading? 'MEZCLANDO…' : 'CROSSFADER';
+      if(fading){ byId('titleB').textContent='Entrando…'; } else { byId('titleB').textContent='En cola…'; byId('bpmB').textContent='—'; }
+    }).catch(function(){});
+  }
+  function startPoll(){ if(pollTimer)clearInterval(pollTimer); poll(); pollTimer=setInterval(poll,1500); }
+  if (API){
     byId('loginBtn').addEventListener('click', function(){
-      var u = byId('u').value, pw = byId('pw').value;
-      fetch(API + '/api/login?user=' + encodeURIComponent(u) + '&pass=' + encodeURIComponent(pw),
-            { method: 'POST' })
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          if (d && d.token){ token = d.token; byId('login').hidden = true; byId('controls').hidden = false; startPoll(); }
-          else byId('loginMsg').textContent = 'Credenciales inválidas';
-        })
-        .catch(function(){ byId('loginMsg').textContent = 'No se pudo conectar con el control'; });
+      fetch(API+'/api/login?user='+encodeURIComponent(byId('u').value)+'&pass='+encodeURIComponent(byId('pw').value),{method:'POST'})
+        .then(function(r){return r.json();}).then(function(d){ if(d&&d.token){token=d.token;byId('login').hidden=true;byId('controls').hidden=false;startPoll();}else byId('loginMsg').textContent='Credenciales inválidas'; })
+        .catch(function(){ byId('loginMsg').textContent='No se pudo conectar con el control'; });
     });
     byId('skipBtn').addEventListener('click', function(){ cmd('skip'); });
-    var tt = byId('tt');
-    tt.addEventListener('input', function(){ byId('ttVal').textContent = tt.value; });
-    tt.addEventListener('change', function(){ cmd('set_transition', tt.value); });
+    byId('fadeBtn').addEventListener('click', function(){ cmd('skip'); });
+    var tt=byId('tt'); tt.addEventListener('input',function(){byId('ttVal').textContent=tt.value;}); tt.addEventListener('change',function(){cmd('set_transition',tt.value);});
     byId('mode').addEventListener('change', function(){ cmd('set_mode', this.value); });
   }
 
-  // Exponer para pruebas automatizadas (headless).
-  window.__auditSound = { start: start, stop: stop, el: player, streamUrl: STREAM, api: API };
+  window.__auditSound = { start:start, stop:stop, el:player, streamUrl:STREAM, api:API };
 })();
 </script>
 </body>

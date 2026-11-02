@@ -22,7 +22,7 @@ const { chromium } = require('playwright');
   const info = await page.evaluate(() => ({
     controlsVisible: !document.getElementById('controls').hidden,
     loginHidden: document.getElementById('login').hidden,
-    nowPlaying: document.getElementById('np').textContent,
+    nowPlaying: document.getElementById('titleA').textContent,  // now-playing en Deck A
   }));
   console.log('panel:', JSON.stringify(info));
   await browser.close();
