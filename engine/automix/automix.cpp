@@ -87,10 +87,21 @@ struct AutoMixImpl {
     }
   }
 
+  // Carga en el deck d reintentando con las siguientes candidatas si una falla
+  // (archivo corrupto/no disponible). Evita que una sola pista dañada detenga el
+  // DJ autónomo (defecto D1 de F0). Devuelve false solo si se agotan los intentos.
+  bool loadIntoRetry(int d, int maxAttempts) {
+    for (int i = 0; i < maxAttempts && running.load(); ++i) {
+      if (loadInto(d)) return true;
+      LOGI("automix: salto pista inválida (intento %d/%d)", i + 1, maxAttempts);
+    }
+    return false;
+  }
+
   void loop() {
     fromDeck = 0;
-    if (!loadInto(0)) {
-      LOGE("automix: sin pista inicial");
+    if (!loadIntoRetry(0, 32)) {
+      LOGE("automix: sin pista inicial tras varios intentos");
       state = ST_DISABLED;
       running = false;
       return;
@@ -102,7 +113,7 @@ struct AutoMixImpl {
       std::lock_guard<std::mutex> lk(infoMu);
       currentPath = deckPath[0];
     }
-    loadInto(1);  // precarga deck 1 (cued)
+    loadIntoRetry(1, 32);  // precarga deck 1 (cued)
     computeTransition();
     state = ST_IDLE;
 
@@ -119,7 +130,7 @@ struct AutoMixImpl {
         if (!playing || pos >= fadeBeginSec) {
           const int toDeck = 1 - fromDeck;
           if (!deckLoaded[toDeck]) {
-            if (!loadInto(toDeck)) {
+            if (!loadIntoRetry(toDeck, 32)) {
               std::this_thread::sleep_for(std::chrono::milliseconds(200));
               continue;
             }
@@ -154,7 +165,7 @@ struct AutoMixImpl {
             std::lock_guard<std::mutex> lk(infoMu);
             currentPath = deckPath[toDeck];
           }
-          loadInto(oldFrom);  // precarga la siguiente en el deck liberado
+          loadIntoRetry(oldFrom, 32);  // precarga la siguiente en el deck liberado
           computeTransition();
           LOGI("automix: fin transición; ahora suena deck %d", fromDeck);
           state = ST_IDLE;
