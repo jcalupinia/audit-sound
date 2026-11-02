@@ -19,11 +19,12 @@
 #include "mediacodec_aac.hpp"
 using AacDecoder = MediaCodecAacDecoder;
 #define HAS_AAC 1
-#else
+#elif !defined(__EMSCRIPTEN__)
 #include "ffmpeg_aac.hpp"
 using AacDecoder = FfmpegAacDecoder;
 #define HAS_AAC 1
 #endif
+// En WASM no hay FFmpeg: AAC/M4A no soportado (MP3/WAV/FLAC/Opus sí).
 
 struct StreamingDecoder {
   enum class Kind { None, Wav, Mp3, Flac, Opus, M4a };

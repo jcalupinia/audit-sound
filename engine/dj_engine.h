@@ -77,6 +77,12 @@ int dj_load_with_analysis(DjEngine engine, int deck, const char* path, float bpm
 /** Null-terminated reason for the last failed dj_load / open, or "". */
 const char* dj_last_error(void);
 
+#ifdef __EMSCRIPTEN__
+/** WASM: el AudioWorklet de Web Audio llama a esto para obtener audio
+ *  (interleaved float). Devuelve los cuadros escritos. */
+int dj_render(DjEngine engine, float* out, int frames, int channels);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

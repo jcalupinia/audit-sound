@@ -11,6 +11,9 @@
 
 #include <algorithm>
 #include <atomic>
+#ifndef __EMSCRIPTEN__
+#include <sys/resource.h>
+#endif
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
@@ -18,7 +21,6 @@
 #include <deque>
 #include <mutex>
 #include <string>
-#include <sys/resource.h>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
@@ -447,7 +449,9 @@ struct ChunkCache {
   void workerMain() {
     // Best effort: if the platform refuses the priority bump, decoding still
     // works, it just has less headroom against a busy UI thread.
+#ifndef __EMSCRIPTEN__
     setpriority(PRIO_PROCESS, (id_t)gettid(), kWorkerNice);
+#endif
     StreamingDecoder dec;
     std::string path;
     {

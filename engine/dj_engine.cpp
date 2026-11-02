@@ -39,13 +39,13 @@
 
 #include "chunk_cache.hpp"
 
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
 #include "sinks/offline_sink.hpp"
 #include "sinks/stream_sink.hpp"
 #include "sinks/icecast_byte_sink.hpp"
+#endif
 #include <cstdlib>
 #include <memory>
-#endif
 
 namespace {
 
@@ -603,6 +603,14 @@ struct Engine : public IAudioRenderer
       stream.reset();
     }
   }
+#elif defined(__EMSCRIPTEN__)  // navegador: el AudioWorklet de Web Audio tira del render
+  bool openStream() {
+    engineSampleRate.store(48000);
+    engineChannels.store(2);
+    applyLoadedDeckSampleRate(48000);
+    return true;
+  }
+  void closeStream() {}
 #else  // !__ANDROID__  — servidor / headless (Opción B)
   bool openStream() {
     closeStream();
@@ -947,6 +955,15 @@ void dj_destroy(DjEngine engine) {
 int dj_start(DjEngine engine) { return asEngine(engine)->openStream() ? 1 : 0; }
 
 void dj_stop(DjEngine engine) { asEngine(engine)->closeStream(); }
+
+#ifdef __EMSCRIPTEN__
+// En el navegador, el AudioWorklet de Web Audio llama a esto para obtener audio.
+int dj_render(DjEngine engine, float* out, int frames, int channels) {
+  if (!engine || !out || frames <= 0 || channels < 2) return 0;
+  asEngine(engine)->renderInterleaved(out, frames, channels);
+  return frames;
+}
+#endif
 
 int dj_set_output_mode(DjEngine engine, int mode) {
   auto* e = asEngine(engine);
