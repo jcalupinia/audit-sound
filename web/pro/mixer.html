@@ -104,6 +104,19 @@
   .coplearn{font-size:10px;color:var(--muted);margin-top:10px}
   .fxpanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   #recBtn.on{background:var(--red);color:#fff;border-color:transparent}
+  /* Biblioteca persistente (IndexedDB) */
+  .libpanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .libhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .libhead .t{font-weight:800;letter-spacing:.08em;font-size:12px}
+  .libhead .cnt{font-size:11px;color:var(--muted)}
+  .liblist{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:240px;overflow:auto}
+  .lib{display:flex;align-items:center;gap:8px;background:#09203a;border:1px solid var(--line);border-radius:10px;padding:7px 9px}
+  .lib .nm{flex:1;min-width:0;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lib .mt{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .lib button{padding:5px 9px;font-size:11px}
+  .lib .la{color:var(--a)} .lib .lb{color:var(--b)} .lib .lx{color:var(--muted)}
+  .libnote{font-size:10px;color:var(--muted);margin-top:8px}
+  .libempty{font-size:11px;color:var(--muted);padding:6px 2px}
   .autopanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   .autopanel.hide,.manualonly.hide{display:none}
   .autopanel .nowp{font-size:12px;color:var(--muted);margin:8px 0}
@@ -237,6 +250,18 @@
         </div>
       </div>
 
+      <div class="libpanel" id="libpanel">
+        <div class="libhead">
+          <span class="t">BIBLIOTECA</span>
+          <span class="cnt" id="libCount">0 pistas</span>
+          <label class="btn load sm" style="display:inline-block">+ Añadir
+            <input type="file" accept="audio/*" multiple id="libAdd"></label>
+          <button class="btn sm" id="libToAuto" style="margin-left:auto" title="Carga la biblioteca en el DJ automático">→ AUTO</button>
+        </div>
+        <div class="liblist" id="libList"></div>
+        <div class="libnote" id="libNote">Las pistas se guardan en este navegador (IndexedDB) y se recuerdan entre sesiones.</div>
+      </div>
+
       <div class="copilotpanel hide" id="copilotpanel">
         <div style="font-weight:800;letter-spacing:.08em;font-size:12px">COPILOTO · IA <span style="color:var(--muted);font-weight:500">(sugiere; tú decides)</span></div>
         <div class="nowp" id="copNow">carga tu biblioteca y reproduce una pista</div>
@@ -300,6 +325,7 @@ import { AudioBridge } from './audio_bridge.js';
 import { MidiController, TARGETS } from './midi.js';
 import { Copilot, camelot } from './copilot.js';
 import { CTRL } from './ring.js';
+import * as LIB from './library.js';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -313,8 +339,10 @@ const deckState = [{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:'',beat
 const waves = [null,null];
 const hot = [[0,0,0,0],[0,0,0,0]];     // puntos (s) por pad; 0 = sin fijar
 const eqv = [{low:0,mid:0,high:0},{low:0,mid:0,high:0}];
-const copFiles = new Map();            // nombre -> File (para "Preparar" sin re-subir)
+const copFiles = new Map();            // nombre -> File | {lib:id} (para "Preparar" sin re-subir)
 let mode = 'manual', autoOn = false, libCount = 0, lastRecKey = '';
+let libRows = [];                      // metadatos de la biblioteca persistente (sin bytes)
+let libSentToAuto = false;             // evita re-añadir toda la biblioteca al selector AUTO
 
 /* ---- Arranque (gesto del usuario) ---- */
 $('#startBtn').addEventListener('click', async () => {
@@ -328,6 +356,7 @@ $('#startBtn').addEventListener('click', async () => {
     bridge.master(parseFloat($('#master').value));
     $('#ov').classList.add('hide');
     requestAnimationFrame(tickUI);
+    hydrateLibrary();                 // recupera la biblioteca guardada en sesiones anteriores
   } catch (e) { $('#startBtn').disabled=false; $('#startBtn').textContent='Reintentar'; alert('No se pudo iniciar: '+(e.message||e)); }
 });
 
@@ -487,9 +516,12 @@ function refreshSuggestions(force){
 }
 // Ejecuta SOLO cuando el DJ lo pide: carga la pista en el deck libre y deja el cue.
 async function prepare(rec, deck, cur){
-  const f = copFiles.get(rec.track.name); if (!f) return;
+  const src = copFiles.get(rec.track.name); if (!src) return;
+  // La fuente es un File (subido en esta sesión) o {lib:id} (biblioteca persistente).
+  let bytes = src;
+  if (!(src instanceof File) && src && src.lib){ bytes = await LIB.getBytes(src.lib); if (!bytes) return; }
   $('#title'+(deck?'B':'A')).textContent = 'preparando…';
-  await bridge.load(deck, f, rec.track.name);
+  await bridge.load(deck, bytes, rec.track.name);
   copilot.accept(cur, rec);           // aprendizaje: el DJ aceptó esta sugerencia
   renderLearn();
 }
@@ -620,8 +652,85 @@ $('#midiConnect').addEventListener('click',async()=>{
 $('#midiReset').addEventListener('click',()=>{ midi.resetMap(); buildLearnList(); });
 buildLearnList();
 
+/* ---- Biblioteca persistente (IndexedDB) ---- */
+// Recupera al arrancar lo guardado en sesiones anteriores y rellena el copiloto.
+async function hydrateLibrary(){
+  if (!LIB.available()){ $('#libNote').textContent = 'Este navegador no permite guardar la biblioteca (modo privado o IndexedDB bloqueado).'; return; }
+  try { libRows = await LIB.listTracks(); }
+  catch(e){ $('#libNote').textContent = 'No se pudo leer la biblioteca: '+(e.message||e); return; }
+  for (const t of libRows){
+    copilot.addTrack({ name:t.name, bpm:t.bpm, key:t.key, energy:t.energy });
+    copFiles.set(t.name, { lib:t.id });
+  }
+  $('#copCount').textContent = copilot.size()+' pistas';
+  renderLib();
+  if (mode==='asistido') refreshSuggestions(true);
+}
+function renderLib(){
+  const host=$('#libList'); host.innerHTML='';
+  $('#libCount').textContent = libRows.length+(libRows.length===1?' pista':' pistas');
+  if (!libRows.length){ host.innerHTML = '<div class="libempty">Vacía. Pulsa «+ Añadir» para guardar pistas que se recordarán al volver.</div>'; return; }
+  libRows.forEach(t => {
+    const row=document.createElement('div'); row.className='lib';
+    row.innerHTML = `<span class="nm" title="${t.name}">${t.name}</span>`+
+      `<span class="mt">${(t.bpm||0).toFixed(0)} BPM · ${camelot(t.key)}</span>`;
+    const a=document.createElement('button'); a.className='btn sm la'; a.textContent='▶ A'; a.title='Cargar en el deck A';
+    a.addEventListener('click',()=>loadFromLib(t,0));
+    const b=document.createElement('button'); b.className='btn sm lb'; b.textContent='▶ B'; b.title='Cargar en el deck B';
+    b.addEventListener('click',()=>loadFromLib(t,1));
+    const x=document.createElement('button'); x.className='btn sm lx'; x.textContent='✕'; x.title='Quitar de la biblioteca';
+    x.addEventListener('click',()=>removeFromLib(t));
+    row.append(a,b,x); host.appendChild(row);
+  });
+}
+async function loadFromLib(t, deck){
+  const bytes = await LIB.getBytes(t.id);
+  if (!bytes){ alert('No se encontró la pista en la biblioteca.'); return; }
+  $('#title'+(deck?'B':'A')).textContent = 'cargando…';
+  await bridge.load(deck, bytes, t.name);
+}
+async function removeFromLib(t){
+  try { await LIB.removeTrack(t.id); } catch(e){ alert('No se pudo borrar: '+(e.message||e)); return; }
+  libRows = libRows.filter(r => r.id !== t.id);
+  copFiles.delete(t.name);
+  renderLib();
+}
+$('#libAdd').addEventListener('change', async (e)=>{
+  if (!LIB.available()){ alert('Este navegador no permite guardar la biblioteca.'); return; }
+  const files = Array.from(e.target.files); e.target.value='';
+  for (const f of files){
+    $('#libNote').textContent = 'analizando «'+f.name+'»…';
+    try {
+      const bytes = await f.arrayBuffer();
+      const a = await bridge.analyzeAwait(bytes.slice(0), f.name);   // copia para el worker; conserva `bytes` para guardar
+      const meta = await LIB.putTrack({ name:f.name, bpm:a.bpm, key:a.key, energy:a.energy, size:f.size, type:f.type, bytes });
+      libRows = libRows.filter(r => r.id !== meta.id).concat(meta);  // reemplaza si ya existía ese nombre
+      copilot.addTrack({ name:meta.name, bpm:meta.bpm, key:meta.key, energy:meta.energy });
+      copFiles.set(meta.name, { lib:meta.id });
+    } catch(err){ $('#libNote').textContent = 'No se pudo añadir «'+f.name+'»: '+(err.message||err); continue; }
+  }
+  $('#libCount').textContent = libRows.length+(libRows.length===1?' pista':' pistas');
+  $('#copCount').textContent = copilot.size()+' pistas';
+  $('#libNote').textContent = 'Las pistas se guardan en este navegador (IndexedDB) y se recuerdan entre sesiones.';
+  libSentToAuto = false;             // la biblioteca cambió: permite re-enviarla al AUTO
+  renderLib();
+  if (mode==='asistido') refreshSuggestions(true);
+});
+// Carga toda la biblioteca en el selector del DJ automático (sin duplicar).
+$('#libToAuto').addEventListener('click', async ()=>{
+  if (libSentToAuto || !libRows.length){ return; }
+  const btn=$('#libToAuto'); btn.disabled=true; btn.textContent='cargando…';
+  for (const t of libRows){
+    const bytes = await LIB.getBytes(t.id); if (!bytes) continue;
+    await bridge.autoAdd(bytes, t.name); libCount++;
+  }
+  $('#libcount').textContent = libCount+' pistas';
+  libSentToAuto = true; btn.textContent='✓ en AUTO'; btn.disabled=false;
+});
+
 // Exponer para pruebas automatizadas (Playwright)
-window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn, refreshSuggestions };
+window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn,
+  refreshSuggestions, lib:LIB, libRows:()=>libRows, hydrateLibrary, renderLib };
 </script>
 </body>
 </html>

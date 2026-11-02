@@ -15,6 +15,8 @@ export class AudioBridge {
     this.onLoaded = null;      // callback({deck, ok, name, dur, bpm, key, err})
     this.onError = null;       // callback(message)
     this._buffers = makeSharedBuffers();
+    this._pending = new Map(); // reqId -> resolve (para analyzeAwait)
+    this._reqSeq = 0;
   }
 
   // Debe llamarse desde un gesto del usuario (click) para cumplir la política de autoplay.
@@ -37,7 +39,12 @@ export class AudioBridge {
       else if (m.type === 'status' && this.onStatus) this.onStatus(m);
       else if (m.type === 'loaded' && this.onLoaded) this.onLoaded(m);
       else if (m.type === 'waveform' && this.onWaveform) this.onWaveform(m);
-      else if (m.type === 'analyzed' && this.onAnalyzed) this.onAnalyzed(m);
+      else if (m.type === 'analyzed') {
+        // Si la petición esperaba respuesta (analyzeAwait), resuélvela; si no, callback legacy.
+        if (m.reqId != null && this._pending.has(m.reqId)) {
+          const res = this._pending.get(m.reqId); this._pending.delete(m.reqId); res(m);
+        } else if (this.onAnalyzed) this.onAnalyzed(m);
+      }
       else if (m.type === 'auto_added' && this.onAutoAdded) this.onAutoAdded(m);
       else if (m.type === 'auto_enabled' && this.onAutoEnabled) this.onAutoEnabled(m);
       else if (m.type === 'error' && this.onError) this.onError(m.message);
@@ -83,6 +90,15 @@ export class AudioBridge {
   async analyze(fileOrBytes, name) {
     const bytes = fileOrBytes instanceof ArrayBuffer ? fileOrBytes : await fileOrBytes.arrayBuffer();
     this._send({ type: 'analyze', bytes, name: name || (fileOrBytes.name || 'track') });
+  }
+  // Como analyze(), pero devuelve una promesa con {name,bpm,key,energy}. Lo usa la
+  // biblioteca persistente para guardar los metadatos de cada pista que añade.
+  async analyzeAwait(fileOrBytes, name) {
+    const bytes = fileOrBytes instanceof ArrayBuffer ? fileOrBytes : await fileOrBytes.arrayBuffer();
+    const reqId = ++this._reqSeq;
+    const p = new Promise((resolve) => this._pending.set(reqId, resolve));
+    this._send({ type: 'analyze', bytes, name: name || (fileOrBytes.name || 'track'), reqId });
+    return p;
   }
 
   // ---- Modo automático (AutoMix+Selector compartidos en WASM, P1) ----
