@@ -15,9 +15,12 @@
     color:var(--text);font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
     display:flex;flex-direction:column;min-height:100vh}
   .wrap{max-width:900px;margin:0 auto;padding:48px 20px 24px;flex:1;width:100%}
-  .brand{font-weight:800;letter-spacing:.18em;font-size:20px;text-align:center}
+  .masthead{text-align:center;margin-bottom:34px}
+  .logo-ia{height:70px;width:auto;border-radius:14px;border:1px solid var(--line);
+    box-shadow:0 8px 26px rgba(0,0,0,.4);margin-bottom:14px}
+  .brand{font-weight:800;letter-spacing:.18em;font-size:20px}
   .brand .g{color:var(--gold)}
-  .tag{color:var(--muted);text-align:center;margin:8px 0 36px;font-size:14px}
+  .tag{color:var(--muted);margin-top:8px;font-size:14px}
   .cards{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   @media(max-width:680px){.cards{grid-template-columns:1fr}}
   .card{display:flex;flex-direction:column;background:linear-gradient(180deg,var(--panel2),var(--panel));
@@ -34,14 +37,18 @@
   .go{align-self:flex-start;font-weight:800;letter-spacing:.06em;font-size:12px;padding:10px 16px;border-radius:10px;
     background:linear-gradient(180deg,var(--gold),#a9892b);color:#1a1300}
   .note{color:var(--muted);font-size:11px;margin-top:10px}
-  .foot{color:var(--muted);text-align:center;font-size:11px;padding:18px}
+  .foot{color:var(--muted);text-align:center;font-size:11px;padding:22px}
+  .foot img{height:40px;width:auto;display:block;margin:0 auto 8px;opacity:.95}
   .foot b{color:var(--text)}
 </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="brand">AUDIT <span class="g">SOUND</span></div>
-    <div class="tag">Mezcla musical con inteligencia artificial</div>
+    <div class="masthead">
+      <img class="logo-ia" src="./assets/logo_audit_ia.jpg" alt="AUDIT IA — Artificial Intelligence">
+      <div class="brand">AUDIT <span class="g">SOUND</span></div>
+      <div class="tag">Mezcla musical con inteligencia artificial</div>
+    </div>
 
     <div class="cards">
       <a class="card mix" id="cardMix" href="./mixer.html">
@@ -64,7 +71,10 @@
       </a>
     </div>
   </div>
-  <div class="foot">AUDIT SOUND · <b>AuditConsulting</b></div>
+  <div class="foot">
+    <img src="./assets/logo_auditconsulting_blanco.png" alt="AuditConsulting Group">
+    Una plataforma de <b>AuditConsulting Group</b>
+  </div>
 
 <script src="config.js" onerror="void 0"></script>
 <script>
