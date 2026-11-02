@@ -318,6 +318,10 @@
             <input type="search" id="omQuery" placeholder="Buscar música libre (Creative Commons)…">
             <button class="btn sm" id="omSearchBtn">Buscar</button>
           </div>
+          <div class="ndsearch" style="margin-top:6px">
+            <button class="btn sm" id="omSetBtn" title="Arma una mezcla automática con esa búsqueda" style="flex:1">🎶 Armar set y mezclar</button>
+            <input type="number" id="omSetCount" min="2" max="30" value="10" title="nº de pistas" style="width:64px;flex:0 0 auto">
+          </div>
           <div class="ndstatus" id="omStatus"></div>
           <div class="liblist" id="omList"></div>
           <div class="libnote">Música Creative Commons vía Jamendo (a través del backend). Respeta la licencia de cada pista (atribución). Si está desactivado, configura <b>JAMENDO_CLIENT_ID</b> en Coolify.</div>
@@ -327,6 +331,10 @@
           <div class="ndsearch">
             <input type="search" id="iaQuery" placeholder="Buscar en Internet Archive (sin término: netlabels)…">
             <button class="btn sm" id="iaSearchBtn">Buscar</button>
+          </div>
+          <div class="ndsearch" style="margin-top:6px">
+            <button class="btn sm" id="iaSetBtn" title="Arma una mezcla automática con esa búsqueda" style="flex:1">🎶 Armar set y mezclar</button>
+            <input type="number" id="iaSetCount" min="2" max="30" value="10" title="nº de pistas" style="width:64px;flex:0 0 auto">
           </div>
           <div class="ndstatus" id="iaStatus"></div>
           <div class="liblist" id="iaList"></div>
@@ -890,7 +898,26 @@ async function ndSave(song, btn){
     btn.textContent='✓';
   } catch(e){ ndSetStatus('no se pudo guardar: '+(e.message||e), 'err'); btn.disabled=false; btn.textContent=t0; }
 }
-// "Armar set": busca por artista/género, carga las pistas en el DJ automático y arranca la mezcla.
+// Motor común de "Armar set": recibe las pistas y cómo descargar/nombrar cada una,
+// pasa a modo AUTO, las añade al selector y arranca la mezcla automática.
+async function runSet(songs, fetchBytes, nameOf, setStatus){
+  if (!songs.length){ setStatus('sin resultados', 'err'); return; }
+  setMode('auto');                                                  // DJ automático
+  let added=0;
+  for (const s of songs){
+    setStatus('añadiendo '+(added+1)+'/'+songs.length+' «'+(s.title||s.id)+'»…');
+    try {
+      const bytes = await fetchBytes(s);
+      await bridge.autoAdd(bytes, nameOf(s));
+      added++; libCount++; $('#libcount').textContent = libCount+' pistas';
+    } catch(e){ /* salta la pista que falle */ }
+    if (added===2 && !autoOn){ autoOn=true; bridge.autoEnable(true); $('#autoToggle').textContent='⏸ Detener AUTO'; }  // arranca ya con 2
+  }
+  if (added>0 && !autoOn){ autoOn=true; bridge.autoEnable(true); $('#autoToggle').textContent='⏸ Detener AUTO'; }
+  setStatus(added? ('set en marcha: '+added+' pistas mezclándose en AUTO') : 'no se pudo cargar ninguna pista', added?'ok':'err');
+}
+
+// "Armar set" desde Navidrome (artista + género).
 $('#ndSetBtn').addEventListener('click', ndBuildSet);
 async function ndBuildSet(){
   if (!nd.configured){ ndSetStatus('conecta primero', 'err'); return; }
@@ -904,20 +931,7 @@ async function ndBuildSet(){
     const seen=new Set();
     songs=[...byText,...byGenre].filter(s=>{ if(!s.id||seen.has(s.id)) return false; seen.add(s.id); return true; }).slice(0,n);
   } catch(e){ ndSetStatus('error: '+(e.message||e), 'err'); return; }
-  if (!songs.length){ ndSetStatus('sin resultados para «'+term+'»', 'err'); return; }
-  setMode('auto');                                                  // pasa a DJ automático
-  let added=0;
-  for (const s of songs){
-    ndSetStatus('añadiendo '+(added+1)+'/'+songs.length+' «'+(s.title||s.id)+'»…');
-    try {
-      const bytes = await nd.getBytes(s.id);
-      await bridge.autoAdd(bytes, SubsonicClient.filename(s));
-      added++; libCount++; $('#libcount').textContent = libCount+' pistas';
-    } catch(e){ /* salta la pista que falle */ }
-    if (added===2 && !autoOn){ autoOn=true; bridge.autoEnable(true); $('#autoToggle').textContent='⏸ Detener AUTO'; }  // arranca ya con 2
-  }
-  if (added>0 && !autoOn){ autoOn=true; bridge.autoEnable(true); $('#autoToggle').textContent='⏸ Detener AUTO'; }
-  ndSetStatus(added? ('set en marcha: '+added+' pistas mezclándose en AUTO') : 'no se pudo cargar ninguna pista', added?'ok':'err');
+  await runSet(songs, (s)=>nd.getBytes(s.id), (s)=>SubsonicClient.filename(s), ndSetStatus);
 }
 
 // Al arrancar, si hay config guardada, deja la URL/usuario a la vista (sin conectar aún).
@@ -940,6 +954,13 @@ async function omSearch(){
 }
 $('#omSearchBtn').addEventListener('click', omSearch);
 $('#omQuery').addEventListener('keydown', (e)=>{ if (e.key==='Enter') omSearch(); });
+$('#omSetBtn').addEventListener('click', async ()=>{
+  if (!OM.enabled()){ omSetStatus('Música libre desactivada.', 'err'); return; }
+  const n = Math.min(30, Math.max(2, parseInt($('#omSetCount').value,10)||10));
+  omSetStatus('armando set…');
+  let songs; try { songs = await OM.search($('#omQuery').value.trim(), n); } catch(e){ omSetStatus('error: '+(e.message||e),'err'); return; }
+  await runSet(songs, (s)=>OM.getBytes(s.audio), (s)=>OM.filename(s), omSetStatus);
+});
 function renderOm(){
   const host=$('#omList'); host.innerHTML='';
   if (!omSongs.length){ host.innerHTML='<div class="libempty">Sin resultados. Busca por artista, título o estilo.</div>'; return; }
@@ -996,6 +1017,13 @@ async function iaSearch(){
 }
 $('#iaSearchBtn').addEventListener('click', iaSearch);
 $('#iaQuery').addEventListener('keydown', (e)=>{ if (e.key==='Enter') iaSearch(); });
+$('#iaSetBtn').addEventListener('click', async ()=>{
+  if (!IA.enabled()){ iaSetStatus('Internet Archive desactivado.', 'err'); return; }
+  const n = Math.min(30, Math.max(2, parseInt($('#iaSetCount').value,10)||10));
+  iaSetStatus('armando set…');
+  let songs; try { songs = await IA.search($('#iaQuery').value.trim(), n); } catch(e){ iaSetStatus('error: '+(e.message||e),'err'); return; }
+  await runSet(songs, (s)=>IA.getBytes(s.id), (s)=>IA.filename(s), iaSetStatus);
+});
 function renderIa(){
   const host=$('#iaList'); host.innerHTML='';
   if (!iaSongs.length){ host.innerHTML='<div class="libempty">Sin resultados. Busca por artista, título o colección.</div>'; return; }
@@ -1075,8 +1103,8 @@ $('#convIn').addEventListener('change', async (e)=>{
 window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn,
   refreshSuggestions, lib:LIB, libRows:()=>libRows, hydrateLibrary, renderLib,
   subsonic:{ client:()=>nd, songs:()=>ndSongs, connect:ndConnect, search:ndSearch, buildSet:ndBuildSet, SubsonicClient },
-  openmusic:{ enabled:OM.enabled, songs:()=>omSongs, search:omSearch },
-  archive:{ enabled:IA.enabled, songs:()=>iaSongs, search:iaSearch },
+  openmusic:{ enabled:OM.enabled, songs:()=>omSongs, search:omSearch, buildSet:()=>$('#omSetBtn').click() },
+  archive:{ enabled:IA.enabled, songs:()=>iaSongs, search:iaSearch, buildSet:()=>$('#iaSetBtn').click() },
   converter:CONV, setConvertOnSave:(v)=>{ $('#ocOpus').checked=!!v; } };
 </script>
 </body>
