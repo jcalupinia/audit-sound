@@ -37,6 +37,13 @@ services:
       AUDIT_SOUND_ICECAST_MOUNT: /stream.mp3
       AUDIT_SOUND_ICECAST_USER: source
       AUDIT_SOUND_ICECAST_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+      # Fuente Subsonic/Navidrome (opcional; si se define, tiene prioridad):
+      AUDIT_SOUND_SUBSONIC_URL: ${AUDIT_SOUND_SUBSONIC_URL:-}
+      AUDIT_SOUND_SUBSONIC_USER: ${AUDIT_SOUND_SUBSONIC_USER:-}
+      AUDIT_SOUND_SUBSONIC_PASS: ${AUDIT_SOUND_SUBSONIC_PASS:-}
+      AUDIT_SOUND_SUBSONIC_PLAYLIST: ${AUDIT_SOUND_SUBSONIC_PLAYLIST:-}
+      AUDIT_SOUND_TRANSITION: ${AUDIT_SOUND_TRANSITION:-8}
+      AUDIT_SOUND_MIX_MODE: ${AUDIT_SOUND_MIX_MODE:-0}
     volumes:
       - ${MUSIC_DIR:-./music}:/music:ro          # tu biblioteca (solo lectura)
     restart: unless-stopped

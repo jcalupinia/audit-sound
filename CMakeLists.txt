@@ -36,6 +36,9 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
   libavcodec libavformat libavutil libswresample)
 
+# libcurl (cliente Subsonic/Navidrome, issue M2).
+pkg_check_modules(CURL REQUIRED IMPORTED_TARGET libcurl)
+
 # Dependencias vendorizadas (cada una con su propio CMake).
 add_subdirectory(${ROOT}/third_party/qm-dsp qm-dsp-build)
 include(${ROOT}/third_party/opus_stack.cmake)   # define: ogg, opus, opusfile
@@ -45,10 +48,11 @@ add_library(audit_sound_engine STATIC
   ${ROOT}/engine/dj_engine.cpp
   ${ROOT}/engine/last_error.cpp
   ${ROOT}/engine/automix/automix.cpp
+  ${ROOT}/engine/catalog/subsonic.cpp
 )
 target_compile_definitions(audit_sound_engine PRIVATE _USE_MATH_DEFINES)
 target_compile_options(audit_sound_engine PRIVATE -fexceptions)
-target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine ${ROOT}/engine/automix)
+target_include_directories(audit_sound_engine PUBLIC ${ROOT}/engine ${ROOT}/engine/automix ${ROOT}/engine/catalog)
 target_include_directories(audit_sound_engine PRIVATE
   ${ROOT}/engine/sinks
   ${ROOT}/third_party/dr_libs
@@ -58,7 +62,7 @@ target_include_directories(audit_sound_engine PRIVATE
   ${LAME_INCLUDE_DIR}
   ${SHOUT_INCLUDE_DIR}
 )
-target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY} ${SHOUT_LIBRARY} PkgConfig::FFMPEG)
+target_link_libraries(audit_sound_engine PRIVATE qm_dsp opusfile Threads::Threads ${LAME_LIBRARY} ${SHOUT_LIBRARY} PkgConfig::FFMPEG PkgConfig::CURL)
 
 # Autoprueba headless: crea el motor, arranca el sink, opcionalmente carga
 # un archivo y comprueba que la posición avanza (pipeline vivo).
@@ -78,3 +82,7 @@ target_link_libraries(audit_sound_server PRIVATE audit_sound_engine Threads::Thr
 # Prueba del detector de silencio (-60 dB) + energía (M2).
 add_executable(silence_test ${ROOT}/tools/silence_test.cpp)
 target_link_libraries(silence_test PRIVATE audit_sound_engine Threads::Threads)
+
+# Prueba del cliente Subsonic/Navidrome (M2): MD5, ping, listado, descarga.
+add_executable(subsonic_test ${ROOT}/tools/subsonic_test.cpp)
+target_link_libraries(subsonic_test PRIVATE audit_sound_engine Threads::Threads)

@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Instalar toolchain
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libcurl4-openssl-dev
       - name: Configurar y compilar (sin Oboe)
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
