@@ -117,6 +117,17 @@
   .lib .la{color:var(--a)} .lib .lb{color:var(--b)} .lib .lx{color:var(--muted)}
   .libnote{font-size:10px;color:var(--muted);margin-top:8px}
   .libempty{font-size:11px;color:var(--muted);padding:6px 2px}
+  /* Navidrome / Subsonic */
+  .ndpanel{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .ndpanel.hide{display:none}
+  .ndform{display:grid;grid-template-columns:1fr;gap:6px}
+  .ndform input{background:#0a1626;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:12px;width:100%}
+  .ndform .rowb{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ndstatus{font-size:11px;color:var(--muted)}
+  .ndstatus.ok{color:var(--ok)} .ndstatus.err{color:var(--red)}
+  .ndsearch{display:flex;gap:8px;margin-top:8px}
+  .ndsearch input{flex:1;background:#0a1626;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:12px}
+  .lib .ls{color:var(--gold)}
   .autopanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   .autopanel.hide,.manualonly.hide{display:none}
   .autopanel .nowp{font-size:12px;color:var(--muted);margin:8px 0}
@@ -256,10 +267,32 @@
           <span class="cnt" id="libCount">0 pistas</span>
           <label class="btn load sm" style="display:inline-block">+ Añadir
             <input type="file" accept="audio/*" multiple id="libAdd"></label>
+          <button class="btn sm" id="ndToggle" title="Cargar desde tu servidor Navidrome/Subsonic">☁ Navidrome</button>
           <button class="btn sm" id="libToAuto" style="margin-left:auto" title="Carga la biblioteca en el DJ automático">→ AUTO</button>
         </div>
         <div class="liblist" id="libList"></div>
         <div class="libnote" id="libNote">Las pistas se guardan en este navegador (IndexedDB) y se recuerdan entre sesiones.</div>
+
+        <div class="ndpanel hide" id="ndpanel">
+          <div class="ndform">
+            <input type="url" id="ndUrl" placeholder="URL del servidor (p. ej. https://musica.midominio.com)" autocomplete="off">
+            <div class="rowb">
+              <input type="text" id="ndUser" placeholder="usuario" autocomplete="off" style="flex:1">
+              <input type="password" id="ndPass" placeholder="contraseña" autocomplete="off" style="flex:1">
+            </div>
+            <div class="rowb">
+              <button class="btn sm" id="ndConnect">Conectar</button>
+              <button class="btn sm" id="ndForget">Olvidar</button>
+              <span class="ndstatus" id="ndStatus">sin conectar</span>
+            </div>
+          </div>
+          <div class="ndsearch">
+            <input type="search" id="ndQuery" placeholder="Buscar en tu biblioteca Navidrome…">
+            <button class="btn sm" id="ndSearchBtn">Buscar</button>
+          </div>
+          <div class="liblist" id="ndList"></div>
+          <div class="libnote">La contraseña se usa una vez para el token y no se guarda en claro. El servidor necesita HTTPS y CORS habilitado.</div>
+        </div>
       </div>
 
       <div class="copilotpanel hide" id="copilotpanel">
@@ -326,6 +359,7 @@ import { MidiController, TARGETS } from './midi.js';
 import { Copilot, camelot } from './copilot.js';
 import { CTRL } from './ring.js';
 import * as LIB from './library.js';
+import { SubsonicClient, saveConfig, loadConfig, clearConfig } from './subsonic.js';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -695,19 +729,23 @@ async function removeFromLib(t){
   copFiles.delete(t.name);
   renderLib();
 }
+// Guarda una pista (bytes) en la biblioteca persistente: la analiza, la almacena,
+// actualiza la lista y alimenta al copiloto. Reutilizado por "+ Añadir" y Navidrome.
+async function addToLibrary(name, bytes, size, type){
+  const a = await bridge.analyzeAwait(bytes.slice(0), name);  // copia para el worker; conserva `bytes` para guardar
+  const meta = await LIB.putTrack({ name, bpm:a.bpm, key:a.key, energy:a.energy, size:size||bytes.byteLength, type:type||'', bytes });
+  libRows = libRows.filter(r => r.id !== meta.id).concat(meta);  // reemplaza si ya existía ese nombre
+  copilot.addTrack({ name:meta.name, bpm:meta.bpm, key:meta.key, energy:meta.energy });
+  copFiles.set(meta.name, { lib:meta.id });
+  return meta;
+}
 $('#libAdd').addEventListener('change', async (e)=>{
   if (!LIB.available()){ alert('Este navegador no permite guardar la biblioteca.'); return; }
   const files = Array.from(e.target.files); e.target.value='';
   for (const f of files){
     $('#libNote').textContent = 'analizando «'+f.name+'»…';
-    try {
-      const bytes = await f.arrayBuffer();
-      const a = await bridge.analyzeAwait(bytes.slice(0), f.name);   // copia para el worker; conserva `bytes` para guardar
-      const meta = await LIB.putTrack({ name:f.name, bpm:a.bpm, key:a.key, energy:a.energy, size:f.size, type:f.type, bytes });
-      libRows = libRows.filter(r => r.id !== meta.id).concat(meta);  // reemplaza si ya existía ese nombre
-      copilot.addTrack({ name:meta.name, bpm:meta.bpm, key:meta.key, energy:meta.energy });
-      copFiles.set(meta.name, { lib:meta.id });
-    } catch(err){ $('#libNote').textContent = 'No se pudo añadir «'+f.name+'»: '+(err.message||err); continue; }
+    try { await addToLibrary(f.name, await f.arrayBuffer(), f.size, f.type); }
+    catch(err){ $('#libNote').textContent = 'No se pudo añadir «'+f.name+'»: '+(err.message||err); continue; }
   }
   $('#libCount').textContent = libRows.length+(libRows.length===1?' pista':' pistas');
   $('#copCount').textContent = copilot.size()+' pistas';
@@ -728,9 +766,87 @@ $('#libToAuto').addEventListener('click', async ()=>{
   libSentToAuto = true; btn.textContent='✓ en AUTO'; btn.disabled=false;
 });
 
+/* ---- Navidrome / Subsonic: cargar desde tu servidor de música ---- */
+let nd = new SubsonicClient();        // toma la config guardada si existe
+let ndSongs = [];                     // últimos resultados de búsqueda
+function ndSetStatus(text, cls){ const el=$('#ndStatus'); el.textContent=text; el.className='ndstatus'+(cls?(' '+cls):''); }
+$('#ndToggle').addEventListener('click', ()=>{
+  const p=$('#ndpanel'); p.classList.toggle('hide');
+  if (!p.classList.contains('hide')){
+    const c=loadConfig();
+    if (c){ $('#ndUrl').value=c.url; $('#ndUser').value=c.user; ndSetStatus('configurado · pulsa Conectar para comprobar'); }
+  }
+});
+async function ndConnect(){
+  const url=$('#ndUrl').value, user=$('#ndUser').value, password=$('#ndPass').value;
+  if (!url || !user){ ndSetStatus('faltan URL y usuario', 'err'); return; }
+  const cfg = password ? saveConfig({url,user,password}) : loadConfig();
+  if (!cfg){ ndSetStatus('escribe la contraseña la primera vez', 'err'); return; }
+  nd = new SubsonicClient(cfg);
+  $('#ndPass').value='';              // no conservamos la contraseña en el formulario
+  ndSetStatus('conectando…');
+  try { const info = await nd.ping(); ndSetStatus('conectado · '+(info.type||'Subsonic')+' '+(info.version||''), 'ok'); }
+  catch(e){ ndSetStatus('error: '+(e.message||e), 'err'); }
+}
+$('#ndConnect').addEventListener('click', ndConnect);
+$('#ndForget').addEventListener('click', ()=>{ clearConfig(); nd=new SubsonicClient(); $('#ndUser').value=''; $('#ndPass').value=''; ndSongs=[]; renderNd(); ndSetStatus('olvidado'); });
+async function ndSearch(){
+  if (!nd.configured){ ndSetStatus('conecta primero', 'err'); return; }
+  const q=$('#ndQuery').value.trim();
+  ndSetStatus('buscando…');
+  try { ndSongs = await nd.search(q, 30); ndSetStatus(ndSongs.length+' resultado(s)', ndSongs.length?'ok':''); renderNd(); }
+  catch(e){ ndSetStatus('error: '+(e.message||e), 'err'); }
+}
+$('#ndSearchBtn').addEventListener('click', ndSearch);
+$('#ndQuery').addEventListener('keydown', (e)=>{ if (e.key==='Enter') ndSearch(); });
+function renderNd(){
+  const host=$('#ndList'); host.innerHTML='';
+  if (!ndSongs.length){ host.innerHTML='<div class="libempty">Sin resultados. Busca por título, artista o álbum.</div>'; return; }
+  ndSongs.forEach(song => {
+    const name = SubsonicClient.filename(song);
+    const row=document.createElement('div'); row.className='lib';
+    row.innerHTML = `<span class="nm" title="${name}">${song.title}${song.artist?' · '+song.artist:''}</span>`+
+      `<span class="mt">${song.suffix||''}</span>`;
+    const a=document.createElement('button'); a.className='btn sm la'; a.textContent='▶ A'; a.title='Cargar en el deck A';
+    a.addEventListener('click',()=>ndLoad(song,0,a));
+    const b=document.createElement('button'); b.className='btn sm lb'; b.textContent='▶ B'; b.title='Cargar en el deck B';
+    b.addEventListener('click',()=>ndLoad(song,1,b));
+    const s=document.createElement('button'); s.className='btn sm ls'; s.textContent='＋'; s.title='Guardar en la biblioteca';
+    s.addEventListener('click',()=>ndSave(song,s));
+    row.append(a,b,s); host.appendChild(row);
+  });
+}
+async function ndLoad(song, deck, btn){
+  const name = SubsonicClient.filename(song);
+  const t0=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try {
+    const bytes = await nd.getBytes(song.id);
+    $('#title'+(deck?'B':'A')).textContent='cargando…';
+    await bridge.load(deck, bytes, name);
+  } catch(e){ ndSetStatus('no se pudo cargar: '+(e.message||e), 'err'); }
+  btn.disabled=false; btn.textContent=t0;
+}
+async function ndSave(song, btn){
+  if (!LIB.available()){ alert('Este navegador no permite guardar la biblioteca.'); return; }
+  const name = SubsonicClient.filename(song);
+  const t0=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try {
+    const bytes = await nd.getBytes(song.id);
+    await addToLibrary(name, bytes, song.size, '');
+    $('#libCount').textContent = libRows.length+(libRows.length===1?' pista':' pistas');
+    $('#copCount').textContent = copilot.size()+' pistas';
+    libSentToAuto=false; renderLib();
+    if (mode==='asistido') refreshSuggestions(true);
+    btn.textContent='✓';
+  } catch(e){ ndSetStatus('no se pudo guardar: '+(e.message||e), 'err'); btn.disabled=false; btn.textContent=t0; }
+}
+// Al arrancar, si hay config guardada, deja la URL/usuario a la vista (sin conectar aún).
+(function(){ const c=loadConfig(); if (c){ $('#ndUrl').value=c.url; $('#ndUser').value=c.user; } })();
+
 // Exponer para pruebas automatizadas (Playwright)
 window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn,
-  refreshSuggestions, lib:LIB, libRows:()=>libRows, hydrateLibrary, renderLib };
+  refreshSuggestions, lib:LIB, libRows:()=>libRows, hydrateLibrary, renderLib,
+  subsonic:{ client:()=>nd, songs:()=>ndSongs, connect:ndConnect, search:ndSearch, SubsonicClient } };
 </script>
 </body>
 </html>
