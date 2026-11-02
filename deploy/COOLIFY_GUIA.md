@@ -19,13 +19,15 @@ Dos previews, cada uno prueba una cosa distinta:
 1. **GitHub App de Coolify** instalada sobre `jcalupinia/audit-sound` (para que Coolify
    pueda clonar y, si quieres, publicar previews por PR).
    - Si no la tienes: en Coolify → *Sources* → GitHub App → instalar en el repo.
-2. **DNS**: apunta los subdominios que vayas a usar al **IP del servidor Hetzner** (el
-   servidor `localhost` que ya tienes en Coolify). Ejemplos:
-   - `mix.audit-ia`   → Preview A (mezclador PRO)
-   - `www.audit-ia`   → Preview B, servicio `web`
-   - `stream.audit-ia`→ Preview B, servicio `icecast`
-   - Registros `A` (o `CNAME`) → IP del servidor. El TLS lo emite Coolify (Traefik +
-     Let's Encrypt) solo con que el DNS resuelva al servidor.
+2. **DNS**: apunta el dominio y los subdominios que vayas a usar al **IP del servidor
+   Hetzner** (el servidor `localhost` que ya tienes en Coolify):
+   - `audit-ia.ec`   → **la página** (landing + mezclador PRO). Registro `A` del dominio
+     raíz (apex) → IP del servidor. *(Si tu DNS no permite `A` en el apex, usa `ALIAS`/
+     `ANAME`, o pon la página en `www.audit-ia.ec` con `CNAME` y redirige el apex a `www`.)*
+   - `escuchar.audit-ia.ec`   → streaming, servicio `web` (opcional)
+   - `stream.audit-ia.ec`→ streaming, servicio `icecast` (opcional)
+   - Subdominios: registro `A` (o `CNAME`) → IP del servidor. El TLS lo emite Coolify
+     (Traefik + Let's Encrypt) en cuanto el DNS resuelva al servidor.
 3. Un **proyecto** en Coolify donde crear los recursos (o usa uno existente).
 
 ---
@@ -39,9 +41,9 @@ Dos previews, cada uno prueba una cosa distinta:
    - **Base Directory / Build Context:** `/` (raíz del repo).
 4. **Network / Port:** puerto expuesto **80**.
 5. **Healthcheck:** path **`/healthz`** (método GET, espera `200`).
-6. **Domains:** añade `https://mix.audit-ia` (o tu dominio). Coolify pedirá el TLS a
+6. **Domains:** añade `https://audit-ia.ec` (o tu dominio). Coolify pedirá el TLS a
    Let's Encrypt automáticamente.
-7. **Environment (opcional):** `LISTEN_URL = https://www.audit-ia` → enlaza la tarjeta
+7. **Environment (opcional):** `LISTEN_URL = https://escuchar.audit-ia.ec` → enlaza la tarjeta
    **«Escuchar en vivo»** de la landing con el Preview de streaming (Preview B). Si no la
    pones, esa tarjeta queda deshabilitada.
 8. **Deploy.** La primera build **compila el motor a WASM** (tarda unos minutos).
@@ -50,8 +52,8 @@ Dos previews, cada uno prueba una cosa distinta:
 > **Escuchar en vivo** (→ `LISTEN_URL`). Así un solo dominio es la puerta de entrada.
 
 **Comprobar (antes del iPhone):**
-- `https://mix.audit-ia/healthz` → `200 ok`.
-- Abre `https://mix.audit-ia/` en el escritorio: debe cargar el mezclador. En la consola
+- `https://audit-ia.ec/healthz` → `200 ok`.
+- Abre `https://audit-ia.ec/` en el escritorio: debe cargar el mezclador. En la consola
   del navegador, `self.crossOriginIsolated` debe ser `true` (si es `false`, algún
   proxy/CDN está quitando las cabeceras COOP/COEP → ver *Problemas*).
 
@@ -72,16 +74,16 @@ bloqueada**; para audio con pantalla bloqueada usa el Preview B.)*
    ```
    ICECAST_SOURCE_PASSWORD = (una clave fuerte)
    ICECAST_ADMIN_PASSWORD  = (otra clave fuerte)
-   ICECAST_HOSTNAME        = stream.audit-ia
-   STREAM_URL              = https://stream.audit-ia/stream.mp3
+   ICECAST_HOSTNAME        = stream.audit-ia.ec
+   STREAM_URL              = https://stream.audit-ia.ec/stream.mp3
    # Opcionales (panel de control):
    AUDIT_SOUND_API_USER    = dj
    AUDIT_SOUND_API_PASS    = (clave)
    # La demo viene activada: AUDIT_SOUND_DEMO=1 (sin tocar nada suena una demo sintética)
    ```
 4. **Domains por servicio:**
-   - servicio **`web`** → `https://www.audit-ia`
-   - servicio **`icecast`** → `https://stream.audit-ia`
+   - servicio **`web`** → `https://escuchar.audit-ia.ec`
+   - servicio **`icecast`** → `https://stream.audit-ia.ec`
    - Coolify emite TLS para **ambos**.
 5. **Deploy.** El `engine` reintenta hasta que Icecast está listo; con la demo, el stream
    suena en cuanto arranca.
@@ -91,10 +93,10 @@ stream **HTTP**. Por eso `STREAM_URL` debe ser `https://…` y el servicio `icec
 tener su **propio dominio con TLS**. Si lo dejas en HTTP, el iPhone no reproduce.
 
 **Comprobar:**
-- `https://stream.audit-ia/stream.mp3` reproduce en un navegador de escritorio.
-- `https://www.audit-ia` → **Escuchar** → suena la demo.
+- `https://stream.audit-ia.ec/stream.mp3` reproduce en un navegador de escritorio.
+- `https://escuchar.audit-ia.ec` → **Escuchar** → suena la demo.
 
-**En el iPhone (gate móvil de la auditoría):** abre `https://www.audit-ia` → **Escuchar**
+**En el iPhone (gate móvil de la auditoría):** abre `https://escuchar.audit-ia.ec` → **Escuchar**
 → **bloquea la pantalla** → el audio **sigue**, con controles en la pantalla de bloqueo
 (Media Session). Eso confirma la reproducción en segundo plano.
 

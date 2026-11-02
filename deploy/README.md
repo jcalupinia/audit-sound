@@ -7,9 +7,9 @@ emite un stream MP3 por **Icecast**, y la **web** lo reproduce en el navegador.
 
 | Servicio | Qué hace | Dominio en Coolify |
 |---|---|---|
-| `icecast` | Servidor de stream (mountpoint `/stream.mp3`) | p.ej. `stream.audit-ia` |
+| `icecast` | Servidor de stream (mountpoint `/stream.mp3`) | p.ej. `stream.audit-ia.ec` |
 | `engine`  | Motor/DJ: reproduce `/music` en bucle y publica el MP3 a Icecast | — (interno) |
-| `web`     | Página (nginx) que reproduce el stream | p.ej. `www.audit-ia` |
+| `web`     | Página (nginx) que reproduce el stream | p.ej. `escuchar.audit-ia.ec` |
 
 > El `engine` encadena las pistas con el **AutoMix** (transiciones) y el **selector
 > inteligente** (armonía/BPM/energía). Si no le das música, suena un **audio de demo**
@@ -23,7 +23,7 @@ emite un stream MP3 por **Icecast**, y la **web** lo reproduce en el navegador.
    nunca en el repo): `ICECAST_SOURCE_PASSWORD`, `ICECAST_ADMIN_PASSWORD`,
    `ICECAST_HOSTNAME`, `STREAM_URL`. Para el Preview rápido con demo, no hace falta nada
    más (la demo viene activada con `AUDIT_SOUND_DEMO=1`).
-3. **Dominios**: asignar `www.audit-ia` → servicio `web` **y** `stream.audit-ia` →
+3. **Dominios**: asignar `escuchar.audit-ia.ec` → servicio `web` **y** `stream.audit-ia.ec` →
    servicio `icecast`. Coolify pone el proxy y el **TLS (Let's Encrypt)** en **ambos**.
 4. **`STREAM_URL`** debe ser la URL **HTTPS** del Icecast: `https://<ICECAST_HOSTNAME>/stream.mp3`.
    **Mezcla de contenido:** una página HTTPS **no puede** cargar un stream HTTP (iOS lo
@@ -36,8 +36,8 @@ emite un stream MP3 por **Icecast**, y la **web** lo reproduce en el navegador.
 
 ## Verificar (gate de M1)
 
-- `https://stream.audit-ia/stream.mp3` reproduce en un navegador de escritorio.
-- Abrir `https://www.audit-ia` → **Escuchar** → suena.
+- `https://stream.audit-ia.ec/stream.mp3` reproduce en un navegador de escritorio.
+- Abrir `https://escuchar.audit-ia.ec` → **Escuchar** → suena.
 - **En iPhone (Safari/WebKit) y Android (Chrome): bloquear la pantalla** y confirmar
   que el audio sigue, con controles en la pantalla de bloqueo (Media Session).
   Este es el criterio que retira el riesgo R1.

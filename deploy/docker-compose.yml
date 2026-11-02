@@ -3,7 +3,7 @@
 #
 # En Coolify: crear un recurso "Docker Compose", apuntar a este archivo, definir
 # las variables de entorno (ver deploy/.env.example) y asignar dominios a los
-# servicios `web` (p.ej. www.audit-ia) e `icecast` (p.ej. stream.audit-ia). Coolify
+# servicios `web` (p.ej. escuchar.audit-ia.ec) e `icecast` (p.ej. stream.audit-ia.ec). Coolify
 # pone el proxy y el TLS (Let's Encrypt) delante; no publiques puertos a mano en
 # producción salvo que no uses el proxy.
 #
@@ -52,7 +52,7 @@ services:
       AUDIT_SOUND_API_USER: ${AUDIT_SOUND_API_USER:-}
       AUDIT_SOUND_API_PASS: ${AUDIT_SOUND_API_PASS:-}
       AUDIT_SOUND_API_PORT: "8787"
-    # Para probar sin el proxy de Coolify, descomentar (y asignar dominio api.audit-ia):
+    # Para probar sin el proxy de Coolify, descomentar (y asignar dominio api.audit-ia.ec):
     # ports:
     #   - "8787:8787"
     volumes:
