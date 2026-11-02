@@ -23,9 +23,16 @@ void automix_set_next_track(AutoMix am, AutoMixNextTrackFn cb, void* user);
 void automix_set_transition_time(AutoMix am, double seconds);  // default 8
 void automix_set_mode(AutoMix am, int mode);  // 0 = skip-silence, 1 = pista completa
 
-int automix_enable(AutoMix am, int on);  // arranca/para el hilo. 1 = ok
+int automix_enable(AutoMix am, int on);  // arranca/para el hilo (servidor/Android). 1 = ok
 void automix_skip(AutoMix am);           // fuerza la transición ya
 int automix_state(AutoMix am);           // 0 disabled, 1 idle, 2 fading
+
+// Ruta sin hilo (navegador/WASM): begin() prepara la sesión (adopta el deck que ya
+// suena o carga la primera pista) y tick() avanza una iteración; el Worker la llama
+// periódicamente. end() deja de conducir el crossfader sin cortar el audio.
+int automix_begin(AutoMix am);   // 1 = listo, 0 = sin pista inicial
+void automix_tick(AutoMix am);
+void automix_end(AutoMix am);
 
 // Telemetría para la Control API (M5).
 int automix_current_path(AutoMix am, char* out, int cap);  // ruta de la pista que suena

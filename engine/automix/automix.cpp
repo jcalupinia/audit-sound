@@ -28,7 +28,9 @@ struct AutoMixImpl {
   std::atomic<int> state{ST_DISABLED};
   std::atomic<bool> running{false};
   std::atomic<bool> skipReq{false};
-  std::thread th;
+#ifndef __EMSCRIPTEN__
+  std::thread th;  // solo servidor/Android; en WASM se usa begin()+tick() sin hilo
+#endif
 
   // Estado por deck (sustituye DeckAttributes).
   double deckFirst[2] = {0.0, 0.0};
@@ -98,83 +100,119 @@ struct AutoMixImpl {
     return false;
   }
 
+  // Prepara la sesión autónoma: adopta un deck que YA esté sonando (conmutación
+  // manual→auto sin cortar el audio) o, si no, carga la primera pista. Devuelve
+  // false solo si no hay ninguna pista válida. No toca `running` (lo hace el caller).
+  bool begin() {
+    int adopt = -1;
+    for (int d = 0; d < 2; ++d)
+      if (dj_loaded(engine, d) && dj_playing(engine, d)) { adopt = d; break; }
+
+    if (adopt >= 0) {
+      // Adopta el deck en reproducción (no reanaliza: usa su duración actual).
+      fromDeck = adopt;
+      deckLoaded[adopt] = true;
+      deckFirst[adopt] = 0.0;
+      deckLast[adopt] = dj_duration(engine, adopt);
+      dj_set_xfader(engine, adopt == 0 ? 0.0f : 1.0f);
+      {
+        std::lock_guard<std::mutex> lk(infoMu);
+        currentPath = deckPath[adopt];  // puede quedar vacío si lo cargó el modo manual
+      }
+      const int other = 1 - adopt;
+      deckLoaded[other] = false;
+      loadIntoRetry(other, 32);  // precarga el otro deck
+    } else {
+      fromDeck = 0;
+      if (!loadIntoRetry(0, 32)) {
+        LOGE("automix: sin pista inicial tras varios intentos");
+        state = ST_DISABLED;
+        return false;
+      }
+      dj_seek(engine, 0, deckFirst[0]);
+      dj_set_xfader(engine, 0.0f);  // deck 0 a tope
+      dj_play(engine, 0, 1);
+      {
+        std::lock_guard<std::mutex> lk(infoMu);
+        currentPath = deckPath[0];
+      }
+      loadIntoRetry(1, 32);  // precarga deck 1 (cued)
+    }
+    computeTransition();
+    state = ST_IDLE;
+    return true;
+  }
+
+  // Una iteración de la máquina de estados (sin dormir ni bucle). En el servidor la
+  // llama loop() en su hilo; en WASM (sin hilos) la llama el Worker periódicamente.
+  void tick() {
+    if (state.load() == ST_DISABLED) return;
+    const double pos = dj_position(engine, fromDeck);
+    const bool playing = dj_playing(engine, fromDeck) != 0;
+
+    if (skipReq.exchange(false)) {
+      fadeBeginSec = pos;
+      fadeEndSec = pos + std::min(transitionTime.load(), 4.0);
+    }
+
+    if (state.load() == ST_IDLE) {
+      if (!playing || pos >= fadeBeginSec) {
+        const int toDeck = 1 - fromDeck;
+        if (!deckLoaded[toDeck]) {
+          if (!loadIntoRetry(toDeck, 32)) return;  // reintenta en el próximo tick
+          computeTransition();
+        }
+        dj_seek(engine, toDeck, toStartSec);
+        syncTempo(fromDeck, toDeck);
+        dj_play(engine, toDeck, 1);
+        LOGI("automix: transición deck %d -> %d (fadeBegin=%.2f fadeEnd=%.2f)", fromDeck,
+             toDeck, fadeBeginSec, fadeEndSec);
+        state = ST_FADING;
+      }
+    } else if (state.load() == ST_FADING) {
+      const int toDeck = 1 - fromDeck;
+      const float startX = fromDeck == 0 ? 0.0f : 1.0f;
+      const float targetX = fromDeck == 0 ? 1.0f : 0.0f;
+      double denom = fadeEndSec - fadeBeginSec;
+      if (denom < 0.05) denom = 0.05;
+      double prog = (pos - fadeBeginSec) / denom;
+      if (prog < 0) prog = 0;
+      if (prog > 1) prog = 1;
+      if (!playing) prog = 1.0;  // la from-deck terminó
+      const float x = startX + (targetX - startX) * (float)prog;
+      dj_set_xfader(engine, x);
+      if (prog >= 1.0) {
+        dj_play(engine, fromDeck, 0);
+        dj_set_xfader(engine, targetX);
+        deckLoaded[fromDeck] = false;
+        const int oldFrom = fromDeck;
+        fromDeck = toDeck;
+        {
+          std::lock_guard<std::mutex> lk(infoMu);
+          currentPath = deckPath[toDeck];
+        }
+        loadIntoRetry(oldFrom, 32);  // precarga la siguiente en el deck liberado
+        computeTransition();
+        LOGI("automix: fin transición; ahora suena deck %d", fromDeck);
+        state = ST_IDLE;
+      }
+    }
+  }
+
+#ifndef __EMSCRIPTEN__
+  // Bucle con hilo (servidor/Android). En WASM se usan begin()+tick() desde JS.
   void loop() {
-    fromDeck = 0;
-    if (!loadIntoRetry(0, 32)) {
-      LOGE("automix: sin pista inicial tras varios intentos");
-      state = ST_DISABLED;
+    if (!begin()) {
       running = false;
       return;
     }
-    dj_seek(engine, 0, deckFirst[0]);
-    dj_set_xfader(engine, 0.0f);  // deck 0 a tope
-    dj_play(engine, 0, 1);
-    {
-      std::lock_guard<std::mutex> lk(infoMu);
-      currentPath = deckPath[0];
-    }
-    loadIntoRetry(1, 32);  // precarga deck 1 (cued)
-    computeTransition();
-    state = ST_IDLE;
-
     while (running.load()) {
-      const double pos = dj_position(engine, fromDeck);
-      const bool playing = dj_playing(engine, fromDeck) != 0;
-
-      if (skipReq.exchange(false)) {
-        fadeBeginSec = pos;
-        fadeEndSec = pos + std::min(transitionTime.load(), 4.0);
-      }
-
-      if (state.load() == ST_IDLE) {
-        if (!playing || pos >= fadeBeginSec) {
-          const int toDeck = 1 - fromDeck;
-          if (!deckLoaded[toDeck]) {
-            if (!loadIntoRetry(toDeck, 32)) {
-              std::this_thread::sleep_for(std::chrono::milliseconds(200));
-              continue;
-            }
-            computeTransition();
-          }
-          dj_seek(engine, toDeck, toStartSec);
-          syncTempo(fromDeck, toDeck);
-          dj_play(engine, toDeck, 1);
-          LOGI("automix: transición deck %d -> %d (fadeBegin=%.2f fadeEnd=%.2f)", fromDeck,
-               toDeck, fadeBeginSec, fadeEndSec);
-          state = ST_FADING;
-        }
-      } else if (state.load() == ST_FADING) {
-        const int toDeck = 1 - fromDeck;
-        const float startX = fromDeck == 0 ? 0.0f : 1.0f;
-        const float targetX = fromDeck == 0 ? 1.0f : 0.0f;
-        double denom = fadeEndSec - fadeBeginSec;
-        if (denom < 0.05) denom = 0.05;
-        double prog = (pos - fadeBeginSec) / denom;
-        if (prog < 0) prog = 0;
-        if (prog > 1) prog = 1;
-        if (!playing) prog = 1.0;  // la from-deck terminó
-        const float x = startX + (targetX - startX) * (float)prog;
-        dj_set_xfader(engine, x);
-        if (prog >= 1.0) {
-          dj_play(engine, fromDeck, 0);
-          dj_set_xfader(engine, targetX);
-          deckLoaded[fromDeck] = false;
-          const int oldFrom = fromDeck;
-          fromDeck = toDeck;
-          {
-            std::lock_guard<std::mutex> lk(infoMu);
-            currentPath = deckPath[toDeck];
-          }
-          loadIntoRetry(oldFrom, 32);  // precarga la siguiente en el deck liberado
-          computeTransition();
-          LOGI("automix: fin transición; ahora suena deck %d", fromDeck);
-          state = ST_IDLE;
-        }
-      }
+      tick();
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     state = ST_DISABLED;
   }
+#endif
 };
 
 }  // namespace
@@ -191,7 +229,9 @@ void automix_destroy(AutoMix am) {
   auto* a = static_cast<AutoMixImpl*>(am);
   if (!a) return;
   a->running = false;
+#ifndef __EMSCRIPTEN__
   if (a->th.joinable()) a->th.join();
+#endif
   delete a;
 }
 
@@ -211,6 +251,7 @@ void automix_set_mode(AutoMix am, int mode) {
 
 int automix_enable(AutoMix am, int on) {
   auto* a = static_cast<AutoMixImpl*>(am);
+#ifndef __EMSCRIPTEN__
   if (on) {
     if (a->running.load()) return 1;
     a->running = true;
@@ -220,9 +261,36 @@ int automix_enable(AutoMix am, int on) {
     if (a->th.joinable()) a->th.join();
   }
   return 1;
+#else
+  // En WASM no hay hilo: usar automix_begin()/automix_tick()/automix_end().
+  (void)a;
+  (void)on;
+  return 0;
+#endif
 }
 
 void automix_skip(AutoMix am) { static_cast<AutoMixImpl*>(am)->skipReq = true; }
+
+// Ruta sin hilo (WASM): el Worker llama begin() una vez y tick() periódicamente.
+int automix_begin(AutoMix am) {
+  auto* a = static_cast<AutoMixImpl*>(am);
+  if (a->running.load()) return 1;
+  a->running = true;
+  const bool ok = a->begin();
+  if (!ok) a->running = false;
+  return ok ? 1 : 0;
+}
+
+void automix_tick(AutoMix am) {
+  auto* a = static_cast<AutoMixImpl*>(am);
+  if (a->running.load()) a->tick();
+}
+
+void automix_end(AutoMix am) {
+  auto* a = static_cast<AutoMixImpl*>(am);
+  a->running = false;
+  a->state = ST_DISABLED;  // deja de conducir el crossfader; el audio sigue sonando
+}
 
 int automix_state(AutoMix am) { return static_cast<AutoMixImpl*>(am)->state.load(); }
 
