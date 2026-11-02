@@ -127,6 +127,19 @@ export class SubsonicClient {
     }));
   }
 
+  // Canciones por GÉNERO (para "armar set" por estilo, p. ej. merengue).
+  async songsByGenre(genre, count = 25) {
+    const res = await fetch(this._url('getSongsByGenre.view', { genre: genre || '', count, f: 'json' }), { mode: 'cors' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const r = (await res.json())['subsonic-response'] || {};
+    if (r.status !== 'ok') throw new Error((r.error && r.error.message) || 'género rechazado');
+    const songs = (r.songsByGenre && r.songsByGenre.song) || [];
+    return songs.map((s) => ({
+      id: s.id, title: s.title || s.id, artist: s.artist || '', album: s.album || '',
+      duration: s.duration || 0, suffix: s.suffix || '', size: s.size || 0,
+    }));
+  }
+
   // Nombre de archivo sugerido para una canción.
   static filename(song) {
     const base = [song.artist, song.title].filter(Boolean).join(' - ') || song.id;
