@@ -3,625 +3,83 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AUDIT SOUND · Mezcladora</title>
+<title>AUDIT SOUND</title>
 <style>
   :root{
     --bg:#071B2F; --panel:#0A2342; --panel2:#0E2C50; --line:#163a63;
-    --text:#eaf2fb; --muted:#8fa6c4; --gold:#C7A83C;
-    --a:#2ec5ff; --b:#ff7ac2; --ok:#39d98a; --red:#ff5d6c;
+    --text:#eaf2fb; --muted:#8fa6c4; --gold:#C7A83C; --a:#2ec5ff; --b:#ff7ac2;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
-  body{background:
-      radial-gradient(1200px 600px at 50% -10%, #0d2b4d 0%, var(--bg) 60%);
-      color:var(--text);font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-      -webkit-user-select:none;user-select:none;overflow-x:hidden}
-  .wrap{max-width:1180px;margin:0 auto;padding:14px 16px 28px}
-
-  /* Barra superior */
-  .top{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
-  .brand{font-weight:800;letter-spacing:.14em;font-size:15px}
+  html,body{margin:0;min-height:100%}
+  body{background:radial-gradient(1200px 600px at 50% -10%, #0d2b4d 0%, var(--bg) 60%);
+    color:var(--text);font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex;flex-direction:column;min-height:100vh}
+  .wrap{max-width:900px;margin:0 auto;padding:48px 20px 24px;flex:1;width:100%}
+  .brand{font-weight:800;letter-spacing:.18em;font-size:20px;text-align:center}
   .brand .g{color:var(--gold)}
-  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .seg button{background:transparent;color:var(--muted);border:0;padding:9px 16px;font-weight:800;
-      letter-spacing:.08em;cursor:pointer;font-size:12px}
-  .seg button.on{background:linear-gradient(180deg,var(--gold),#a9892b);color:#1a1300}
-  .master{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:11px;color:var(--muted)}
-  .master input{width:120px;accent-color:var(--gold)}
-  .vu{width:92px;height:9px;background:#06182b;border:1px solid var(--line);border-radius:5px;overflow:hidden}
-  .vu i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ok) 0%,var(--gold) 70%,var(--red) 100%)}
-
-  .board{display:grid;grid-template-columns:1fr 300px 1fr;gap:14px}
-  @media(max-width:900px){.board{grid-template-columns:1fr}.mixer{order:3}}
-
-  .deck{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
-      border-radius:16px;padding:14px;position:relative}
-  .deck.A{box-shadow:inset 0 0 0 1px rgba(46,197,255,.10)}
-  .deck.B{box-shadow:inset 0 0 0 1px rgba(255,122,194,.10)}
-  .dtag{position:absolute;top:12px;right:14px;font-weight:800;letter-spacing:.12em;font-size:11px;
-      padding:3px 9px;border-radius:7px}
-  .A .dtag{color:var(--a);background:rgba(46,197,255,.12)}
-  .B .dtag{color:var(--b);background:rgba(255,122,194,.12)}
-  .title{font-weight:700;font-size:14px;margin:0 60px 4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .meta{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-bottom:8px}
-  .meta b{color:var(--text);font-variant-numeric:tabular-nums}
-  canvas.wave{display:block;width:100%;height:84px;background:#06182b;border-radius:10px;border:1px solid var(--line)}
-
-  .row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
-  .btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;
-      padding:10px 12px;font-weight:700;cursor:pointer;font-size:12px}
-  .btn:hover{border-color:var(--gold)}
-  .btn.play{min-width:84px}
-  .btn.play.on{background:linear-gradient(180deg,var(--ok),#1fa968);color:#04150c;border-color:transparent}
-  .btn.cue{min-width:64px;color:var(--gold)}
-  .btn.sm{padding:8px 10px;font-size:11px}
-  .btn.tog.on{background:var(--gold);color:#1a1300;border-color:transparent}
-  .btn.load{background:transparent;border-style:dashed}
-  input[type=file]{display:none}
-
-  .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
-  .pad{background:#09203a;border:1px solid var(--line);border-radius:8px;padding:12px 0;text-align:center;
-      font-size:11px;font-weight:800;cursor:pointer;color:var(--muted)}
-  .pad.set{color:#1a1300}
-  .A .pad.set{background:var(--a);border-color:transparent}
-  .B .pad.set{background:var(--b);border-color:transparent}
-
-  .pitch{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--muted)}
-  .pitch input{flex:1;accent-color:var(--gold)}
-
-  /* Mixer central */
-  .mixer{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
-      border-radius:16px;padding:14px}
-  .chs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .ch{display:flex;flex-direction:column;align-items:center;gap:10px}
-  .ch h4{margin:0;font-size:11px;letter-spacing:.1em;color:var(--muted)}
-  .knob{width:52px;height:52px;border-radius:50%;background:
-      radial-gradient(circle at 50% 35%, #15365c, #0a2038);border:1px solid var(--line);
-      position:relative;cursor:ns-resize;touch-action:none}
-  .knob::after{content:"";position:absolute;left:50%;top:6px;width:2px;height:16px;background:var(--gold);
-      transform-origin:50% 20px;transform:translateX(-50%) rotate(var(--rot,0deg))}
-  .knob.lbl{display:flex;align-items:flex-end;justify-content:center}
-  .klabel{font-size:9px;color:var(--muted);letter-spacing:.08em;margin-top:2px}
-  .cfader{height:150px;display:flex;align-items:center;justify-content:center}
-  .cfader input{writing-mode:vertical-lr;direction:rtl;width:26px;height:150px;accent-color:var(--gold)}
-  .xf{margin-top:14px}
-  .xf .lab{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:4px}
-  .xf input{width:100%;accent-color:var(--gold)}
-
-  /* AUTO panel */
-  .copilotpanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
-  .copilotpanel.hide{display:none}
-  .suggestions{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-  .sug{background:#09203a;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-  .sug.top{border-color:var(--gold)}
-  .sug .l1{display:flex;align-items:center;gap:8px}
-  .sug .nm{font-weight:700;font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .sug .kc{font-size:10px;font-weight:800;color:#1a1300;background:var(--gold);border-radius:6px;padding:2px 6px}
-  .sug .kc.warn{background:#caa24a}
-  .sug .sc{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
-  .sug .l2{font-size:11px;color:var(--muted);margin-top:3px}
-  .sug .prep{margin-top:6px}
-  .coplearn{font-size:10px;color:var(--muted);margin-top:10px}
-  .fxpanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
-  #recBtn.on{background:var(--red);color:#fff;border-color:transparent}
-  .autopanel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
-  .autopanel.hide,.manualonly.hide{display:none}
-  .autopanel .nowp{font-size:12px;color:var(--muted);margin:8px 0}
-  .autopanel .nowp b{color:var(--text)}
-  .ctlrow{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin-top:8px}
-  .ctlrow input[type=range]{flex:1;accent-color:var(--gold)}
-  .statedot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#444;margin-right:6px}
-  .statedot.idle{background:var(--gold)} .statedot.fade{background:var(--ok)}
-
-  /* Overlay de inicio (gesto del usuario para Web Audio) */
-  .ov{position:fixed;inset:0;background:rgba(4,16,30,.92);display:flex;align-items:center;justify-content:center;z-index:9}
-  .ov.hide{display:none}
-  .ov .card{text-align:center}
-  .ov h1{font-weight:800;letter-spacing:.14em;margin:0 0 6px}
-  .ov p{color:var(--muted);margin:0 0 18px;font-size:13px}
-  .ov button{background:linear-gradient(180deg,var(--gold),#a9892b);color:#1a1300;border:0;border-radius:12px;
-      padding:14px 28px;font-weight:800;letter-spacing:.08em;cursor:pointer;font-size:14px}
-  .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:14px}
-  .midipanel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
-  .midipanel.hide{display:none}
-  .midihead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .midihint{font-size:11px;color:var(--muted);margin:8px 0}
-  .learnlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;max-height:220px;overflow:auto}
-  .lrow{display:flex;align-items:center;gap:8px;background:#09203a;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px}
-  .lrow .lbl{flex:1}.lrow .map{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
-  .lrow button{padding:4px 8px;font-size:11px}
-  .lrow button.learning{background:var(--gold);color:#1a1300;border-color:transparent}
+  .tag{color:var(--muted);text-align:center;margin:8px 0 36px;font-size:14px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:680px){.cards{grid-template-columns:1fr}}
+  .card{display:flex;flex-direction:column;background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--line);border-radius:18px;padding:26px;text-decoration:none;color:inherit;
+    transition:border-color .15s, transform .15s}
+  .card:hover{border-color:var(--gold);transform:translateY(-2px)}
+  .card.disabled{opacity:.55;pointer-events:none}
+  .ic{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    font-size:22px;margin-bottom:14px}
+  .mix .ic{background:rgba(46,197,255,.14);color:var(--a)}
+  .listen .ic{background:rgba(255,122,194,.14);color:var(--b)}
+  .card h2{margin:0 0 6px;font-size:18px;font-weight:800}
+  .card p{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+  .go{align-self:flex-start;font-weight:800;letter-spacing:.06em;font-size:12px;padding:10px 16px;border-radius:10px;
+    background:linear-gradient(180deg,var(--gold),#a9892b);color:#1a1300}
+  .note{color:var(--muted);font-size:11px;margin-top:10px}
+  .foot{color:var(--muted);text-align:center;font-size:11px;padding:18px}
+  .foot b{color:var(--text)}
 </style>
 </head>
 <body>
-<div class="ov" id="ov"><div class="card">
-  <h1>AUDIT <span style="color:var(--gold)">SOUND</span></h1>
-  <p>Mezcladora profesional · motor en el navegador (WebAssembly)</p>
-  <button id="startBtn">Iniciar motor de audio</button>
-  <div class="hint">Requiere Chrome/Edge o Safari recientes · audio local, sin servidor</div>
-</div></div>
-
-<div class="wrap">
-  <div class="top">
+  <div class="wrap">
     <div class="brand">AUDIT <span class="g">SOUND</span></div>
-    <div class="seg" id="modeSeg">
-      <button data-m="manual" class="on">MANUAL</button>
-      <button data-m="asistido">ASISTIDO · IA</button>
-      <button data-m="auto">AUTO · IA</button>
+    <div class="tag">Mezcla musical con inteligencia artificial</div>
+
+    <div class="cards">
+      <a class="card mix" id="cardMix" href="./mixer.html">
+        <div class="ic">🎛️</div>
+        <h2>Mezclar</h2>
+        <p>Consola de DJ profesional en el navegador: dos platos, ecualización, crossfader,
+          efectos, hotcues, grabación y MIDI. Con copiloto de IA (asistido) o DJ automático.
+          Ideal en computadora, tablet o móvil <b>en primer plano</b>.</p>
+        <span class="go">Entrar al mezclador ▸</span>
+      </a>
+
+      <a class="card listen" id="cardListen" href="#">
+        <div class="ic">📻</div>
+        <h2>Escuchar en vivo</h2>
+        <p>El DJ automático suena desde el servidor y lo escuchas en streaming. Funciona con
+          la <b>pantalla bloqueada</b> en el iPhone y con los controles en la pantalla de
+          bloqueo. Para fiestas y escucha continua.</p>
+        <span class="go">Escuchar la sesión ▸</span>
+        <div class="note" id="listenNote"></div>
+      </a>
     </div>
-    <button class="btn sm" id="midiBtn" style="margin-left:4px">🎹 MIDI</button>
-    <div class="master">MASTER <input type="range" id="master" min="0" max="1" step="0.01" value="0.9">
-      <div class="vu" title="Nivel de máster"><i id="vubar"></i></div></div>
   </div>
+  <div class="foot">AUDIT SOUND · <b>AuditConsulting</b></div>
 
-  <div class="midipanel hide" id="midipanel">
-    <div class="midihead">
-      <button class="btn sm" id="midiConnect">Conectar MIDI</button>
-      <span id="midiDevices" style="font-size:11px;color:var(--muted)">sin conectar</span>
-      <button class="btn sm" id="midiReset" style="margin-left:auto">Restablecer mapa</button>
-    </div>
-    <div class="midihint">Pulsa «Aprender» y mueve la perilla/fader/botón del controlador para asignarlo.</div>
-    <div class="learnlist" id="learnlist"></div>
-  </div>
-
-  <div class="board">
-    <!-- DECK A -->
-    <section class="deck A" id="deckA">
-      <span class="dtag">DECK A</span>
-      <div class="title" id="titleA">— sin pista —</div>
-      <div class="meta"><span>BPM <b id="bpmA">—</b></span><span>TONO <b id="keyA">—</b></span>
-        <span id="timeA">0:00 / 0:00</span></div>
-      <canvas class="wave" id="waveA"></canvas>
-      <div class="row manualonly">
-        <label class="btn load">Cargar<input type="file" accept="audio/*" data-deck="0" class="loadin"></label>
-        <button class="btn cue" data-deck="0" data-act="cue">CUE</button>
-        <button class="btn play" data-deck="0" data-act="play">▶ PLAY</button>
-        <button class="btn tog sm" data-deck="0" data-act="keylock">KEYLOCK</button>
-        <button class="btn sm" data-deck="0" data-act="sync">SYNC</button>
-      </div>
-      <div class="pads manualonly" data-deck="0">
-        <div class="pad" data-cue="0">HOT 1</div><div class="pad" data-cue="1">HOT 2</div>
-        <div class="pad" data-cue="2">HOT 3</div><div class="pad" data-cue="3">HOT 4</div>
-      </div>
-      <div class="row manualonly">
-        <button class="btn sm" data-deck="0" data-act="bj" data-beats="-4">⟲ -4</button>
-        <button class="btn sm" data-deck="0" data-act="bj" data-beats="4">+4 ⟳</button>
-        <button class="btn tog sm loopb" data-deck="0" data-bars="1">LOOP 1</button>
-        <button class="btn tog sm loopb" data-deck="0" data-bars="2">2</button>
-        <button class="btn tog sm loopb" data-deck="0" data-bars="4">4</button>
-      </div>
-      <div class="pitch manualonly">PITCH
-        <input type="range" data-deck="0" class="pitchin" min="-8" max="8" step="0.1" value="0">
-        <b id="pitchA">0.0%</b></div>
-    </section>
-
-    <!-- MIXER -->
-    <section class="mixer">
-      <div class="chs">
-        <div class="ch" data-deck="0">
-          <h4 style="color:var(--a)">CANAL A</h4>
-          <div class="knob lbl" data-k="trim" data-deck="0" data-min="0" data-max="1.5" data-val="1"></div><div class="klabel">TRIM</div>
-          <div class="knob lbl" data-k="hi" data-deck="0" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">HI</div>
-          <div class="knob lbl" data-k="mid" data-deck="0" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">MID</div>
-          <div class="knob lbl" data-k="low" data-deck="0" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">LOW</div>
-          <div class="knob lbl" data-k="filter" data-deck="0" data-min="-1" data-max="1" data-val="0"></div><div class="klabel">FILTER</div>
-          <div class="cfader"><input type="range" class="chfader" data-deck="0" min="0" max="1" step="0.01" value="1"></div>
-        </div>
-        <div class="ch" data-deck="1">
-          <h4 style="color:var(--b)">CANAL B</h4>
-          <div class="knob lbl" data-k="trim" data-deck="1" data-min="0" data-max="1.5" data-val="1"></div><div class="klabel">TRIM</div>
-          <div class="knob lbl" data-k="hi" data-deck="1" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">HI</div>
-          <div class="knob lbl" data-k="mid" data-deck="1" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">MID</div>
-          <div class="knob lbl" data-k="low" data-deck="1" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">LOW</div>
-          <div class="knob lbl" data-k="filter" data-deck="1" data-min="-1" data-max="1" data-val="0"></div><div class="klabel">FILTER</div>
-          <div class="cfader"><input type="range" class="chfader" data-deck="1" min="0" max="1" step="0.01" value="1"></div>
-        </div>
-      </div>
-      <div class="xf">
-        <div class="lab"><span>A</span><span>CROSSFADER</span><span>B</span></div>
-        <input type="range" id="xfader" min="0" max="1" step="0.01" value="0.5">
-      </div>
-
-      <div class="fxpanel" id="fxpanel">
-        <div style="font-weight:800;letter-spacing:.08em;font-size:11px;color:var(--muted);margin-bottom:8px">FX DE MÁSTER</div>
-        <div class="ctlrow">ECO <input type="range" id="fxEcho" min="0" max="1" step="0.01" value="0">
-          <select id="echoDiv" title="Sincronizado al BPM" style="background:#0a1626;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:3px 6px;font-size:11px">
-            <option value="1">1/4</option><option value="0.75">3/16</option><option value="0.5" selected>1/8</option><option value="0.25">1/16</option>
-          </select></div>
-        <div class="ctlrow">REVERB <input type="range" id="fxReverb" min="0" max="1" step="0.01" value="0"></div>
-        <div class="ctlrow">FILTRO <input type="range" id="fxFilter" min="-1" max="1" step="0.01" value="0"></div>
-        <div class="row">
-          <button class="btn sm" id="recBtn">⏺ Grabar</button>
-          <a class="btn sm" id="recDl" style="display:none;text-decoration:none">⤓ Descargar</a>
-          <span id="recTime" style="font-size:11px;color:var(--muted)"></span>
-        </div>
-      </div>
-
-      <div class="copilotpanel hide" id="copilotpanel">
-        <div style="font-weight:800;letter-spacing:.08em;font-size:12px">COPILOTO · IA <span style="color:var(--muted);font-weight:500">(sugiere; tú decides)</span></div>
-        <div class="nowp" id="copNow">carga tu biblioteca y reproduce una pista</div>
-        <label class="btn load" style="display:inline-block">Biblioteca
-          <input type="file" accept="audio/*" multiple id="copLib"></label>
-        <span id="copCount" style="font-size:11px;color:var(--muted);margin-left:8px">0 pistas</span>
-        <button class="btn sm" id="copRefresh" style="margin-left:6px">↻ Recomendar</button>
-        <div class="suggestions" id="suggestions"></div>
-        <div class="coplearn" id="copLearn"></div>
-      </div>
-
-      <div class="autopanel hide" id="autopanel">
-        <div style="font-weight:800;letter-spacing:.08em;font-size:12px">DJ AUTOMÁTICO · IA</div>
-        <div class="nowp"><span class="statedot" id="autodot"></span><span id="nowPlaying">en espera</span></div>
-        <label class="btn load" style="display:inline-block">Cargar biblioteca
-          <input type="file" accept="audio/*" multiple id="libin"></label>
-        <span id="libcount" style="font-size:11px;color:var(--muted);margin-left:8px">0 pistas</span>
-        <div class="ctlrow">Transición <input type="range" id="tt" min="2" max="16" value="8"><b id="ttv">8 s</b></div>
-        <div class="row">
-          <button class="btn" id="autoToggle">▶ Activar AUTO</button>
-          <button class="btn sm" id="skipBtn">⏭ Mezclar ya</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- DECK B -->
-    <section class="deck B" id="deckB">
-      <span class="dtag">DECK B</span>
-      <div class="title" id="titleB">— sin pista —</div>
-      <div class="meta"><span>BPM <b id="bpmB">—</b></span><span>TONO <b id="keyB">—</b></span>
-        <span id="timeB">0:00 / 0:00</span></div>
-      <canvas class="wave" id="waveB"></canvas>
-      <div class="row manualonly">
-        <label class="btn load">Cargar<input type="file" accept="audio/*" data-deck="1" class="loadin"></label>
-        <button class="btn cue" data-deck="1" data-act="cue">CUE</button>
-        <button class="btn play" data-deck="1" data-act="play">▶ PLAY</button>
-        <button class="btn tog sm" data-deck="1" data-act="keylock">KEYLOCK</button>
-        <button class="btn sm" data-deck="1" data-act="sync">SYNC</button>
-      </div>
-      <div class="pads manualonly" data-deck="1">
-        <div class="pad" data-cue="0">HOT 1</div><div class="pad" data-cue="1">HOT 2</div>
-        <div class="pad" data-cue="2">HOT 3</div><div class="pad" data-cue="3">HOT 4</div>
-      </div>
-      <div class="row manualonly">
-        <button class="btn sm" data-deck="1" data-act="bj" data-beats="-4">⟲ -4</button>
-        <button class="btn sm" data-deck="1" data-act="bj" data-beats="4">+4 ⟳</button>
-        <button class="btn tog sm loopb" data-deck="1" data-bars="1">LOOP 1</button>
-        <button class="btn tog sm loopb" data-deck="1" data-bars="2">2</button>
-        <button class="btn tog sm loopb" data-deck="1" data-bars="4">4</button>
-      </div>
-      <div class="pitch manualonly">PITCH
-        <input type="range" data-deck="1" class="pitchin" min="-8" max="8" step="0.1" value="0">
-        <b id="pitchB">0.0%</b></div>
-    </section>
-  </div>
-  <div class="hint">Modo MANUAL: mezcla tú. Modo AUTO · IA: el motor elige, mezcla y encadena. El cambio de modo no corta el audio.</div>
-</div>
-
-<script type="module">
-import { AudioBridge } from './audio_bridge.js';
-import { MidiController, TARGETS } from './midi.js';
-import { Copilot, camelot } from './copilot.js';
-import { CTRL } from './ring.js';
-
-const $ = (s, r=document) => r.querySelector(s);
-const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-const KEYS = ['8A','8B','9A','9B','10A','10B','11A','11B','12A','12B','1A','1B','2A','2B','3A','3B','4A','4B','5A','5B','6A','6B','7A','7B'];
-const fmt = (s) => { s=Math.max(0,s|0); return `${(s/60)|0}:${String(s%60).padStart(2,'0')}`; };
-const keyName = (k) => camelot(k);     // Camelot consistente con el copiloto
-
-const bridge = new AudioBridge();
-const copilot = new Copilot();
-const deckState = [{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:'',beatOffset:0},{dur:0,pos:0,playing:false,bpm:0,key:-1,energy:0,name:'',beatOffset:0}];
-const waves = [null,null];
-const hot = [[0,0,0,0],[0,0,0,0]];     // puntos (s) por pad; 0 = sin fijar
-const eqv = [{low:0,mid:0,high:0},{low:0,mid:0,high:0}];
-const copFiles = new Map();            // nombre -> File (para "Preparar" sin re-subir)
-let mode = 'manual', autoOn = false, libCount = 0, lastRecKey = '';
-
-/* ---- Arranque (gesto del usuario) ---- */
-$('#startBtn').addEventListener('click', async () => {
-  $('#startBtn').disabled = true; $('#startBtn').textContent = 'Iniciando…';
-  try {
-    bridge.onStatus = onStatus;
-    bridge.onLoaded = onLoaded;
-    bridge.onWaveform = (m) => { if (m.wave){ waves[m.deck]=m.wave; drawWave(m.deck); } };
-    bridge.onError = (e) => console.warn('engine:', e);
-    await bridge.start();
-    bridge.master(parseFloat($('#master').value));
-    $('#ov').classList.add('hide');
-    requestAnimationFrame(tickUI);
-  } catch (e) { $('#startBtn').disabled=false; $('#startBtn').textContent='Reintentar'; alert('No se pudo iniciar: '+(e.message||e)); }
-});
-
-/* ---- Modo MANUAL / AUTO ---- */
-$('#modeSeg').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  setMode(b.dataset.m);
-});
-function setMode(m){
-  mode = m;
-  $$('#modeSeg button').forEach(x => x.classList.toggle('on', x.dataset.m === m));
-  // El DJ mezcla a mano en MANUAL y ASISTIDO; en AUTO conduce la IA.
-  $$('.manualonly').forEach(x => x.classList.toggle('hide', m === 'auto'));
-  $('#autopanel').classList.toggle('hide', m !== 'auto');
-  $('#copilotpanel').classList.toggle('hide', m !== 'asistido');
-  if (m !== 'auto' && autoOn){ bridge.autoEnable(false); autoOn = false; $('#autoToggle').textContent='▶ Activar AUTO'; }
-  if (m === 'asistido') refreshSuggestions(true);
-}
-
-/* ---- Carga por deck ---- */
-$$('.loadin').forEach(inp => inp.addEventListener('change', async (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  const d = +inp.dataset.deck;
-  $('#title'+(d?'B':'A')).textContent = 'cargando…';
-  await bridge.load(d, f, f.name);
-}));
-function onLoaded(m){
-  const L = m.deck ? 'B':'A';
-  $('#title'+L).textContent = m.ok ? m.name : ('error: '+(m.err||'no se pudo cargar'));
-  if (!m.ok) return;
-  $('#bpm'+L).textContent = (m.bpm||0).toFixed(1);
-  $('#key'+L).textContent = keyName(m.key);
-  const ds=deckState[m.deck]; ds.dur=m.dur||0; ds.bpm=m.bpm||0; ds.key=(m.key??-1)|0; ds.energy=m.energy||0; ds.name=m.name; ds.beatOffset=m.beatOffset||0;
-  if (m.wave){ waves[m.deck]=m.wave; }
-  hot[m.deck]=[0,0,0,0]; refreshPads(m.deck);
-  drawWave(m.deck);
-  syncEcho();
-  if (mode === 'asistido') refreshSuggestions(true);
-}
-
-/* ---- Transporte / toggles ---- */
-document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-act]'); if (!el) return;
-  const d = +el.dataset.deck;
-  const act = el.dataset.act;
-  if (act === 'play'){ const on=!deckState[d].playing; bridge.play(d,on); }
-  else if (act === 'cue'){ bridge.cue(d); }
-  else if (act === 'keylock'){ el.classList.toggle('on'); bridge.keylock(d, el.classList.contains('on')); }
-  else if (act === 'sync'){ doSync(d); }
-  else if (act === 'bj'){ bridge.beatjump(d, +el.dataset.beats); }
-});
-function doSync(d){
-  const o = 1-d; const bpmO = parseFloat($('#bpm'+(o?'B':'A')).textContent)||0;
-  const bpmD = parseFloat($('#bpm'+(d?'B':'A')).textContent)||0;
-  if (bpmO>0 && bpmD>0){ const r = bpmO/bpmD; if (r>=0.9 && r<=1.1){ bridge.keylock(d,true); bridge.rate(d,r);
-    const pitchEl=$('.pitchin[data-deck="'+d+'"]'); pitchEl.value=((r-1)*100).toFixed(1); $('#pitch'+(d?'B':'A')).textContent=((r-1)*100).toFixed(1)+'%'; } }
-}
-
-/* ---- Hotcues ---- */
-$$('.pad').forEach(p => p.addEventListener('click', (e) => {
-  const grid = p.closest('.pads'); const d = +grid.dataset.deck; const i = +p.dataset.cue;
-  if (e.shiftKey){ hot[d][i]=0; bridge.hotcueClear(d,i); refreshPads(d); return; }
-  if (hot[d][i]>0){ bridge.hotcueJump(d,i); }
-  else { const pos=deckState[d].pos||0; hot[d][i]=pos||0.0001; bridge.hotcueSet(d,i,pos); refreshPads(d); }
-}));
-function refreshPads(d){
-  const grid = $('.pads[data-deck="'+d+'"]');
-  $$('.pad', grid).forEach((p,i) => p.classList.toggle('set', hot[d][i]>0));
-}
-
-/* ---- Loops ---- */
-$$('.loopb').forEach(b => b.addEventListener('click', () => {
-  const d = +b.dataset.deck; const bars = +b.dataset.bars; const on = !b.classList.contains('on');
-  $$('.loopb[data-deck="'+d+'"]').forEach(x => x.classList.remove('on'));
-  if (on) b.classList.add('on');
-  bridge.loop(d, on, bars);
-}));
-
-/* ---- Pitch / faders / master ---- */
-$$('.pitchin').forEach(inp => inp.addEventListener('input', () => {
-  const d=+inp.dataset.deck; const pct=parseFloat(inp.value); bridge.rate(d, 1+pct/100);
-  $('#pitch'+(d?'B':'A')).textContent = pct.toFixed(1)+'%';
-}));
-$$('.chfader').forEach(inp => inp.addEventListener('input', () => bridge.fader(+inp.dataset.deck, parseFloat(inp.value))));
-$('#xfader').addEventListener('input', (e) => bridge.xfader(parseFloat(e.target.value)));
-$('#master').addEventListener('input', (e) => bridge.master(parseFloat(e.target.value)));
-
-/* ---- Knobs rotatorios (TRIM/EQ/FILTER) ---- */
-$$('.knob').forEach(k => setupKnob(k));
-function setupKnob(k){
-  const min=+k.dataset.min, max=+k.dataset.max; let val=+k.dataset.val;
-  const render=()=>{ const t=(val-min)/(max-min); k.style.setProperty('--rot',(-135+t*270)+'deg'); };
-  const apply=()=>{
-    const d=+k.dataset.deck, kind=k.dataset.k;
-    if (kind==='trim') bridge.gain(d,val);
-    else if (kind==='filter') bridge.filter(d,val);
-    else { eqv[d][kind]=val; bridge.eq(d, eqv[d].low, eqv[d].mid, eqv[d].high); }
-  };
-  render();
-  let drag=false, y0=0, v0=0;
-  k.addEventListener('pointerdown',(e)=>{drag=true;y0=e.clientY;v0=val;k.setPointerCapture(e.pointerId);});
-  k.addEventListener('pointermove',(e)=>{ if(!drag)return; const dv=(y0-e.clientY)/120*(max-min);
-    val=Math.min(max,Math.max(min,v0+dv)); render(); apply(); });
-  k.addEventListener('pointerup',()=>{drag=false;});
-  k.addEventListener('dblclick',()=>{ val=(k.dataset.k==='trim')?1:0; render(); apply(); });
-}
-
-/* ---- AUTO · IA ---- */
-$('#libin').addEventListener('change', async (e) => {
-  for (const f of e.target.files){ await bridge.autoAdd(f, f.name); libCount++; }
-  $('#libcount').textContent = libCount+' pistas';
-});
-$('#tt').addEventListener('input', (e)=>{ $('#ttv').textContent=e.target.value+' s'; bridge.autoTransition(+e.target.value); });
-$('#autoToggle').addEventListener('click', ()=>{
-  autoOn = !autoOn;
-  bridge.autoEnable(autoOn);
-  $('#autoToggle').textContent = autoOn ? '⏸ Detener AUTO' : '▶ Activar AUTO';
-});
-$('#skipBtn').addEventListener('click', ()=> bridge.autoSkip());
-
-/* ---- Modo B: copiloto IA (P3) — recomienda, NO ejecuta ---- */
-bridge.onAnalyzed = (m) => {
-  copilot.addTrack({ name:m.name, bpm:m.bpm, key:m.key, energy:m.energy });
-  $('#copCount').textContent = copilot.size()+' pistas';
-  if (mode==='asistido') refreshSuggestions(true);
-};
-$('#copLib').addEventListener('change', async (e)=>{
-  for (const f of e.target.files){ copFiles.set(f.name, f); await bridge.analyze(f, f.name); }
-});
-$('#copRefresh').addEventListener('click', ()=> refreshSuggestions(true));
-function playingDeck(){ return deckState[0].playing ? 0 : (deckState[1].playing ? 1 : -1); }
-function current(){ const d=playingDeck(); if (d<0) return null; const s=deckState[d];
-  return s.name ? {name:s.name,bpm:s.bpm,key:s.key,energy:s.energy,deck:d} : null; }
-function refreshSuggestions(force){
-  if (mode!=='asistido') return;
-  const cur = current();
-  const sig = cur ? (cur.name+'|'+cur.bpm.toFixed(1)) : 'none';
-  if (!force && sig===lastRecKey) return; lastRecKey=sig;
-  const host=$('#suggestions'); host.innerHTML='';
-  if (!cur){ $('#copNow').textContent = copilot.size()? 'reproduce una pista para recibir sugerencias' : 'carga tu biblioteca y reproduce una pista'; renderLearn(); return; }
-  const freeDeck = 1-cur.deck;
-  $('#copNow').innerHTML = `suena <b>${cur.name}</b> · ${camelot(cur.key)} · ${cur.bpm.toFixed(1)} BPM`;
-  const recs = copilot.recommend(cur, 5);
-  if (!recs.length){ host.innerHTML = '<div class="sug"><div class="l2">añade pistas a la biblioteca para recibir recomendaciones</div></div>'; renderLearn(); return; }
-  recs.forEach((r,i)=>{
-    const row=document.createElement('div'); row.className='sug'+(i===0?' top':'');
-    row.innerHTML = `<div class="l1"><span class="nm">${r.track.name}</span>`+
-      `<span class="kc${r.harmonic?'':' warn'}">${camelot(r.track.key)}</span>`+
-      `<span class="sc">${r.track.bpm.toFixed(0)} BPM · ${(r.score*100|0)}%</span></div>`+
-      `<div class="l2">${r.reason} · ${copilot.suggestTransition(cur,r)}</div>`;
-    const btn=document.createElement('button'); btn.className='btn sm prep';
-    btn.textContent = '▶ Preparar en '+(freeDeck?'B':'A');
-    btn.addEventListener('click', ()=> prepare(r, freeDeck, cur));
-    row.appendChild(btn); host.appendChild(row);
-  });
-  renderLearn();
-}
-// Ejecuta SOLO cuando el DJ lo pide: carga la pista en el deck libre y deja el cue.
-async function prepare(rec, deck, cur){
-  const f = copFiles.get(rec.track.name); if (!f) return;
-  $('#title'+(deck?'B':'A')).textContent = 'preparando…';
-  await bridge.load(deck, f, rec.track.name);
-  copilot.accept(cur, rec);           // aprendizaje: el DJ aceptó esta sugerencia
-  renderLearn();
-}
-function renderLearn(){
-  const p=copilot.prefs;
-  $('#copLearn').textContent = `Aprendizaje: ${p.accepts||0} aceptadas · sesgo energía ${p.energyBias>=0?'+':''}${p.energyBias.toFixed(2)} · tolerancia ${p.bpmTol.toFixed(1)} BPM`;
-}
-
-/* ---- FX de máster + grabación (P2b) ---- */
-$('#fxEcho').addEventListener('input', (e)=>{ bridge.fxEcho(parseFloat(e.target.value)); syncEcho(); });
-$('#echoDiv').addEventListener('change', syncEcho);
-// Eco sincronizado al BPM: el tiempo de retardo = (60/BPM) * división de la pista que suena.
-function syncEcho(){
-  const d = deckState[0].playing ? 0 : (deckState[1].playing ? 1 : -1);
-  const bpm = d>=0 ? deckState[d].bpm : 0;
-  if (bpm>0){ const beat=60/bpm, factor=parseFloat($('#echoDiv').value)||0.5; bridge.fxEchoTime(beat*factor); }
-}
-$('#fxReverb').addEventListener('input', (e)=> bridge.fxReverb(parseFloat(e.target.value)));
-$('#fxFilter').addEventListener('input', (e)=> bridge.fxFilter(parseFloat(e.target.value)));
-$('#fxFilter').addEventListener('dblclick', (e)=>{ e.target.value=0; bridge.fxFilter(0); });
-let recT0=0, recTimer=null, recUrl=null;
-$('#recBtn').addEventListener('click', async ()=>{
-  const btn=$('#recBtn');
-  if (!bridge.recording()){
-    if (bridge.recordStart()){
-      btn.classList.add('on'); btn.textContent='⏹ Detener'; $('#recDl').style.display='none';
-      if (recUrl){ URL.revokeObjectURL(recUrl); recUrl=null; }
-      recT0=performance.now(); recTimer=setInterval(()=>{ $('#recTime').textContent=((performance.now()-recT0)/1000|0)+' s'; },500);
+<script src="config.js" onerror="void 0"></script>
+<script>
+  (function(){
+    var params = new URLSearchParams(location.search);
+    // URL de la consola de streaming: ?listen=... o window.AUDIT_SOUND_LISTEN (config.js).
+    var listen = params.get('listen') || (typeof window.AUDIT_SOUND_LISTEN === 'string' && window.AUDIT_SOUND_LISTEN) || '';
+    var card = document.getElementById('cardListen');
+    if (listen) {
+      card.setAttribute('href', listen);
+    } else {
+      card.classList.add('disabled');
+      document.getElementById('listenNote').textContent = 'Configura la URL de escucha (LISTEN_URL) para habilitar este enlace.';
     }
-  } else {
-    const blob=await bridge.recordStop();
-    btn.classList.remove('on'); btn.textContent='⏺ Grabar'; clearInterval(recTimer); $('#recTime').textContent='';
-    if (blob && blob.size){ recUrl=URL.createObjectURL(blob); const a=$('#recDl');
-      a.href=recUrl; a.download='audit-sound-'+Date.now()+'.webm'; a.style.display='inline-block'; }
-  }
-});
-
-/* ---- Estado (viene del Worker ~5/s) ---- */
-function onStatus(m){
-  m.decks.forEach(dk => {
-    deckState[dk.deck].pos = dk.pos; deckState[dk.deck].dur = dk.dur; deckState[dk.deck].playing = !!dk.playing;
-    const L = dk.deck?'B':'A';
-    $('#time'+L).textContent = fmt(dk.pos)+' / '+fmt(dk.dur);
-    const pb = $('.btn.play[data-deck="'+dk.deck+'"]');
-    if (pb){ pb.classList.toggle('on', !!dk.playing); pb.textContent = dk.playing?'⏸ PAUSE':'▶ PLAY'; }
-  });
-  // AUTO: estado + now-playing
-  const dot=$('#autodot'); dot.className='statedot'+(m.autoState===1?' idle':m.autoState===2?' fade':'');
-  if (mode==='auto'){
-    const names=[$('#titleA').textContent,$('#titleB').textContent];
-    $('#nowPlaying').innerHTML = m.autoState? ('sonando · <b>'+(deckState[0].playing?names[0]:names[1])+'</b>'+(m.autoState===2?' · mezclando…':'')) : 'en espera';
-    m.decks.forEach(dk => { if (dk.loaded && !waves[dk.deck]) bridge.requestWaveform(dk.deck); });
-  }
-  // ASISTIDO: si cambió la pista que suena, recalcular sugerencias (sin ejecutar nada)
-  if (mode==='asistido') refreshSuggestions(false);
-}
-
-/* ---- Dibujo de formas de onda + playhead ---- */
-function drawWave(d){
-  const cv = d?$('#waveB'):$('#waveA'); const ctx=cv.getContext('2d');
-  const w=cv.width=cv.clientWidth*devicePixelRatio, h=cv.height=cv.clientHeight*devicePixelRatio;
-  ctx.clearRect(0,0,w,h);
-  const col = d? '#ff7ac2':'#2ec5ff';
-  const wv = waves[d];
-  if (!wv){ return; }
-  const n=wv.bins, mid=h/2;
-  // Beatgrid: líneas verticales en cada beat (más marcada cada 4 = inicio de compás).
-  const st=deckState[d];
-  if (st.bpm>0 && st.dur>0){
-    const beat=60/st.bpm, off=((st.beatOffset%beat)+beat)%beat;
-    for (let t=off, k=0; t<st.dur; t+=beat, k++){
-      const x=(t/st.dur)*w, downbeat=(k%4===0);
-      ctx.strokeStyle = downbeat ? 'rgba(199,168,60,.55)' : 'rgba(255,255,255,.10)';
-      ctx.lineWidth = downbeat ? 1.4 : 1;
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
-    }
-  }
-  ctx.strokeStyle=col; ctx.globalAlpha=.9; ctx.lineWidth=1;
-  ctx.beginPath();
-  for (let i=0;i<n;i++){ const x=i/n*w; const mn=wv.min[i], mx=wv.max[i];
-    ctx.moveTo(x, mid - mx*mid*0.95); ctx.lineTo(x, mid - mn*mid*0.95); }
-  ctx.stroke(); ctx.globalAlpha=1;
-}
-function drawPlayhead(d){
-  const cv = d?$('#waveB'):$('#waveA'); const ctx=cv.getContext('2d');
-  const st=deckState[d]; if (!waves[d]||!st.dur) return;
-  const x = (st.pos/st.dur)*cv.width;
-  ctx.strokeStyle='#C7A83C'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,cv.height); ctx.stroke();
-}
-const vuCtrl = new Int32Array(bridge._buffers.ctrl);
-let vuLevel = 0;
-function tickUI(){
-  for (let d=0; d<2; d++){ if (waves[d]){ drawWave(d); drawPlayhead(d); } }
-  // VU de máster: pico del último cuadro (se lee y se resetea para medir en vivo) + caída.
-  let peak = 0; try { peak = (Atomics.load(vuCtrl, CTRL.PEAK)||0)/1e6; Atomics.store(vuCtrl, CTRL.PEAK, 0); } catch(e){}
-  vuLevel = Math.max(peak, vuLevel*0.86);
-  const bar=$('#vubar'); if (bar) bar.style.width = Math.min(100, vuLevel*100).toFixed(0)+'%';
-  requestAnimationFrame(tickUI);
-}
-window.addEventListener('resize', ()=>{ drawWave(0); drawWave(1); });
-
-/* ---- MIDI (P2c) ---- */
-const midi = new MidiController(bridge, { getPlaying:(d)=>deckState[d].playing });
-function buildLearnList(){
-  const host=$('#learnlist'); host.innerHTML='';
-  for (const [id,t] of Object.entries(TARGETS)){
-    const row=document.createElement('div'); row.className='lrow';
-    const key=midi.mappingFor(id);
-    row.innerHTML = `<span class="lbl">${t.label}</span><span class="map" data-map="${id}">${key||'—'}</span>`;
-    const btn=document.createElement('button'); btn.className='btn sm'; btn.textContent='Aprender';
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('#learnlist button').forEach(b=>b.classList.remove('learning'));
-      btn.classList.add('learning'); midi.learn(id);
-    });
-    row.appendChild(btn); host.appendChild(row);
-  }
-}
-midi.onLearned=(key,id)=>{
-  const el=document.querySelector(`.map[data-map="${id}"]`); if (el) el.textContent=key;
-  document.querySelectorAll('#learnlist button').forEach(b=>b.classList.remove('learning'));
-};
-midi.onDevices=(names)=>{ $('#midiDevices').textContent = names.length? names.join(', ') : 'sin dispositivos'; };
-$('#midiBtn').addEventListener('click',()=>{ $('#midipanel').classList.toggle('hide'); });
-$('#midiConnect').addEventListener('click',async()=>{
-  try{ const names=await midi.connect(); $('#midiDevices').textContent=names.length?names.join(', '):'sin dispositivos (mueve un control)'; }
-  catch(e){ $('#midiDevices').textContent='no disponible: '+(e.message||e); }
-});
-$('#midiReset').addEventListener('click',()=>{ midi.resetMap(); buildLearnList(); });
-buildLearnList();
-
-// Exponer para pruebas automatizadas (Playwright)
-window.__auditSound = { bridge, midi, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn, refreshSuggestions };
+  })();
 </script>
 </body>
 </html>
