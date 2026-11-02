@@ -36,6 +36,7 @@ export class AudioBridge {
       if (m.type === 'ready') this.ready = true;
       else if (m.type === 'status' && this.onStatus) this.onStatus(m);
       else if (m.type === 'loaded' && this.onLoaded) this.onLoaded(m);
+      else if (m.type === 'waveform' && this.onWaveform) this.onWaveform(m);
       else if (m.type === 'auto_added' && this.onAutoAdded) this.onAutoAdded(m);
       else if (m.type === 'auto_enabled' && this.onAutoEnabled) this.onAutoEnabled(m);
       else if (m.type === 'error' && this.onError) this.onError(m.message);
@@ -76,6 +77,7 @@ export class AudioBridge {
   hotcueClear(deck, i)   { this._send({ type: 'hotcue_clear', deck, index: i }); }
   loop(deck, on, bars)   { this._send({ type: 'loop', deck, on, bars }); }
   beatjump(deck, beats)  { this._send({ type: 'beatjump', deck, beats }); }
+  requestWaveform(deck)  { this._send({ type: 'waveform', deck }); }
 
   // ---- Modo automático (AutoMix+Selector compartidos en WASM, P1) ----
   // Añade una pista a la biblioteca del selector (File/Blob/ArrayBuffer).

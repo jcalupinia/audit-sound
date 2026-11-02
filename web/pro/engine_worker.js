@@ -83,6 +83,19 @@ function statusTick() {
 
 const call = (fn, sig, args) => M.ccall(fn, 'void', sig, args);
 
+// Copia la forma de onda de un deck (bins min/max) para dibujarla en la UI.
+function getWaveform(deck) {
+  const bins = M.ccall('dj_waveform_bins', 'number', [], []);
+  if (bins <= 0) return null;
+  const pMin = M._malloc(bins * 4), pMax = M._malloc(bins * 4);
+  const n = M.ccall('dj_waveform_copy', 'number', ['number', 'number', 'number', 'number', 'number'],
+                    [eng, deck, pMin, pMax, bins]);
+  const min = Float32Array.from(M.HEAPF32.subarray(pMin >> 2, (pMin >> 2) + bins));
+  const max = Float32Array.from(M.HEAPF32.subarray(pMax >> 2, (pMax >> 2) + bins));
+  M._free(pMin); M._free(pMax);
+  return n > 0 ? { bins, min, max } : null;
+}
+
 // Analiza una pista del FS virtual (BPM/tono/energía) para el selector del modo auto.
 function analyzeTrack(path) {
   const pB = M._malloc(4), pK = M._malloc(4), pO = M._malloc(4), pE = M._malloc(4);
@@ -132,8 +145,13 @@ onmessage = async (e) => {
           dur: M.ccall('dj_duration', 'number', ['number', 'number'], [eng, m.deck]),
           bpm: M.ccall('dj_get_bpm', 'number', ['number', 'number'], [eng, m.deck]),
           key: M.ccall('dj_get_key', 'number', ['number', 'number'], [eng, m.deck]),
+          wave: ok ? getWaveform(m.deck) : null,
           err: ok ? '' : (M.ccall('dj_last_error', 'string', [], []) || ''),
         });
+        break;
+      }
+      case 'waveform': {
+        postMessage({ type: 'waveform', deck: m.deck, wave: getWaveform(m.deck) });
         break;
       }
       case 'play':     call('dj_play', ['number', 'number', 'number'], [eng, m.deck, m.on ? 1 : 0]); break;
