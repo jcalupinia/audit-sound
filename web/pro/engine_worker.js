@@ -140,11 +140,18 @@ onmessage = async (e) => {
       case 'load': {
         const path = writeFile(m.bytes);
         const ok = M.ccall('dj_load', 'number', ['number', 'number', 'string'], [eng, m.deck, path]);
+        let energy = 0;
+        if (ok) {  // energía para el copiloto (Modo B)
+          const pF = M._malloc(8), pL = M._malloc(8), pE = M._malloc(4);
+          M.ccall('dj_analyze_silence', 'number', ['string', 'number', 'number', 'number'], [path, pF, pL, pE]);
+          energy = M.HEAPF32[pE >> 2]; M._free(pF); M._free(pL); M._free(pE);
+        }
         postMessage({
           type: 'loaded', deck: m.deck, ok, name: m.name,
           dur: M.ccall('dj_duration', 'number', ['number', 'number'], [eng, m.deck]),
           bpm: M.ccall('dj_get_bpm', 'number', ['number', 'number'], [eng, m.deck]),
           key: M.ccall('dj_get_key', 'number', ['number', 'number'], [eng, m.deck]),
+          energy,
           wave: ok ? getWaveform(m.deck) : null,
           err: ok ? '' : (M.ccall('dj_last_error', 'string', [], []) || ''),
         });
@@ -152,6 +159,12 @@ onmessage = async (e) => {
       }
       case 'waveform': {
         postMessage({ type: 'waveform', deck: m.deck, wave: getWaveform(m.deck) });
+        break;
+      }
+      case 'analyze': {  // Modo B (copiloto): analiza metadatos sin cargar ni tocar el selector
+        const path = writeFile(m.bytes);
+        const a = analyzeTrack(path);
+        postMessage({ type: 'analyzed', name: m.name, bpm: a.bpm, key: a.key, energy: a.energy });
         break;
       }
       case 'play':     call('dj_play', ['number', 'number', 'number'], [eng, m.deck, m.on ? 1 : 0]); break;
