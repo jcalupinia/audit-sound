@@ -11,9 +11,9 @@ emite un stream MP3 por **Icecast**, y la **web** lo reproduce en el navegador.
 | `engine`  | Motor/DJ: reproduce `/music` en bucle y publica el MP3 a Icecast | — (interno) |
 | `web`     | Página (nginx) que reproduce el stream | p.ej. `www.audit-ia` |
 
-> El `engine` de hoy es un reproductor **secuencial** (placeholder). El encadenado
-> inteligente con transiciones (AutoMix, M3) y el selector (M4) lo sustituyen luego,
-> sin tocar Icecast ni la web.
+> El `engine` encadena las pistas con el **AutoMix** (transiciones) y el **selector
+> inteligente** (armonía/BPM/energía). Si no le das música, suena un **audio de demo**
+> sintético para que el Preview funcione de inmediato.
 
 ## Pasos en Coolify
 
@@ -21,12 +21,18 @@ emite un stream MP3 por **Icecast**, y la **web** lo reproduce en el navegador.
    (contexto de build = raíz del repo).
 2. **Variables de entorno** (desde `deploy/.env.example`, valores reales en Coolify,
    nunca en el repo): `ICECAST_SOURCE_PASSWORD`, `ICECAST_ADMIN_PASSWORD`,
-   `ICECAST_HOSTNAME`, `STREAM_URL`, `MUSIC_DIR`.
-3. **Dominios**: asignar `www.audit-ia` → servicio `web`; `stream.audit-ia` →
-   servicio `icecast`. Coolify pone el proxy y el **TLS (Let's Encrypt)**.
-4. **Música**: montar tu biblioteca en el host (`MUSIC_DIR`) → el `engine` la ve en
-   `/music` (solo lectura). *(Más adelante, Navidrome/Subsonic como catálogo.)*
-5. **Desplegar.** El `engine` reintenta hasta que Icecast está listo.
+   `ICECAST_HOSTNAME`, `STREAM_URL`. Para el Preview rápido con demo, no hace falta nada
+   más (la demo viene activada con `AUDIT_SOUND_DEMO=1`).
+3. **Dominios**: asignar `www.audit-ia` → servicio `web` **y** `stream.audit-ia` →
+   servicio `icecast`. Coolify pone el proxy y el **TLS (Let's Encrypt)** en **ambos**.
+4. **`STREAM_URL`** debe ser la URL **HTTPS** del Icecast: `https://<ICECAST_HOSTNAME>/stream.mp3`.
+   **Mezcla de contenido:** una página HTTPS **no puede** cargar un stream HTTP (iOS lo
+   bloquea). Por eso el servicio `icecast` también necesita su dominio con HTTPS.
+5. **Música (opcional).** Por defecto suena la **demo**. Para usar **tu** biblioteca:
+   sube tus archivos al volumen `audit_music` (o cambia el volumen por un bind
+   `- /ruta/host:/music:ro` en el compose), o configura **Navidrome/Subsonic**
+   (`AUDIT_SOUND_SUBSONIC_URL/_USER/_PASS`). El `entrypoint` prioriza Subsonic > `/music` > demo.
+6. **Desplegar.** El `engine` reintenta hasta que Icecast está listo.
 
 ## Verificar (gate de M1)
 

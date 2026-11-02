@@ -44,6 +44,10 @@ services:
       AUDIT_SOUND_SUBSONIC_PLAYLIST: ${AUDIT_SOUND_SUBSONIC_PLAYLIST:-}
       AUDIT_SOUND_TRANSITION: ${AUDIT_SOUND_TRANSITION:-8}
       AUDIT_SOUND_MIX_MODE: ${AUDIT_SOUND_MIX_MODE:-0}
+      # Audio de DEMO: si /music está vacío y no hay Subsonic, suena una demo sintética
+      # (para probar el Preview sin subir música). Pon tu biblioteca en /music para
+      # reemplazarla, o pon AUDIT_SOUND_DEMO=0 para exigir fuente propia.
+      AUDIT_SOUND_DEMO: ${AUDIT_SOUND_DEMO:-1}
       # Control API (M5): login + comandos para el frontend.
       AUDIT_SOUND_API_USER: ${AUDIT_SOUND_API_USER:-}
       AUDIT_SOUND_API_PASS: ${AUDIT_SOUND_API_PASS:-}
@@ -52,7 +56,9 @@ services:
     # ports:
     #   - "8787:8787"
     volumes:
-      - ${MUSIC_DIR:-./music}:/music:ro          # tu biblioteca (solo lectura)
+      # Volumen con nombre (vacío por defecto → suena la DEMO). Para usar TU música,
+      # sustituir por un bind:  - ${MUSIC_DIR}:/music:ro
+      - audit_music:/music:ro
     restart: unless-stopped
 
   web:
@@ -67,4 +73,12 @@ services:
     # Para probar sin el proxy de Coolify, descomentar:
     # ports:
     #   - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
+
+volumes:
+  audit_music:   # biblioteca del DJ (vacío por defecto → suena la demo sintética)
