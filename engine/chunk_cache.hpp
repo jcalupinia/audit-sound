@@ -38,6 +38,13 @@
   } while (0)
 #endif
 
+// En WebAssembly se usa la variante sin hilos (decodifica todo a RAM): crear un
+// std::thread desde el hilo del runtime del navegador cae en "unwind". La ruta con
+// hilos (abajo) se mantiene intacta para servidor y Android.
+#ifdef __EMSCRIPTEN__
+#include "chunk_cache_ram.hpp"
+#else
+
 struct ChunkCache {
   static constexpr int kChunkFrames = 8192;
   static constexpr int kCacheChunks = 80;
@@ -613,3 +620,5 @@ struct ChunkCache {
   float lastL_ = 0.0f;
   float lastR_ = 0.0f;
 };
+
+#endif  // __EMSCRIPTEN__

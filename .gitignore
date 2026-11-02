@@ -15,6 +15,12 @@ cmake_install.cmake
 *.pcm
 /web/test-media/
 
+# Artefactos WASM generados (se compilan en wasm/build y se copian al desplegar)
+/web/pro/audit_engine.js
+/web/pro/audit_engine.wasm
+/web/pro/audit_engine.data
+*.wasm
+
 # Entorno y secretos (NUNCA versionar — van en variables de entorno de Coolify)
 .env
 .env.*

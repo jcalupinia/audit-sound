@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Prueba del puente de audio PRO</title></head>
+<body>
+<h1>Prueba del puente de audio</h1>
+<pre id="log"></pre>
+<script type="module">
+import { AudioBridge } from './audio_bridge.js';
+import { CTRL } from './ring.js';
+
+const log = (s) => { document.getElementById('log').textContent += s + '\n'; console.log(s); };
+
+(async () => {
+  try {
+    const b = new AudioBridge();
+    b.onLoaded = (m) => log(`loaded deck=${m.deck} ok=${m.ok} dur=${m.dur.toFixed(2)} bpm=${m.bpm.toFixed(1)} err="${m.err}"`);
+    b.onError = (e) => log('ERROR ' + e);
+
+    await b.start();
+    log('bridge ready, sampleRate=' + b.ctx.sampleRate + ' ctxState=' + b.ctx.state);
+
+    const buf = await (await fetch('./track.wav')).arrayBuffer();
+    log('track.wav bytes=' + buf.byteLength);
+    await b.load(0, buf, 'track.wav');
+
+    // Espera a que cargue, luego reproduce.
+    await new Promise((r) => setTimeout(r, 800));
+    b.gain(0, 1.0); b.fader(0, 1.0); b.xfader(-1.0); b.master(1.0);
+    b.play(0, true);
+
+    // Deja correr el audio 1.5 s y mide el pico que pasó por el worklet.
+    await new Promise((r) => setTimeout(r, 1500));
+    const ctrl = new Int32Array(b._buffers.ctrl);
+    const peak = ctrl[CTRL.PEAK] / 1e6;
+    const under = ctrl[CTRL.UNDER];
+    const wrote = ctrl[CTRL.WRITE], read = ctrl[CTRL.READ];
+    log(`BRIDGE_RESULT peak=${peak.toFixed(4)} under=${under} wrote=${wrote} read=${read} ctxState=${b.ctx.state}`);
+  } catch (e) {
+    log('EXCEPTION ' + (e && e.message || e));
+  }
+})();
+</script>
+</body>
+</html>
