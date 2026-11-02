@@ -143,6 +143,10 @@
       <div id="loginMsg"></div>
     </div>
     <div id="controls" hidden style="font-size:12px;color:var(--muted);text-align:center">Control conectado ✓</div>
+    <div id="ctlbar" hidden style="margin-top:10px;text-align:center">
+      <div id="ctlwho" style="font-size:12px;color:var(--muted)"></div>
+      <button id="takeBtn" class="big sec" style="margin-top:8px" hidden>Tomar el control</button>
+    </div>
   </div>
 
   <footer>Consola de DJ · AUDIT SOUND</footer>
@@ -180,10 +184,15 @@
   function ms(){if(!('mediaSession'in navigator))return;try{navigator.mediaSession.metadata=new MediaMetadata({title:byId('titleA').textContent||'Sesión en vivo',artist:'AUDIT SOUND',album:'DJ',artwork:[{src:ART,sizes:'512x512',type:'image/svg+xml'}]});navigator.mediaSession.setActionHandler('play',start);navigator.mediaSession.setActionHandler('pause',stop);}catch(e){}}
   function msState(s){if('mediaSession'in navigator){try{navigator.mediaSession.playbackState=s;}catch(e){}}}
 
-  // Control API
-  var token=null,pollTimer=null,manual=false,tracks=[];
+  // Control API (M6: handoff entre dispositivos)
+  var token=null,pollTimer=null,manual=false,tracks=[],iControl=false;
+  // Nombre del dispositivo (se recuerda; el servidor lo muestra al resto).
+  var DEVICE=(function(){try{var d=localStorage.getItem('auditsound.device');if(!d){d=(/iPhone|iPad/.test(navigator.userAgent)?'iPhone':/Android/.test(navigator.userAgent)?'Android':'Equipo')+' '+Math.random().toString(36).slice(2,5);localStorage.setItem('auditsound.device',d);}return d;}catch(e){return 'Dispositivo';}})();
   if(API)byId('panel').hidden=false;
-  function cmd(a,extra){var u=API+'/api/command?token='+token+'&action='+a;if(extra)for(var k in extra)u+='&'+k+'='+encodeURIComponent(extra[k]);return fetch(u,{method:'POST'});}
+  function cmd(a,extra){var u=API+'/api/command?token='+token+'&action='+a;if(extra)for(var k in extra)u+='&'+k+'='+encodeURIComponent(extra[k]);
+    return fetch(u,{method:'POST'}).then(function(r){
+      if(r.status===409){ r.json().then(function(j){ byId('status').textContent='El control lo tiene '+((j&&j.controller)||'otro dispositivo')+'. Pulsa «Tomar el control».'; }).catch(function(){}); updateCtl(false,null); }
+      return r; });}
   function loadTracks(){fetch(API+'/api/tracks?token='+token).then(function(r){return r.json();}).then(function(d){tracks=d.tracks||[];$all('.loadsel').forEach(function(sel){sel.innerHTML='';tracks.forEach(function(t){var o=document.createElement('option');o.value=t.i;o.textContent=t.title;sel.appendChild(o);});});});}
   function setMode(m){manual=(m==='manual');$all('#modeSeg button').forEach(function(b){b.classList.toggle('on',b.dataset.m===m);});
     $all('.deckctl').forEach(function(x){x.classList.toggle('hide',!manual);});byId('autoctl').classList.toggle('hide',manual);
@@ -199,14 +208,29 @@
     byId('xfLabel').textContent=(d.state===2&&!manual)?'MEZCLANDO…':'CROSSFADER';
     byId('ttVal').textContent=d.transition;byId('tt').value=d.transition;byId('mode').value=d.mixmode;
     byId('now').textContent='Ahora suena: '+(A.playing?A.title:(B.playing?B.title:'—'));
+    updateCtl(d.youAreController, d.controller);
   }).catch(function(){});}
+  // M6: refleja quién controla y muestra el botón "Tomar el control".
+  function updateCtl(youControl, controller){
+    iControl=!!youControl;
+    byId('ctlbar').hidden=false;
+    byId('ctlwho').textContent = youControl ? ('Tú tienes el control ('+DEVICE+')')
+      : (controller ? ('Controla: '+controller) : 'Nadie tiene el control');
+    byId('takeBtn').hidden = !!youControl;
+    // En modo manual, deshabilita los controles de deck si no controlas.
+    $all('.deckctl input, .deckctl button, #xf, #skipBtn, #fadeBtn, #tt, #mode').forEach(function(el){ el.disabled=!youControl; });
+  }
   function startPoll(){if(pollTimer)clearInterval(pollTimer);poll();pollTimer=setInterval(poll,1000);}
 
   if(API){
     byId('loginBtn').addEventListener('click',function(){
-      fetch(API+'/api/login?user='+encodeURIComponent(byId('u').value)+'&pass='+encodeURIComponent(byId('pw').value),{method:'POST'})
-        .then(function(r){return r.json();}).then(function(d){if(d&&d.token){token=d.token;byId('login').hidden=true;byId('controls').hidden=false;loadTracks();startPoll();}else byId('loginMsg').textContent='Credenciales inválidas';})
+      fetch(API+'/api/login?user='+encodeURIComponent(byId('u').value)+'&pass='+encodeURIComponent(byId('pw').value)+'&name='+encodeURIComponent(DEVICE),{method:'POST'})
+        .then(function(r){return r.json();}).then(function(d){if(d&&d.token){token=d.token;byId('login').hidden=true;byId('controls').hidden=false;updateCtl(!!d.youAreController,null);loadTracks();startPoll();}else byId('loginMsg').textContent='Credenciales inválidas';})
         .catch(function(){byId('loginMsg').textContent='No se pudo conectar con el control';});});
+    byId('takeBtn').addEventListener('click',function(){
+      fetch(API+'/api/control/take?token='+token,{method:'POST'}).then(function(r){return r.json();})
+        .then(function(){updateCtl(true,DEVICE);byId('status').textContent='Tienes el control.';poll();})
+        .catch(function(){byId('loginMsg').textContent='No se pudo tomar el control';});});
     $all('#modeSeg button').forEach(function(b){b.addEventListener('click',function(){setMode(b.dataset.m);});});
     byId('skipBtn').addEventListener('click',function(){cmd('skip');});
     byId('fadeBtn').addEventListener('click',function(){cmd('skip');});
