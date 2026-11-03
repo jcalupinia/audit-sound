@@ -2,7 +2,7 @@
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      icecast2 gettext-base ca-certificates \
+      icecast2 gettext-base ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
 COPY deploy/icecast/icecast.xml.template /etc/icecast2/icecast.xml.template
 COPY deploy/icecast/entrypoint.sh /entrypoint.sh
