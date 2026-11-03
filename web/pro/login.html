@@ -190,7 +190,12 @@
     const btn=$('#go'); const msg=$('#msg'); msg.className='msg'; msg.textContent='';
     btn.disabled=true; btn.textContent='Ingresando…';
     const r = await CC.login($('#user').value, $('#pass').value, $('#remember').checked);
-    if (r.ok){ msg.className='msg ok'; msg.textContent = r.demo ? 'Acceso (demo). Abriendo la consola…' : 'Acceso correcto. Abriendo la consola…'; location.href='./console.html'; }
+    if (r.ok){
+      msg.className='msg ok';
+      if (r.passwordResetRequired) msg.textContent='Acceso correcto. Debes cambiar tu contraseña en el Command Center. Abriendo la consola…';
+      else msg.textContent = r.demo ? 'Acceso (demo). Abriendo la consola…' : 'Acceso correcto. Abriendo la consola…';
+      location.href='./console.html';
+    }
     else { msg.textContent = r.error || 'No se pudo iniciar sesión.'; btn.disabled=false; btn.textContent='Ingresar'; }
   });
 </script>

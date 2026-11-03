@@ -87,7 +87,25 @@ bloqueada**; para audio con pantalla bloqueada usa el Preview B.)*
    AUDIT_SOUND_API_USER    = dj
    AUDIT_SOUND_API_PASS    = (clave)
    # La demo viene activada: AUDIT_SOUND_DEMO=1 (sin tocar nada suena una demo sintética)
+   # Enlace al Command Center (login de la consola con los usuarios/claves de AuditBrain):
+   AUDIT_SOUND_CC_API      = https://api.audit-ia.ec   # base del backend del Command Center
    ```
+
+   **Enlace al Command Center (login real de la consola).** La consola (`/pro/login.html`)
+   reutiliza los usuarios/claves que se crean en el Command Center. Dos pasos:
+   1. **En este servicio (`web` de AUDIT SOUND):** define `AUDIT_SOUND_CC_API` con la base
+      del backend del Command Center (sin barra final). Si queda vacío, la consola entra en
+      **modo demo** (cualquier usuario entra, solo para navegar el front).
+   2. **En el Command Center (backend `auditbrain-python-runner`, su propio Coolify/Render):**
+      añade el **origen** de AUDIT SOUND (p. ej. `https://audit-sound.audit-ia.ec`) a la
+      variable **`CORS_ALLOW_ORIGINS`** (lista separada por comas). Ese backend ya usa
+      `allow_credentials=True`, necesario para la cookie `device_id` del login.
+
+   > Nota: las cuentas de rol **cliente** tienen **sesión única** en el Command Center
+   > («el primero gana»): entrar a AUDIT SOUND con una cuenta cliente ocupa esa única
+   > sesión (y un segundo acceso da `409 session_in_use`). Para operar AUDIT SOUND sin
+   > chocar con el portal, usa cuentas de operador (`admin`/`user`, exentas) o una cuenta
+   > cliente dedicada.
 4. **Domain (uno solo):**
    - servicio **`web`** → `https://audit-sound.audit-ia.ec` (o el dominio que elijas).
    - servicio **`icecast`** → **sin dominio** (interno; el `web` lo proxya).

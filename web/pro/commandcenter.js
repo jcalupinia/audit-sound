@@ -43,7 +43,14 @@ function save(token, user, remember) {
   } catch (e) {}
 }
 
-// Devuelve { ok, token, user, demo, error }.
+// Devuelve { ok, token, user, demo, error, passwordResetRequired }.
+//
+// Contrato real del Command Center (backend auditbrain-python-runner,
+// POST /client/auth/login): cuerpo form-urlencoded (OAuth2PasswordRequestForm)
+// con `username` y `password`; respuesta 200 JSON { access_token, token_type,
+// password_reset_required }. Errores: 401 credenciales, 409 { detail:{ code } }
+// (session_in_use / device_unauthorized), 429 rate-limit. Requiere
+// credentials:'include' para que viaje/guarde la cookie httponly `device_id`.
 export async function login(user, password, remember) {
   user = String(user || '').trim();
   if (!user || !password) return { ok: false, error: 'Escribe usuario y contraseña.' };
@@ -57,20 +64,33 @@ export async function login(user, password, remember) {
   const url = apiBase() + loginPath();
   let res;
   try {
+    const body = new URLSearchParams();
+    body.set('username', user);
+    body.set('password', password);
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user, username: user, email: user, password, pass: password }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
       credentials: 'include',
     });
   } catch (e) {
     return { ok: false, error: 'No se pudo conectar con el Command Center: ' + (e.message || e) };
   }
-  if (res.status === 401 || res.status === 403) return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+
+  if (res.status === 401) return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+  if (res.status === 429) return { ok: false, error: 'Demasiados intentos. Espera 15 minutos o contacta a soporte.' };
+  if (res.status === 409) {
+    let code = '', msg = '';
+    try { const d = (await res.json()).detail; if (d && typeof d === 'object') { code = d.code || ''; msg = d.message || ''; } } catch (e) {}
+    if (code === 'session_in_use') return { ok: false, error: msg || 'Esta cuenta ya está en uso. Pide que cierren sesión («Salir») o espera unos minutos.' };
+    if (code === 'device_unauthorized') return { ok: false, error: msg || 'Este dispositivo no está autorizado para esta cuenta. Solicita reseteo a soporte.' };
+    return { ok: false, error: msg || 'La cuenta no puede iniciar sesión en este momento (409).' };
+  }
   if (!res.ok) return { ok: false, error: 'El Command Center respondió HTTP ' + res.status + '.' };
+
   let j = {};
   try { j = await res.json(); } catch (e) {}
-  const token = j.token || j.access_token || j.session_token || 'cc-session';
+  const token = j.access_token || j.token || j.session_token || 'cc-session';
   save(token, user, remember);
-  return { ok: true, token, user };
+  return { ok: true, token, user, passwordResetRequired: !!j.password_reset_required };
 }

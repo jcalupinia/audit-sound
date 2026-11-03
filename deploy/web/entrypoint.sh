@@ -25,6 +25,20 @@ fi
 LISTEN_VALUE="${LISTEN_URL:-/}"
 printf 'window.AUDIT_SOUND_LISTEN=%s;\n' "\"$LISTEN_VALUE\"" >> "$OUT"
 echo "config.js: LISTEN_URL=$LISTEN_VALUE"
+# Enlace al Command Center (AuditBrain): el login de la consola (/pro/login.html)
+# reutiliza sus usuarios/claves. AUDIT_SOUND_CC_API = base del backend (p. ej.
+# "https://api.audit-ia.ec"). Recuerda añadir el origen de AUDIT SOUND a
+# CORS_ALLOW_ORIGINS del Command Center. CC_API_URL sirve de alias.
+CC_API="${AUDIT_SOUND_CC_API:-${CC_API_URL:-}}"
+if [ -n "$CC_API" ]; then
+  CC_API=$(printf '%s' "$CC_API" | sed 's:/*$::')   # sin barra final
+  printf 'window.AUDIT_SOUND_CC_API=%s;\n' "\"$CC_API\"" >> "$OUT"
+  [ -n "${AUDIT_SOUND_CC_LOGIN_PATH:-}" ] && printf 'window.AUDIT_SOUND_CC_LOGIN_PATH=%s;\n' "\"$AUDIT_SOUND_CC_LOGIN_PATH\"" >> "$OUT"
+  [ -n "${AUDIT_SOUND_CC_ME_PATH:-}" ] && printf 'window.AUDIT_SOUND_CC_ME_PATH=%s;\n' "\"$AUDIT_SOUND_CC_ME_PATH\"" >> "$OUT"
+  echo "config.js: Command Center LIGADO ($CC_API)"
+else
+  echo "config.js: Command Center sin ligar (modo demo; define AUDIT_SOUND_CC_API)"
+fi
 # Copia para el mezclador profesional (/pro/config.js).
 mkdir -p "$ROOT/pro"
 cp "$OUT" "$ROOT/pro/config.js"
