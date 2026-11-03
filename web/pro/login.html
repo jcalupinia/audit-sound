@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AUDIT SOUND · Acceso</title>
+<meta name="description" content="Acceso al Command Center de AUDIT SOUND — DJ inteligente con IA.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Rajdhani:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070b0e; --bg2:#0a1014; --panel:rgba(16,24,28,.72); --panel2:#0e1a16;
+    --line:#1c2a26; --line2:#26413a;
+    --green:#39e66b; --green-bri:#6bff9a; --green-deep:#18a24a; --green-glow:rgba(57,230,107,.45);
+    --text:#eaf5ee; --muted:#8aa79a; --danger:#ff6b6b;
+    --disp:'Michroma',sans-serif; --head:'Rajdhani',sans-serif; --body:'DM Sans',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1100px 700px at 12% 40%, #0c201a 0%, transparent 60%),
+      radial-gradient(900px 600px at 95% 10%, #09151f 0%, transparent 55%),
+      linear-gradient(135deg,#060a0d 0%, #070f0c 100%);
+    color:var(--text);font-family:var(--body);min-height:100vh;display:flex;overflow:hidden;
+  }
+  .wrap{display:grid;grid-template-columns:1.05fr .95fr;width:100%;min-height:100vh}
+  @media(max-width:880px){.wrap{grid-template-columns:1fr}.hero{display:none}}
+
+  /* ---------- HERO (izquierda) ---------- */
+  .hero{position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:48px}
+  .hero::before{content:"";position:absolute;inset:0;
+    background:radial-gradient(60% 80% at 30% 50%, rgba(57,230,107,.16), transparent 70%);}
+  .hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:.9}
+  .hero-shade{position:absolute;inset:0;background:linear-gradient(90deg, rgba(5,8,10,.25) 0%, rgba(5,8,10,.1) 40%, rgba(7,11,14,.85) 100%)}
+  /* Ecualizador animado de fondo (si no hay foto) */
+  .eq{position:absolute;left:0;top:0;height:100%;width:100%;display:flex;align-items:center;gap:7px;padding:0 40px;opacity:.5;z-index:0}
+  .eq i{flex:1;max-width:14px;border-radius:6px;background:linear-gradient(180deg,var(--green-bri),var(--green-deep));
+    box-shadow:0 0 18px var(--green-glow);animation:bounce 1.4s ease-in-out infinite}
+  @keyframes bounce{0%,100%{height:12%}50%{height:72%}}
+  .hero-badge{position:relative;z-index:2;display:flex;flex-direction:column;gap:14px}
+  .disc{width:116px;height:116px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;
+    background:radial-gradient(circle at 50% 40%, #0f1d18, #060b09);border:2px solid var(--green);
+    box-shadow:0 0 40px var(--green-glow), inset 0 0 24px rgba(0,0,0,.6);font-family:var(--disp);
+    color:var(--text);text-align:center;line-height:1.1;font-size:15px;letter-spacing:.04em}
+  .hero-tag{font-family:var(--head);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green-bri);font-size:13px}
+  .hero-title{font-family:var(--disp);font-size:clamp(22px,2.4vw,34px);margin:0;max-width:16ch;line-height:1.25}
+  .hero-sub{color:var(--muted);max-width:40ch;margin:0}
+
+  /* ---------- PANEL DE ACCESO (derecha) ---------- */
+  .side{display:flex;align-items:center;justify-content:center;padding:32px 24px}
+  .card{width:min(520px,100%);background:var(--panel);backdrop-filter:blur(14px);
+    border:1px solid var(--line2);border-radius:22px;padding:34px 34px 26px;
+    box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04)}
+  .brand{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+  .brand svg{filter:drop-shadow(0 0 10px var(--green-glow))}
+  .brand .word{font-family:var(--disp);font-size:28px;line-height:1;letter-spacing:.02em}
+  .brand .word b{color:var(--green)}
+  .brand-sub{font-family:var(--head);letter-spacing:.34em;text-transform:uppercase;color:var(--muted);font-size:12px;margin:8px 0 18px}
+
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:22px}
+  .mode{display:flex;align-items:center;gap:9px;padding:12px 12px;border-right:1px solid var(--line);background:rgba(10,18,15,.5)}
+  .mode:last-child{border-right:0}
+  .mode .mi{color:var(--green);display:flex}
+  .mode .mt{font-size:12px;line-height:1.25}
+  .mode .mt b{display:block;font-family:var(--head);font-weight:700;letter-spacing:.02em;font-size:13px;color:var(--text)}
+  .mode .mt span{color:var(--muted)}
+
+  .h-access{font-family:var(--head);font-weight:700;font-size:24px;letter-spacing:.01em;margin:6px 0 16px}
+  .h-access b{color:var(--green)}
+  .field{display:flex;align-items:center;gap:10px;background:#0a120f;border:1px solid var(--line2);border-radius:12px;
+    padding:0 14px;margin-bottom:12px;transition:border-color .15s, box-shadow .15s}
+  .field:focus-within{border-color:var(--green);box-shadow:0 0 0 3px rgba(57,230,107,.14)}
+  .field svg{color:var(--muted);flex:0 0 auto}
+  .field input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--body);font-size:15px;padding:14px 0}
+  .field input::placeholder{color:#60786d}
+  .eye{background:none;border:0;color:var(--muted);cursor:pointer;padding:6px;display:flex}
+  .btn-go{width:100%;border:0;cursor:pointer;border-radius:12px;padding:15px;margin-top:6px;
+    font-family:var(--head);font-weight:700;font-size:17px;letter-spacing:.04em;color:#06220f;
+    background:linear-gradient(180deg,var(--green-bri),var(--green-deep));
+    box-shadow:0 10px 24px rgba(24,162,74,.35), inset 0 1px 0 rgba(255,255,255,.3);transition:transform .1s, filter .15s}
+  .btn-go:hover{filter:brightness(1.06)} .btn-go:active{transform:translateY(1px)}
+  .btn-go[disabled]{filter:grayscale(.4) brightness(.8);cursor:progress}
+  .row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:13px;color:var(--muted)}
+  .row label{display:flex;align-items:center;gap:8px;cursor:pointer}
+  .row input{accent-color:var(--green)}
+  .row a{color:var(--green);text-decoration:none}
+  .row a:hover{text-decoration:underline}
+  .msg{min-height:18px;margin-top:12px;font-size:13px;color:var(--danger)}
+  .msg.ok{color:var(--green-bri)}
+  .demo{margin-top:8px;font-size:11px;color:#6d8579}
+
+  .foot{display:flex;align-items:center;gap:12px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+  .foot img{height:34px;width:auto;opacity:.95}
+  .foot .ft{font-size:11px;color:var(--muted);line-height:1.4}
+  .foot .ft b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- HERO -->
+  <div class="hero">
+    <div class="eq" id="eq"></div>
+    <!-- Foto opcional: deja web/pro/assets/dj_hero.jpg para la imagen DJ/IA -->
+    <img class="hero-img" src="./assets/dj_hero.jpg" alt="" onerror="this.style.display='none'">
+    <div class="hero-shade"></div>
+    <div class="hero-badge">
+      <div class="disc">AUDIT<br>SOUND</div>
+      <div class="hero-tag">DJ &amp; Producción audiovisual con IA</div>
+      <h1 class="hero-title">Mezcla musical y audiovisual con inteligencia artificial</h1>
+      <p class="hero-sub">Música (DJ), video (VJ) y presentaciones para eventos — en una sola consola.</p>
+    </div>
+  </div>
+
+  <!-- ACCESO -->
+  <div class="side">
+    <form class="card" id="loginForm" autocomplete="on">
+      <div class="brand">
+        <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+          <g fill="none" stroke="#39e66b" stroke-width="3" stroke-linecap="round">
+            <line x1="5"  y1="23" x2="5"  y2="23"></line>
+            <line x1="11" y1="14" x2="11" y2="32"></line>
+            <line x1="17" y1="8"  x2="17" y2="38"></line>
+            <line x1="23" y1="17" x2="23" y2="29"></line>
+            <line x1="29" y1="5"  x2="29" y2="41"></line>
+            <line x1="35" y1="13" x2="35" y2="33"></line>
+            <line x1="41" y1="19" x2="41" y2="27"></line>
+          </g>
+        </svg>
+        <div class="word">AUDIT <b>SOUND</b></div>
+      </div>
+      <div class="brand-sub">DJ inteligente con IA</div>
+
+      <div class="modes">
+        <div class="mode"><span class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2" fill="#0a120f"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2" fill="#0a120f"/></svg></span>
+          <span class="mt"><b>DJ Manual</b><span>Profesional</span></span></div>
+        <div class="mode"><span class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 4.6L18 8l-4.2 1.4L12 14l-1.8-4.6L6 8l4.2-1.4z"/><circle cx="18.5" cy="16.5" r="1.6"/><circle cx="6" cy="17" r="1.2"/></svg></span>
+          <span class="mt"><b>DJ Asistido</b><span>por IA</span></span></div>
+        <div class="mode"><span class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
+          <span class="mt"><b>DJ Automático</b><span>24/7</span></span></div>
+      </div>
+
+      <div class="h-access">Acceso al <b>Command Center</b></div>
+
+      <div class="field">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        <input id="user" name="username" type="text" placeholder="Usuario o email corporativo" autocomplete="username">
+      </div>
+      <div class="field">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input id="pass" name="password" type="password" placeholder="Contraseña" autocomplete="current-password">
+        <button class="eye" type="button" id="eye" aria-label="Mostrar contraseña">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+
+      <button class="btn-go" id="go" type="submit">Ingresar</button>
+
+      <div class="row">
+        <label><input type="checkbox" id="remember" checked> Recordar mi sesión</label>
+        <a href="#" id="forgot">¿Olvidaste tu contraseña?</a>
+      </div>
+      <div class="msg" id="msg"></div>
+      <div class="demo" id="demo"></div>
+
+      <div class="foot">
+        <img src="./assets/logo_auditconsulting_blanco.png" alt="AuditConsulting Group" onerror="this.style.display='none'">
+        <div class="ft">Grupo empresarial<br>con <b>innovación</b> y <b>compromiso</b></div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="config.js" onerror="void 0"></script>
+<script type="module">
+  import * as CC from './commandcenter.js';
+  const $ = (s) => document.querySelector(s);
+  // Ecualizador de fondo
+  const eq = $('#eq'); for (let i=0;i<28;i++){ const b=document.createElement('i'); b.style.animationDelay=(-(Math.random()*1.4)).toFixed(2)+'s'; eq.appendChild(b); }
+  // Si ya hay sesión, a la consola
+  if (CC.isAuthed()) location.replace('./console.html');
+  if (!CC.configured()) $('#demo').textContent = 'Modo demostración: el login aún no está conectado al Command Center; cualquier usuario entra para navegar el front.';
+  // Ojo de contraseña
+  $('#eye').addEventListener('click', ()=>{ const p=$('#pass'); p.type = p.type==='password' ? 'text':'password'; });
+  $('#forgot').addEventListener('click', (e)=>{ e.preventDefault(); $('#msg').className='msg'; $('#msg').textContent='La gestión de usuarios y claves se hace en el Command Center (AuditBrain).'; });
+  // Enviar
+  $('#loginForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const btn=$('#go'); const msg=$('#msg'); msg.className='msg'; msg.textContent='';
+    btn.disabled=true; btn.textContent='Ingresando…';
+    const r = await CC.login($('#user').value, $('#pass').value, $('#remember').checked);
+    if (r.ok){ msg.className='msg ok'; msg.textContent = r.demo ? 'Acceso (demo). Abriendo la consola…' : 'Acceso correcto. Abriendo la consola…'; location.href='./console.html'; }
+    else { msg.textContent = r.error || 'No se pudo iniciar sesión.'; btn.disabled=false; btn.textContent='Ingresar'; }
+  });
+</script>
+</body>
+</html>
