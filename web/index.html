@@ -189,15 +189,18 @@
   // Nombre del dispositivo (se recuerda; el servidor lo muestra al resto).
   var DEVICE=(function(){try{var d=localStorage.getItem('auditsound.device');if(!d){d=(/iPhone|iPad/.test(navigator.userAgent)?'iPhone':/Android/.test(navigator.userAgent)?'Android':'Equipo')+' '+Math.random().toString(36).slice(2,5);localStorage.setItem('auditsound.device',d);}return d;}catch(e){return 'Dispositivo';}})();
   if(API)byId('panel').hidden=false;
-  function cmd(a,extra){var u=API+'/api/command?token='+token+'&action='+a;if(extra)for(var k in extra)u+='&'+k+'='+encodeURIComponent(extra[k]);
-    return fetch(u,{method:'POST'}).then(function(r){
+  // El token de sesión viaja en la cabecera Authorization: Bearer (no en la URL,
+  // para no filtrarlo por Referer ni por logs intermedios). Endurecimiento A1.3.
+  function authHdr(){return token?{'Authorization':'Bearer '+token}:{};}
+  function cmd(a,extra){var u=API+'/api/command?action='+a;if(extra)for(var k in extra)u+='&'+k+'='+encodeURIComponent(extra[k]);
+    return fetch(u,{method:'POST',headers:authHdr()}).then(function(r){
       if(r.status===409){ r.json().then(function(j){ byId('status').textContent='El control lo tiene '+((j&&j.controller)||'otro dispositivo')+'. Pulsa «Tomar el control».'; }).catch(function(){}); updateCtl(false,null); }
       return r; });}
-  function loadTracks(){fetch(API+'/api/tracks?token='+token).then(function(r){return r.json();}).then(function(d){tracks=d.tracks||[];$all('.loadsel').forEach(function(sel){sel.innerHTML='';tracks.forEach(function(t){var o=document.createElement('option');o.value=t.i;o.textContent=t.title;sel.appendChild(o);});});});}
+  function loadTracks(){fetch(API+'/api/tracks',{headers:authHdr()}).then(function(r){return r.json();}).then(function(d){tracks=d.tracks||[];$all('.loadsel').forEach(function(sel){sel.innerHTML='';tracks.forEach(function(t){var o=document.createElement('option');o.value=t.i;o.textContent=t.title;sel.appendChild(o);});});});}
   function setMode(m){manual=(m==='manual');$all('#modeSeg button').forEach(function(b){b.classList.toggle('on',b.dataset.m===m);});
     $all('.deckctl').forEach(function(x){x.classList.toggle('hide',!manual);});byId('autoctl').classList.toggle('hide',manual);
     byId('xf').disabled=!manual; cmd('set_mode_dj',{value:m});}
-  function poll(){fetch(API+'/api/status?token='+token).then(function(r){return r.json();}).then(function(d){
+  function poll(){fetch(API+'/api/status',{headers:authHdr()}).then(function(r){return r.json();}).then(function(d){
     manual=(d.mode==='manual');
     var A=d.decks[0],B=d.decks[1];
     byId('titleA').textContent=A.title||'—';byId('bpmA').textContent=A.bpm>0?Math.round(A.bpm):'—';byId('keyA').textContent=camelot(A.key);byId('posA').textContent=mmss(A.pos)+' / '+mmss(A.dur);
@@ -228,7 +231,7 @@
         .then(function(r){return r.json();}).then(function(d){if(d&&d.token){token=d.token;byId('login').hidden=true;byId('controls').hidden=false;updateCtl(!!d.youAreController,null);loadTracks();startPoll();}else byId('loginMsg').textContent='Credenciales inválidas';})
         .catch(function(){byId('loginMsg').textContent='No se pudo conectar con el control';});});
     byId('takeBtn').addEventListener('click',function(){
-      fetch(API+'/api/control/take?token='+token,{method:'POST'}).then(function(r){return r.json();})
+      fetch(API+'/api/control/take',{method:'POST',headers:authHdr()}).then(function(r){return r.json();})
         .then(function(){updateCtl(true,DEVICE);byId('status').textContent='Tienes el control.';poll();})
         .catch(function(){byId('loginMsg').textContent='No se pudo tomar el control';});});
     $all('#modeSeg button').forEach(function(b){b.addEventListener('click',function(){setMode(b.dataset.m);});});

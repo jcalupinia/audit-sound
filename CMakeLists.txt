@@ -95,3 +95,8 @@ target_link_libraries(subsonic_test PRIVATE audit_sound_engine Threads::Threads)
 # Prueba del selector inteligente (M4): armonía/tempo/energía/anti-repetición.
 add_executable(selector_test ${ROOT}/tools/selector_test.cpp)
 target_link_libraries(selector_test PRIVATE audit_sound_engine Threads::Threads)
+
+# Prueba de integración del Control API endurecido (Etapa A / A1.3, A1.5):
+# auth por Bearer, rate limit de login (429), CORS por allowlist, 401/compat.
+add_executable(control_api_test ${ROOT}/tools/control_api_test.cpp)
+target_link_libraries(control_api_test PRIVATE audit_sound_engine Threads::Threads PkgConfig::CURL)
