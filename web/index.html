@@ -145,7 +145,13 @@
     <div id="controls" hidden style="font-size:12px;color:var(--muted);text-align:center">Control conectado ✓</div>
     <div id="ctlbar" hidden style="margin-top:10px;text-align:center">
       <div id="ctlwho" style="font-size:12px;color:var(--muted)"></div>
-      <button id="takeBtn" class="big sec" style="margin-top:8px" hidden>Tomar el control</button>
+      <button id="takeBtn" class="big sec" style="margin-top:8px" hidden>Solicitar el control</button>
+      <div id="pendbar" hidden style="margin-top:8px;font-size:12px;color:var(--muted)">
+        <span id="pendwho"></span>
+        <button id="approveBtn" class="big" style="margin-top:6px">Autorizar</button>
+        <button id="denyBtn" class="big sec" style="margin-top:6px">Rechazar</button>
+      </div>
+      <button id="logoutBtn" class="big sec" style="margin-top:8px">Salir del control</button>
     </div>
   </div>
 
@@ -211,15 +217,19 @@
     byId('xfLabel').textContent=(d.state===2&&!manual)?'MEZCLANDO…':'CROSSFADER';
     byId('ttVal').textContent=d.transition;byId('tt').value=d.transition;byId('mode').value=d.mixmode;
     byId('now').textContent='Ahora suena: '+(A.playing?A.title:(B.playing?B.title:'—'));
-    updateCtl(d.youAreController, d.controller);
+    updateCtl(d.youAreController, d.controller, d.pendingRequest);
   }).catch(function(){});}
-  // M6: refleja quién controla y muestra el botón "Tomar el control".
-  function updateCtl(youControl, controller){
+  // M6/S-03: refleja quién controla, la solicitud pendiente y el botón "Solicitar".
+  function updateCtl(youControl, controller, pending){
     iControl=!!youControl;
     byId('ctlbar').hidden=false;
     byId('ctlwho').textContent = youControl ? ('Tú tienes el control ('+DEVICE+')')
       : (controller ? ('Controla: '+controller) : 'Nadie tiene el control');
     byId('takeBtn').hidden = !!youControl;
+    // S-03: si yo controlo y hay una solicitud pendiente, ofrece autorizar/rechazar.
+    var hasPend = !!(youControl && pending);
+    byId('pendbar').hidden = !hasPend;
+    if(hasPend) byId('pendwho').textContent = pending+' solicita el control';
     // En modo manual, deshabilita los controles de deck si no controlas.
     $all('.deckctl input, .deckctl button, #xf, #skipBtn, #fadeBtn, #tt, #mode').forEach(function(el){ el.disabled=!youControl; });
   }
@@ -227,13 +237,27 @@
 
   if(API){
     byId('loginBtn').addEventListener('click',function(){
-      fetch(API+'/api/login?user='+encodeURIComponent(byId('u').value)+'&pass='+encodeURIComponent(byId('pw').value)+'&name='+encodeURIComponent(DEVICE),{method:'POST'})
-        .then(function(r){return r.json();}).then(function(d){if(d&&d.token){token=d.token;byId('login').hidden=true;byId('controls').hidden=false;updateCtl(!!d.youAreController,null);loadTracks();startPoll();}else byId('loginMsg').textContent='Credenciales inválidas';})
+      // S-01: credenciales por CUERPO POST (nunca en la URL).
+      var body='user='+encodeURIComponent(byId('u').value)+'&pass='+encodeURIComponent(byId('pw').value)+'&name='+encodeURIComponent(DEVICE);
+      fetch(API+'/api/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(r){return r.json();}).then(function(d){if(d&&d.token){token=d.token;byId('login').hidden=true;byId('controls').hidden=false;updateCtl(!!d.youAreController,null,'');loadTracks();startPoll();}else byId('loginMsg').textContent='Credenciales inválidas';})
         .catch(function(){byId('loginMsg').textContent='No se pudo conectar con el control';});});
+    // S-03: "Solicitar el control" → request; si no hay controlador, se concede.
     byId('takeBtn').addEventListener('click',function(){
-      fetch(API+'/api/control/take',{method:'POST',headers:authHdr()}).then(function(r){return r.json();})
-        .then(function(){updateCtl(true,DEVICE);byId('status').textContent='Tienes el control.';poll();})
-        .catch(function(){byId('loginMsg').textContent='No se pudo tomar el control';});});
+      fetch(API+'/api/control/request',{method:'POST',headers:authHdr()}).then(function(r){return r.json();})
+        .then(function(d){ if(d&&d.status==='granted'){updateCtl(true,DEVICE,'');byId('status').textContent='Tienes el control.';}
+          else {byId('status').textContent='Solicitud enviada; espera autorización.';} poll();})
+        .catch(function(){byId('loginMsg').textContent='No se pudo solicitar el control';});});
+    byId('approveBtn').addEventListener('click',function(){
+      fetch(API+'/api/control/approve',{method:'POST',headers:authHdr()}).then(function(){poll();}).catch(function(){});});
+    byId('denyBtn').addEventListener('click',function(){
+      fetch(API+'/api/control/deny',{method:'POST',headers:authHdr()}).then(function(){poll();}).catch(function(){});});
+    byId('logoutBtn').addEventListener('click',function(){
+      fetch(API+'/api/logout',{method:'POST',headers:authHdr()}).then(function(){
+        token=null;if(pollTimer)clearInterval(pollTimer);
+        byId('controls').hidden=true;byId('ctlbar').hidden=true;byId('login').hidden=false;
+        byId('status').textContent='Sesión cerrada.';
+      }).catch(function(){});});
     $all('#modeSeg button').forEach(function(b){b.addEventListener('click',function(){setMode(b.dataset.m);});});
     byId('skipBtn').addEventListener('click',function(){cmd('skip');});
     byId('fadeBtn').addEventListener('click',function(){cmd('skip');});

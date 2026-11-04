@@ -1,4 +1,15 @@
-// Control API (issues M5 + mezcladora manual) con libmicrohttpd.
+// Control API (M5 + mezcladora manual + endurecimiento Etapa A/A4) con libmicrohttpd.
+//
+// Seguridad (A4.1):
+//   S-01  Login por CUERPO POST (x-www-form-urlencoded); credenciales y token NUNCA
+//         viajan en la URL. El token de sesión se envía en `Authorization: Bearer`.
+//   S-02  CORS con denegación por defecto: sin allowlist no se emite Access-Control-
+//         Allow-Origin (salvo opt-in explícito de desarrollo).
+//   S-03  Transferencia de control con autorización: una sesión secundaria SOLICITA
+//         el control; el controlador activo APRUEBA o RECHAZA. Sin controlador vivo,
+//         el control queda libre y se puede tomar. La reproducción no se interrumpe.
+//   S-04  Logout con revocación server-side del token (no reutilizable), caducidad de
+//         sesiones, rate limit de login y cabecera de proxy confiable configurable.
 
 #include "control_api.h"
 
@@ -26,28 +37,27 @@
 namespace {
 
 constexpr long SESSION_TTL_SECONDS = 7200;  // sesiones inactivas se purgan tras 2 h
+constexpr int LOGIN_MAX_ATTEMPTS = 8;       // rate limit de /api/login por IP
+constexpr long LOGIN_WINDOW_SECONDS = 300;  // ventana de 5 min
 
-// --- Endurecimiento (Etapa A / A1.3) ---
-// Rate limit de /api/login: máx. intentos por IP en una ventana deslizante.
-constexpr int LOGIN_MAX_ATTEMPTS = 8;
-constexpr long LOGIN_WINDOW_SECONDS = 300;  // 5 min
-
-// Allowlist de orígenes CORS, tomada de AUDIT_SOUND_API_ORIGIN (lista separada por
-// comas) en el arranque. Vacía → se mantiene el comodín "*" (retrocompat; el token
-// NO viaja en cookie, así que "*" no expone credenciales de navegador, pero acotar
-// el origen es mejor práctica). Con uno o más orígenes, solo se refleja el que
-// coincida con la cabecera Origin de la petición.
-std::vector<std::string> g_cors_origins;
+// Config de seguridad tomada del entorno al arrancar.
+std::vector<std::string> g_cors_origins;  // AUDIT_SOUND_API_ORIGIN (coma-separada)
+bool g_cors_allow_all = false;            // AUDIT_SOUND_API_CORS_ALLOW_ALL=1 (solo dev)
+bool g_trust_proxy = true;                // AUDIT_SOUND_API_TRUST_PROXY=false → ignora XFF
 
 struct Catalog {
   std::vector<std::string> titles;
   std::vector<std::string> paths;
 };
 
-// M6 — una sesión por dispositivo.
 struct Session {
   std::string name;
   time_t last = 0;
+};
+
+// Buffer del cuerpo de la petición (POST). Se libera en el callback de término.
+struct ReqCtx {
+  std::string body;
 };
 
 struct Api {
@@ -57,24 +67,36 @@ struct Api {
   std::string user, pass;
   std::map<std::string, Session> sessions;  // token -> sesión
   std::string controller;                    // token del controlador activo ("" = ninguno)
-  std::map<std::string, std::vector<time_t>> loginAttempts;  // IP -> timestamps (rate limit)
+  std::string pendingReq, pendingReqName;    // S-03: solicitud de control pendiente
+  std::map<std::string, std::vector<time_t>> loginAttempts;  // IP -> timestamps
   Catalog cat;
   std::mutex mu;
   bool manual = false;
   float xfader = 0.5f;
   std::string deckTitle[2];
 
-  // Nombre del controlador actual (vacío si no hay o si su sesión caducó).
   std::string controllerName() {
     auto it = sessions.find(controller);
     return it == sessions.end() ? std::string() : it->second.name;
   }
+  bool controllerAlive() { return !controller.empty() && sessions.count(controller) != 0; }
+  // Purga sesiones inactivas y libera el control/solicitud si su sesión caducó.
+  void purge(time_t now) {
+    for (auto it = sessions.begin(); it != sessions.end();) {
+      if (now - it->second.last > SESSION_TTL_SECONDS) {
+        if (controller == it->first) controller.clear();
+        if (pendingReq == it->first) { pendingReq.clear(); pendingReqName.clear(); }
+        it = sessions.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+  void logEvent(const std::string& e) { LOGI("control_api: %s", e.c_str()); }
 };
 
 std::string randomToken() {
   static const char* hx = "0123456789abcdef";
-  // RNG sembrado UNA sola vez: reseeding por llamada con time() daba tokens
-  // idénticos a dos logins en el mismo segundo (rompía las sesiones por dispositivo, M6).
   static std::mutex seedMu;
   static std::mt19937_64 rng(std::random_device{}() ^
                              (uint64_t)std::chrono::high_resolution_clock::now()
@@ -82,7 +104,7 @@ std::string randomToken() {
                                  .count());
   std::lock_guard<std::mutex> lk(seedMu);
   std::string s;
-  for (int i = 0; i < 32; ++i) s += hx[rng() & 0xf];
+  for (int i = 0; i < 32; ++i) s += hx[rng() & 0xf];  // 128 bits
   return s;
 }
 
@@ -96,8 +118,7 @@ std::string jsonEsc(const std::string& in) {
   return o;
 }
 
-// Comparación en tiempo constante (no revela la longitud ni corta en el primer
-// byte distinto): evita un canal lateral de temporización sobre user/pass.
+// Comparación en tiempo constante (sin canal lateral de temporización).
 bool ctEqual(const std::string& a, const std::string& b) {
   const size_t n = a.size() > b.size() ? a.size() : b.size();
   unsigned char diff = (unsigned char)(a.size() ^ b.size());
@@ -109,35 +130,80 @@ bool ctEqual(const std::string& a, const std::string& b) {
   return diff == 0;
 }
 
-// Cabecera HTTP (devuelve nullptr si no está).
 const char* hdr(struct MHD_Connection* c, const char* key) {
   return MHD_lookup_connection_value(c, MHD_HEADER_KIND, key);
 }
-
-// Token de sesión: se prefiere `Authorization: Bearer <token>` (no viaja en la
-// URL → no se filtra por Referer ni por logs intermedios). Se acepta el query
-// `?token=` solo como respaldo retrocompatible.
-std::string authToken(struct MHD_Connection* c) {
-  const char* a = hdr(c, "Authorization");
-  if (a) {
-    const char* pfx = "Bearer ";
-    if (0 == std::strncmp(a, pfx, 7) && a[7]) return std::string(a + 7);
-  }
-  const char* q = MHD_lookup_connection_value(c, MHD_GET_ARGUMENT_KIND, "token");
-  return q ? std::string(q) : std::string();
+const char* arg(struct MHD_Connection* c, const char* key) {
+  return MHD_lookup_connection_value(c, MHD_GET_ARGUMENT_KIND, key);
+}
+int argi(struct MHD_Connection* c, const char* key, int def) {
+  const char* v = arg(c, key);
+  return v ? std::atoi(v) : def;
+}
+double argf(struct MHD_Connection* c, const char* key, double def) {
+  const char* v = arg(c, key);
+  return v ? std::atof(v) : def;
 }
 
-// IP del cliente para el rate limit. Detrás del proxy (nginx/Coolify) la IP real
-// llega en X-Forwarded-For (primer salto); si no, se usa la dirección del socket.
+// S-01: token SOLO desde `Authorization: Bearer <token>` (nunca desde la URL).
+std::string authToken(struct MHD_Connection* c) {
+  const char* a = hdr(c, "Authorization");
+  if (a && 0 == std::strncmp(a, "Bearer ", 7) && a[7]) return std::string(a + 7);
+  return std::string();
+}
+
+// Decodifica x-www-form-urlencoded (%XX y '+').
+std::string urlDecode(const std::string& s) {
+  std::string o;
+  for (size_t i = 0; i < s.size(); ++i) {
+    char ch = s[i];
+    if (ch == '+') { o += ' '; }
+    else if (ch == '%' && i + 2 < s.size()) {
+      auto hexv = [](char h) -> int {
+        if (h >= '0' && h <= '9') return h - '0';
+        if (h >= 'a' && h <= 'f') return h - 'a' + 10;
+        if (h >= 'A' && h <= 'F') return h - 'A' + 10;
+        return -1;
+      };
+      int hi = hexv(s[i + 1]), lo = hexv(s[i + 2]);
+      if (hi >= 0 && lo >= 0) { o += (char)((hi << 4) | lo); i += 2; }
+      else o += ch;
+    } else {
+      o += ch;
+    }
+  }
+  return o;
+}
+
+// Extrae un campo de un cuerpo application/x-www-form-urlencoded.
+bool formField(const std::string& body, const std::string& key, std::string& out) {
+  size_t i = 0;
+  while (i < body.size()) {
+    size_t amp = body.find('&', i);
+    std::string pair = body.substr(i, amp == std::string::npos ? std::string::npos : amp - i);
+    size_t eq = pair.find('=');
+    std::string k = eq == std::string::npos ? pair : pair.substr(0, eq);
+    if (urlDecode(k) == key) { out = eq == std::string::npos ? "" : urlDecode(pair.substr(eq + 1)); return true; }
+    if (amp == std::string::npos) break;
+    i = amp + 1;
+  }
+  return false;
+}
+
+// IP del cliente para el rate limit. Solo se confía en X-Forwarded-For si está
+// habilitado el proxy confiable (detrás de nginx); si no, se usa el socket, para
+// evitar que un cliente directo falsee su IP (S-04).
 std::string clientIp(struct MHD_Connection* c) {
-  const char* xff = hdr(c, "X-Forwarded-For");
-  if (xff && *xff) {
-    std::string s(xff);
-    size_t comma = s.find(',');
-    std::string first = comma == std::string::npos ? s : s.substr(0, comma);
-    size_t a = first.find_first_not_of(" \t");
-    size_t b = first.find_last_not_of(" \t");
-    if (a != std::string::npos) return first.substr(a, b - a + 1);
+  if (g_trust_proxy) {
+    const char* xff = hdr(c, "X-Forwarded-For");
+    if (xff && *xff) {
+      std::string s(xff);
+      size_t comma = s.find(',');
+      std::string first = comma == std::string::npos ? s : s.substr(0, comma);
+      size_t a = first.find_first_not_of(" \t");
+      size_t b = first.find_last_not_of(" \t");
+      if (a != std::string::npos) return first.substr(a, b - a + 1);
+    }
   }
   const union MHD_ConnectionInfo* info =
       MHD_get_connection_info(c, MHD_CONNECTION_INFO_CLIENT_ADDRESS);
@@ -164,33 +230,23 @@ std::string basenameNoExt(const std::string& path) {
   return jsonEsc(b);
 }
 
-const char* arg(struct MHD_Connection* c, const char* key) {
-  return MHD_lookup_connection_value(c, MHD_GET_ARGUMENT_KIND, key);
-}
-int argi(struct MHD_Connection* c, const char* key, int def) {
-  const char* v = arg(c, key);
-  return v ? std::atoi(v) : def;
-}
-double argf(struct MHD_Connection* c, const char* key, double def) {
-  const char* v = arg(c, key);
-  return v ? std::atof(v) : def;
+bool originAllowed(const std::string& o) {
+  return std::find(g_cors_origins.begin(), g_cors_origins.end(), o) != g_cors_origins.end();
 }
 
+// S-02: CORS con denegación por defecto. Access-Control-Allow-Origin solo si el
+// Origin está en la allowlist (o, en dev, con el opt-in explícito "*").
 MHD_Result reply(struct MHD_Connection* c, int code, const std::string& body) {
   struct MHD_Response* r =
       MHD_create_response_from_buffer(body.size(), (void*)body.data(), MHD_RESPMEM_MUST_COPY);
   MHD_add_response_header(r, "Content-Type", "application/json");
-  // CORS: con allowlist configurada, se refleja SOLO el Origin que coincida
-  // (y nada si no coincide → el navegador bloquea). Sin allowlist, "*" (retrocompat).
-  if (g_cors_origins.empty()) {
-    MHD_add_response_header(r, "Access-Control-Allow-Origin", "*");
-  } else {
-    const char* origin = MHD_lookup_connection_value(c, MHD_HEADER_KIND, "Origin");
-    if (origin && std::find(g_cors_origins.begin(), g_cors_origins.end(),
-                            std::string(origin)) != g_cors_origins.end()) {
-      MHD_add_response_header(r, "Access-Control-Allow-Origin", origin);
-      MHD_add_response_header(r, "Vary", "Origin");
-    }
+  const char* origin = hdr(c, "Origin");
+  std::string acao;
+  if (g_cors_allow_all) acao = "*";
+  else if (origin && originAllowed(std::string(origin))) acao = origin;
+  if (!acao.empty()) {
+    MHD_add_response_header(r, "Access-Control-Allow-Origin", acao.c_str());
+    if (acao != "*") MHD_add_response_header(r, "Vary", "Origin");
   }
   MHD_add_response_header(r, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   MHD_add_response_header(r, "Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -201,7 +257,6 @@ MHD_Result reply(struct MHD_Connection* c, int code, const std::string& body) {
 
 std::string deckJson(Api* api, int d) {
   DjEngine e = api->engine;
-  // En modo auto, el título de la pista que suena viene del AutoMix.
   std::string title = api->deckTitle[d];
   if (!api->manual && automix_from_deck(api->automix) == d) {
     char p[4096];
@@ -218,16 +273,25 @@ std::string deckJson(Api* api, int d) {
 }
 
 MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const char* method,
-                   const char*, const char*, size_t* upload_size, void** con_cls) {
+                   const char*, const char* upload_data, size_t* upload_size, void** con_cls) {
   auto* api = static_cast<Api*>(cls);
-  if (0 == std::strcmp(method, "OPTIONS")) return reply(c, 200, "{}");
-  if (*con_cls == nullptr) { *con_cls = (void*)1; return MHD_YES; }
-  if (0 == std::strcmp(method, "POST") && *upload_size != 0) { *upload_size = 0; return MHD_YES; }
+
+  // Primera llamada: reservar contexto de petición (acumula el cuerpo POST).
+  if (*con_cls == nullptr) { *con_cls = new ReqCtx(); return MHD_YES; }
+  auto* ctx = static_cast<ReqCtx*>(*con_cls);
+
+  // Acumular el cuerpo del POST entre invocaciones.
+  if (0 == std::strcmp(method, "POST") && *upload_size != 0) {
+    ctx->body.append(upload_data, *upload_size);
+    *upload_size = 0;
+    return MHD_YES;
+  }
 
   const std::string path = url;
+  if (0 == std::strcmp(method, "OPTIONS")) return reply(c, 200, "{}");
 
+  // --- S-01: Login por cuerpo POST (x-www-form-urlencoded) ---
   if (path == "/api/login" && 0 == std::strcmp(method, "POST")) {
-    // Rate limit por IP (anti fuerza bruta): ventana deslizante bajo el lock.
     const std::string ip = clientIp(c);
     {
       std::lock_guard<std::mutex> lk(api->mu);
@@ -240,47 +304,88 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
         return reply(c, 429, "{\"error\":\"demasiados intentos; espera unos minutos\"}");
       hits.push_back(now);
     }
-    const char* u = arg(c, "user");
-    const char* p = arg(c, "pass");
-    // Comparación en tiempo constante; se evalúan ambos campos siempre.
-    const bool okUser = u && ctEqual(api->user, u);
-    const bool okPass = p && ctEqual(api->pass, p);
+    std::string u, p, nm;
+    formField(ctx->body, "user", u);
+    formField(ctx->body, "pass", p);
+    formField(ctx->body, "name", nm);
+    const bool okUser = ctEqual(api->user, u);
+    const bool okPass = ctEqual(api->pass, p);
     if (!(okUser && okPass))
-      return reply(c, 401, "{\"error\":\"credenciales inválidas\"}");
-    const char* nm = arg(c, "name");
-    const std::string name = (nm && nm[0]) ? jsonEsc(nm) : std::string("Dispositivo");
+      return reply(c, 401, "{\"error\":\"credenciales inválidas\"}");  // sin eco de la credencial
+    const std::string name = nm.empty() ? std::string("Dispositivo") : jsonEsc(nm);
     std::lock_guard<std::mutex> lk(api->mu);
     const time_t now = time(nullptr);
-    for (auto it = api->sessions.begin(); it != api->sessions.end();) {  // purgar inactivas
-      if (now - it->second.last > SESSION_TTL_SECONDS) {
-        if (api->controller == it->first) api->controller.clear();
-        it = api->sessions.erase(it);
-      } else {
-        ++it;
-      }
-    }
+    api->purge(now);
     const std::string t = randomToken();
     api->sessions[t] = Session{name, now};
-    if (api->controller.empty()) api->controller = t;  // el primero en entrar toma el control
+    if (!api->controllerAlive()) api->controller = t;  // primero en entrar toma el control
     const bool youCtl = (api->controller == t);
+    api->logEvent("login sesión=" + name + (youCtl ? " (controlador)" : ""));
     return reply(c, 200, "{\"token\":\"" + t + "\",\"name\":\"" + name +
                              "\",\"youAreController\":" + (youCtl ? "true" : "false") + "}");
   }
 
-  // A partir de aquí todo requiere un token de sesión válido. Un único lock cubre
-  // la validación y el manejo (los handlers ya NO toman el lock por separado).
+  // --- A partir de aquí todo exige token de sesión válido (Bearer) ---
   std::lock_guard<std::mutex> lk(api->mu);
-  const std::string tok = authToken(c);  // Authorization: Bearer … (o ?token= legado)
+  api->purge(time(nullptr));  // recupera control si el controlador se desconectó (TTL)
+  const std::string tok = authToken(c);
   auto sit = tok.empty() ? api->sessions.end() : api->sessions.find(tok);
   if (sit == api->sessions.end()) return reply(c, 401, "{\"error\":\"no autorizado\"}");
   sit->second.last = time(nullptr);
 
+  // --- S-04: Logout con revocación server-side ---
+  if (path == "/api/logout" && 0 == std::strcmp(method, "POST")) {
+    if (api->controller == tok) api->controller.clear();
+    if (api->pendingReq == tok) { api->pendingReq.clear(); api->pendingReqName.clear(); }
+    const std::string nm = sit->second.name;
+    api->sessions.erase(sit);  // el token queda revocado (no reutilizable)
+    api->logEvent("logout sesión=" + nm);
+    return reply(c, 200, "{\"ok\":true}");
+  }
+
+  // --- S-03: Transferencia de control con autorización ---
   if (path == "/api/control/take" && 0 == std::strcmp(method, "POST")) {
-    api->controller = tok;  // handoff: este dispositivo toma el control
+    // Si hay un controlador VIVO distinto, no se puede arrebatar: hay que solicitar.
+    if (api->controllerAlive() && api->controller != tok)
+      return reply(c, 409, "{\"error\":\"control_held\",\"controller\":\"" +
+                               api->controllerName() + "\",\"hint\":\"usa /api/control/request\"}");
+    api->controller = tok;  // no había controlador vivo → lo toma
+    api->pendingReq.clear(); api->pendingReqName.clear();
+    api->logEvent("control tomado por " + sit->second.name);
     return reply(c, 200, "{\"ok\":true,\"controller\":\"" + sit->second.name + "\"}");
+  }
+  if (path == "/api/control/request" && 0 == std::strcmp(method, "POST")) {
+    if (!api->controllerAlive()) {  // nadie controla → concede directo
+      api->controller = tok;
+      api->logEvent("control concedido (libre) a " + sit->second.name);
+      return reply(c, 200, "{\"status\":\"granted\"}");
+    }
+    if (api->controller == tok) return reply(c, 200, "{\"status\":\"granted\"}");  // ya controla
+    api->pendingReq = tok;
+    api->pendingReqName = sit->second.name;
+    api->logEvent("solicitud de control de " + sit->second.name);
+    return reply(c, 200, "{\"status\":\"requested\",\"controller\":\"" + api->controllerName() + "\"}");
+  }
+  if (path == "/api/control/approve" && 0 == std::strcmp(method, "POST")) {
+    if (api->controller != tok) return reply(c, 403, "{\"error\":\"solo el controlador aprueba\"}");
+    if (api->pendingReq.empty() || !api->sessions.count(api->pendingReq))
+      return reply(c, 409, "{\"error\":\"no hay solicitud pendiente\"}");
+    const std::string newName = api->pendingReqName;
+    api->controller = api->pendingReq;  // transfiere (la reproducción no se toca)
+    api->pendingReq.clear(); api->pendingReqName.clear();
+    api->logEvent("control transferido a " + newName);
+    return reply(c, 200, "{\"ok\":true,\"controller\":\"" + jsonEsc(newName) + "\"}");
+  }
+  if (path == "/api/control/deny" && 0 == std::strcmp(method, "POST")) {
+    if (api->controller != tok) return reply(c, 403, "{\"error\":\"solo el controlador rechaza\"}");
+    api->pendingReq.clear(); api->pendingReqName.clear();
+    api->logEvent("solicitud de control rechazada");
+    return reply(c, 200, "{\"ok\":true}");
   }
   if (path == "/api/control/release" && 0 == std::strcmp(method, "POST")) {
     if (api->controller == tok) api->controller.clear();
+    api->pendingReq.clear(); api->pendingReqName.clear();
+    api->logEvent("control liberado");
     return reply(c, 200, "{\"ok\":true}");
   }
 
@@ -295,15 +400,18 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   }
 
   if (path == "/api/status" && 0 == std::strcmp(method, "GET")) {
-    const std::string cn = api->controllerName();          // M6: quién controla
+    const std::string cn = api->controllerName();
     const bool youCtl = (api->controller == tok);
-    char head[512];
+    // S-03: expone la solicitud pendiente para que el controlador la apruebe/rechace.
+    const std::string pend = api->pendingReq.empty() ? std::string("") : jsonEsc(api->pendingReqName);
+    char head[640];
     std::snprintf(head, sizeof(head),
                   "{\"mode\":\"%s\",\"xfader\":%.3f,\"state\":%d,\"transition\":%.1f,"
-                  "\"mixmode\":%d,\"controller\":\"%s\",\"youAreController\":%s,\"decks\":[",
+                  "\"mixmode\":%d,\"controller\":\"%s\",\"youAreController\":%s,"
+                  "\"pendingRequest\":\"%s\",\"decks\":[",
                   api->manual ? "manual" : "auto", api->xfader, automix_state(api->automix),
                   automix_get_transition_time(api->automix), automix_get_mode(api->automix),
-                  cn.c_str(), youCtl ? "true" : "false");
+                  cn.c_str(), youCtl ? "true" : "false", pend.c_str());
     std::string out = head;
     out += deckJson(api, 0) + "," + deckJson(api, 1) + "]}";
     return reply(c, 200, out);
@@ -312,7 +420,6 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   if (path == "/api/command" && 0 == std::strcmp(method, "POST")) {
     const char* action = arg(c, "action");
     if (!action) return reply(c, 400, "{\"error\":\"falta action\"}");
-    // M6: solo el dispositivo que tiene el control puede ejecutar comandos.
     if (api->controller != tok)
       return reply(c, 409,
                    "{\"error\":\"control_held\",\"controller\":\"" + api->controllerName() + "\"}");
@@ -324,7 +431,7 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
       const bool manual = v && 0 == std::strcmp(v, "manual");
       api->manual = manual;
       automix_enable(api->automix, manual ? 0 : 1);
-      if (manual) {  // cargar 2 pistas para empezar
+      if (manual) {
         if (api->cat.paths.size() >= 1 && !api->deckTitle[0].size()) {
           dj_load(e, 0, api->cat.paths[0].c_str());
           api->deckTitle[0] = api->cat.titles[0];
@@ -378,6 +485,45 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   return reply(c, 404, "{\"error\":\"no encontrado\"}");
 }
 
+void reqCompleted(void*, struct MHD_Connection*, void** con_cls, enum MHD_RequestTerminationCode) {
+  if (con_cls && *con_cls) { delete static_cast<ReqCtx*>(*con_cls); *con_cls = nullptr; }
+}
+
+void parseCsvEnv(const char* name, std::vector<std::string>& out) {
+  const char* env = std::getenv(name);
+  if (!env) return;
+  std::string s(env), tok;
+  for (size_t i = 0; i <= s.size(); ++i) {
+    if (i == s.size() || s[i] == ',') {
+      size_t a = tok.find_first_not_of(" \t");
+      size_t b = tok.find_last_not_of(" \t");
+      if (a != std::string::npos) {
+        std::string o = tok.substr(a, b - a + 1);
+        while (!o.empty() && o.back() == '/') o.pop_back();
+        if (!o.empty()) out.push_back(o);
+      }
+      tok.clear();
+    } else {
+      tok += s[i];
+    }
+  }
+}
+
+bool envFalse(const char* name) {
+  const char* v = std::getenv(name);
+  if (!v) return false;
+  std::string s(v);
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s == "false" || s == "0" || s == "no" || s == "off";
+}
+bool envTrue(const char* name) {
+  const char* v = std::getenv(name);
+  if (!v) return false;
+  std::string s(v);
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s == "true" || s == "1" || s == "yes" || s == "on";
+}
+
 }  // namespace
 
 extern "C" {
@@ -389,33 +535,27 @@ ControlApi control_api_start(int port, const char* user, const char* pass, DjEng
   api->automix = automix;
   api->user = user ? user : "";
   api->pass = pass ? pass : "";
-  // Allowlist CORS desde AUDIT_SOUND_API_ORIGIN (lista separada por comas). Vacía → "*".
+
+  // S-02: allowlist CORS. Vacía → denegación por defecto (sin ACAO), salvo opt-in dev.
   g_cors_origins.clear();
-  if (const char* env = std::getenv("AUDIT_SOUND_API_ORIGIN")) {
-    std::string s(env), tok;
-    for (size_t i = 0; i <= s.size(); ++i) {
-      if (i == s.size() || s[i] == ',') {
-        size_t a = tok.find_first_not_of(" \t");
-        size_t b = tok.find_last_not_of(" \t");
-        if (a != std::string::npos) {
-          std::string o = tok.substr(a, b - a + 1);
-          while (!o.empty() && o.back() == '/') o.pop_back();  // sin barra final
-          if (!o.empty()) g_cors_origins.push_back(o);
-        }
-        tok.clear();
-      } else {
-        tok += s[i];
-      }
-    }
-  }
+  parseCsvEnv("AUDIT_SOUND_API_ORIGIN", g_cors_origins);
+  g_cors_allow_all = envTrue("AUDIT_SOUND_API_CORS_ALLOW_ALL");
+  // S-04: por defecto se confía en el proxy (nginx); se puede desactivar si el engine
+  // queda directamente expuesto, para no fiarse de X-Forwarded-For falseable.
+  g_trust_proxy = !envFalse("AUDIT_SOUND_API_TRUST_PROXY");
+
   api->daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, (uint16_t)port, nullptr,
-                                 nullptr, &handler, api, MHD_OPTION_END);
+                                 nullptr, &handler, api,
+                                 MHD_OPTION_NOTIFY_COMPLETED, (void*)&reqCompleted, nullptr,
+                                 MHD_OPTION_END);
   if (!api->daemon) {
     LOGE("control_api: no se pudo iniciar en el puerto %d", port);
     delete api;
     return nullptr;
   }
-  LOGI("control_api: escuchando en el puerto %d", port);
+  LOGI("control_api: escuchando en el puerto %d (CORS %s, proxy %s)", port,
+       g_cors_allow_all ? "dev-*" : (g_cors_origins.empty() ? "deny" : "allowlist"),
+       g_trust_proxy ? "confiable" : "directo");
   return api;
 }
 
