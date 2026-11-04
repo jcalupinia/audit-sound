@@ -13,6 +13,7 @@ import * as OM from './openmusic.js';
 import * as IA from './archive.js';
 import * as CONV from './converter.js';
 import * as CC from './commandcenter.js';
+import * as SEARCH from './search.js';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -418,100 +419,157 @@ $('#importIn').addEventListener('change', async (e)=>{
   renderMedia(); if (mode==='asistido') refreshSuggestions(true); toast('Biblioteca actualizada.');
 });
 
-/* ---- Fuentes de música: Navidrome / Libre / Archive ---- */
-let source = null, results = [];
-function srcStatus(text, cls){ const el=$('#srcStatus'); el.textContent=text||''; el.style.color = cls==='err'?'#ff7a7a':cls==='ok'?'var(--green)':'var(--muted)'; }
+/* ---- Buscador musical unificado (A2) ---- */
 let nd = new SubsonicClient();
-function selectSource(s){
-  source = s; results = [];
-  $$('#srcNav,#srcLibre,#srcArchive').forEach(b=>b.classList.remove('on'));
-  ({nav:'#srcNav',libre:'#srcLibre',archive:'#srcArchive'})[s] && $(({nav:'#srcNav',libre:'#srcLibre',archive:'#srcArchive'})[s]).classList.add('on');
-  $('#srcRow').style.display='flex';
-  if (s==='nav'){
-    const c=loadConfig();
-    if (c){ nd=new SubsonicClient(c); srcStatus('Navidrome: usando la conexión guardada. Busca por artista/género.'); }
-    else srcStatus('Navidrome no está configurado. Configúralo en el mezclador PRO o en Configuración.', 'err');
-  } else if (s==='libre'){ srcStatus(OM.enabled()? 'Música libre (Jamendo). Busca por artista/estilo.' : 'Música libre desactivada (falta JAMENDO_CLIENT_ID en el servidor).', OM.enabled()?'':'err'); }
-  else { srcStatus(IA.enabled()? 'Internet Archive. Busca por artista/colección.' : 'Internet Archive desactivado en el servidor.', IA.enabled()?'':'err'); }
+let results = [];                 // últimos resultados normalizados (ya deduplicados)
+let srcFilter = new Set();        // fuentes seleccionadas (vacío = todas las habilitadas)
+function srcStatus(text, cls){ const el=$('#srcStatus'); el.textContent=text||''; el.style.color = cls==='err'?'#ff7a7a':cls==='ok'?'var(--green)':'var(--muted)'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function sourceEnabled(s){
+  if (s==='navidrome'){ if(!nd.configured){ const c=loadConfig(); if(c) nd=new SubsonicClient(c); } return !!nd.configured; }
+  if (s==='libre') return OM.enabled();
+  if (s==='archive') return IA.enabled();
+  return s==='local';
 }
-$('#srcNav').addEventListener('click', ()=>selectSource('nav'));
-$('#srcLibre').addEventListener('click', ()=>selectSource('libre'));
-$('#srcArchive').addEventListener('click', ()=>selectSource('archive'));
+function srcDisabledMsg(s){
+  if (s==='navidrome') return 'Navidrome no está configurado (conéctalo en el mezclador PRO).';
+  if (s==='libre') return 'Música libre desactivada (falta JAMENDO_CLIENT_ID en el servidor).';
+  if (s==='archive') return 'Internet Archive desactivado en el servidor.';
+  return '';
+}
+function refreshSrcChips(){
+  $$('.srcf').forEach(b=>{ const s=b.dataset.src; b.classList.toggle('off', !sourceEnabled(s)); b.classList.toggle('on', srcFilter.has(s)); });
+}
+$$('.srcf').forEach(b=> b.addEventListener('click', ()=>{
+  const s=b.dataset.src;
+  if (!sourceEnabled(s)) srcStatus(srcDisabledMsg(s), 'err');
+  if (srcFilter.has(s)) srcFilter.delete(s); else srcFilter.add(s);
+  refreshSrcChips();
+}));
+
+// Proveedores unificados que ENVUELVEN los módulos existentes (sin duplicar lógica).
+function providers(){
+  if (window.__AS_PROVIDERS_OVERRIDE) return window.__AS_PROVIDERS_OVERRIDE;  // gancho de pruebas (inerte en producción)
+  return [
+    { source:'navidrome', label:'Navidrome', enabled: sourceEnabled('navidrome'),
+      search: async (q,n)=>{ const t=await nd.search(q,n); let g=[]; if(q){ try{ g=await nd.songsByGenre(q,n); }catch(e){} }
+        const seen=new Set(); return [...t,...g].filter(s=>{ if(!s.id||seen.has(s.id))return false; seen.add(s.id); return true; })
+          .map(s=>SEARCH.normNavidrome(s, SubsonicClient.filename(s))); } },
+    { source:'libre', label:'Libre', enabled: OM.enabled(),
+      search: async (q,n)=> (await OM.search(q,n)).map(s=>SEARCH.normLibre(s, OM.filename(s))) },
+    { source:'archive', label:'Archive', enabled: IA.enabled(),
+      search: async (q,n)=> (await IA.search(q,n)).map(s=>SEARCH.normArchive(s, IA.filename(s))) },
+    { source:'local', label:'Local', enabled: true,
+      search: async (q)=> localSearch(q) },
+  ];
+}
+function localSearch(q){
+  const ql=String(q||'').toLowerCase();
+  return libRows.filter(t=> !ql || (t.name||'').toLowerCase().includes(ql)).map(SEARCH.normLocal);
+}
+async function bytesOf(r){
+  if (r.source==='navidrome') return nd.getBytes(r.id);
+  if (r.source==='libre') return OM.getBytes(r._raw.audio);
+  if (r.source==='archive') return IA.getBytes(r.id);
+  return LIB.getBytes(r.id);
+}
+
+// Búsqueda unificada: paralela, deduplicada, con filtro por fuente y manejo de errores/timeout.
+// NO bloquea el audio: son fetch asíncronos; el motor sigue sonando en su worklet.
+async function doSearch(){
+  const q=$('#libQuery').value.trim();
+  const only = srcFilter.size ? Array.from(srcFilter) : null;
+  srcStatus('buscando…');
+  const { results: rows, errors, bySource } = await SEARCH.searchAll(q, { providers: providers(), only, perSource:30, timeoutMs:9000 });
+  results = rows; renderResults();
+  const ok=[]; for (const s in bySource){ if(bySource[s]>=0) ok.push(bySource[s]+' '+s); }
+  let msg = results.length+' resultado(s)'+(ok.length?' ('+ok.join(', ')+')':'');
+  if (errors.length) msg += ' · '+errors.map(e=>e.label+': '+(/timeout/.test(e.error)?'tardó demasiado':'error')).join(', ');
+  srcStatus(msg, results.length?'ok':(errors.length?'err':''));
+}
+$('#btnSearch').addEventListener('click', doSearch);
+$('#libQuery').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doSearch(); });
 
 function renderResults(){
   const grid=$('#mediaGrid'); grid.innerHTML='';
-  if (!results.length){ const e=document.createElement('div'); e.style.cssText='grid-column:1/-1;color:var(--muted);padding:20px;text-align:center'; e.textContent='Sin resultados.'; grid.appendChild(e); return; }
-  results.forEach(song => {
-    const name = source==='nav'?SubsonicClient.filename(song):source==='libre'?OM.filename(song):IA.filename(song);
-    const el=document.createElement('div'); el.className='mtile';
-    const tag = source==='nav'?(song.suffix||'☁'):source==='libre'?'CC':'IA';
-    el.innerHTML = `<div class="th"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></div>`+
-      `<div class="cap"><div class="t" title="${name}">${song.title||name}</div><div class="s">${song.artist?song.artist+' · ':''}${tag}</div></div>`;
-    el.addEventListener('click', ()=> loadSong(song));
-    grid.appendChild(el);
-  });
+  if (!results.length){ const e=document.createElement('div'); e.style.cssText='grid-column:1/-1;color:var(--muted);padding:24px;text-align:center'; e.textContent='Sin resultados. Prueba otro término o habilita más fuentes.'; grid.appendChild(e); return; }
+  results.forEach(r=> grid.appendChild(resultTile(r)));
 }
-async function fetchBytes(song){
-  if (source==='nav') return nd.getBytes(song.id);
-  if (source==='libre') return OM.getBytes(song.audio);
-  return IA.getBytes(song.id);
+function resultTile(r){
+  const el=document.createElement('div'); el.className='mtile';
+  const canMix = r.availability==='mezclar';
+  const canListen = r.availability!=='consultar';
+  const also = (r.alsoIn&&r.alsoIn.length)? '+'+(new Set(r.alsoIn)).size : '';
+  el.innerHTML =
+    `<div class="th"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></div>`+
+    `<div class="cap"><div class="t" title="${esc(r.title)}">${esc(r.title||r.filename)}</div>`+
+    `<div class="s">${esc(r.artist||'—')}${r.album?' · '+esc(r.album):''}</div>`+
+    `<div class="meta"><span class="pill src">${esc(r.sourceLabel)}${also}</span>`+
+    `<span class="pill av-${r.availability}">${r.availability}</span>`+
+    `<span class="dur">${SEARCH.fmtDuration(r.duration)}</span></div></div>`+
+    `<div class="acts"></div>`;
+  const acts = el.querySelector('.acts');
+  const mk=(label,cls,on,title)=>{ const b=document.createElement('button'); b.textContent=label; if(cls)b.className=cls; if(title)b.title=title; b.disabled=!on; return b; };
+  const a=mk('▶A','a',canMix,'Cargar en deck A'); a.addEventListener('click',()=>loadResult(r,0));
+  const b=mk('▶B','b',canMix,'Cargar en deck B'); b.addEventListener('click',()=>loadResult(r,1));
+  acts.append(a,b);
+  if (canListen && !canMix){ const cue=mk('🎧 oír',null,true,'Previsualizar en el deck libre'); cue.addEventListener('click',()=>loadResult(r, playingDeck()===0?1:0, true)); acts.append(cue); }
+  if (canMix){
+    const q=mk('+cola',null,true,'Añadir a la cola del DJ automático'); q.addEventListener('click',()=>queueResult(r));
+    const sv=mk('＋',null,true,'Guardar en la biblioteca'); sv.addEventListener('click',()=>saveResult(r));
+    acts.append(q,sv);
+  }
+  if (r.availability==='consultar'){ const note=mk('solo consultar',null,false,'Licencia no apta para mezclar'); acts.append(note); }
+  return el;
 }
-function nameOf(song){ return source==='nav'?SubsonicClient.filename(song):source==='libre'?OM.filename(song):IA.filename(song); }
-async function loadSong(song){
+async function loadResult(r, deck, preview){
   if (!started){ toast('Pulsa «Iniciar consola» primero.'); return; }
-  const deck = playingDeck()===0?1:0;
-  try { srcStatus('cargando…'); const bytes=await fetchBytes(song); $('#title'+(deck?'B':'A')).textContent='cargando…'; await bridge.load(deck, bytes, nameOf(song)); srcStatus('cargada en deck '+(deck?'B':'A'),'ok'); }
+  if (r.availability==='consultar'){ toast('«'+r.title+'» es de solo consulta por su licencia.'); return; }
+  try { srcStatus('cargando «'+r.title+'»…'); const bytes=await bytesOf(r); $('#title'+(deck?'B':'A')).textContent='cargando…'; await bridge.load(deck, bytes, r.filename); srcStatus((preview?'previsualizando':'cargada')+' en deck '+(deck?'B':'A'),'ok'); }
   catch(e){ srcStatus('no se pudo cargar: '+(e.message||e),'err'); }
 }
-$('#btnSearch').addEventListener('click', doSearch);
-$('#libQuery').addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ if(!source) selectSource('libre'); doSearch(); } });
-async function doSearch(){
-  if (!source){ selectSource('libre'); }
-  const q = $('#libQuery').value.trim();
-  srcStatus('buscando…');
-  try {
-    if (source==='nav'){ if(!nd.configured){ srcStatus('Navidrome no configurado.','err'); return; } results = await nd.search(q, 30); }
-    else if (source==='libre'){ if(!OM.enabled()){ srcStatus('Música libre desactivada.','err'); return; } results = await OM.search(q, 30); }
-    else { if(!IA.enabled()){ srcStatus('Internet Archive desactivado.','err'); return; } results = await IA.search(q, 30); }
-    srcStatus(results.length+' resultado(s)', results.length?'ok':''); renderResults();
-  } catch(e){ srcStatus('error: '+(e.message||e),'err'); }
+async function queueResult(r){
+  if (!started){ toast('Pulsa «Iniciar consola» primero.'); return; }
+  if (r.availability!=='mezclar'){ toast('Solo se puede encolar música apta para mezclar.'); return; }
+  try { const bytes=await bytesOf(r); await bridge.autoAdd(bytes, r.filename); libCount++; toast('En la cola (AUTO): '+r.title); }
+  catch(e){ toast('No se pudo encolar: '+(e.message||e)); }
+}
+async function saveResult(r){
+  if (r.availability!=='mezclar'){ toast('Solo se puede guardar música apta para mezclar.'); return; }
+  if (!LIB.available()){ toast('Este navegador no permite guardar la biblioteca.'); return; }
+  try { const bytes=await bytesOf(r); await addToLibrary(r.filename, bytes, bytes.byteLength, ''); renderMedia(); toast('Guardada: '+r.title); if(mode==='asistido') refreshSuggestions(true); }
+  catch(e){ toast('No se pudo guardar: '+(e.message||e)); }
 }
 
-/* ---- Armar set y mezclar (motor común) ---- */
-async function runSet(songs, setStatus){
-  if (!songs.length){ setStatus('sin resultados','err'); return; }
+/* ---- Armar set unificado: toma del resultado solo lo apto para mezclar ---- */
+async function runSet(){
+  if (!started){ toast('Pulsa «Iniciar consola» primero.'); return; }
+  const n=Math.min(30, Math.max(2, parseInt($('#setCount').value,10)||10));
+  const q=$('#libQuery').value.trim();
+  const only = srcFilter.size ? Array.from(srcFilter) : null;
+  srcStatus('armando set…');
+  const { results: rows } = await SEARCH.searchAll(q, { providers: providers(), only, perSource:n, timeoutMs:9000 });
+  const mixable = rows.filter(r=> r.availability==='mezclar').slice(0,n);
+  if (!mixable.length){ srcStatus('no hay pistas aptas para mezclar en el resultado','err'); return; }
   setMode('auto'); let added=0;
-  for (const s of songs){
-    setStatus('añadiendo '+(added+1)+'/'+songs.length+'…');
-    try { const bytes = await fetchBytes(s); await bridge.autoAdd(bytes, nameOf(s)); added++; libCount++; } catch(e){}
+  for (const r of mixable){
+    srcStatus('añadiendo '+(added+1)+'/'+mixable.length+'…');
+    try { const bytes=await bytesOf(r); await bridge.autoAdd(bytes, r.filename); added++; libCount++; } catch(e){}
     if (added===2 && !autoOn){ autoOn=true; bridge.autoEnable(true); }
   }
   if (added>0 && !autoOn){ autoOn=true; bridge.autoEnable(true); }
-  setStatus(added? ('set en marcha: '+added+' pistas en AUTO') : 'no se pudo cargar ninguna pista', added?'ok':'err');
+  srcStatus(added? ('set en marcha: '+added+' pistas en AUTO') : 'no se pudo cargar ninguna pista', added?'ok':'err');
 }
-$('#btnSet').addEventListener('click', async ()=>{
-  if (!started){ toast('Pulsa «Iniciar consola» primero.'); return; }
-  if (!source){ selectSource('libre'); }
-  const n = Math.min(30, Math.max(2, parseInt($('#setCount').value,10)||10));
-  const q = $('#libQuery').value.trim();
-  srcStatus('armando set…');
-  try {
-    let songs=[];
-    if (source==='nav'){ if(!nd.configured){ srcStatus('Navidrome no configurado.','err'); return; }
-      const byText=await nd.search(q,n); let byGenre=[]; if(q){ try{ byGenre=await nd.songsByGenre(q,n);}catch(e){} }
-      const seen=new Set(); songs=[...byText,...byGenre].filter(s=>{ if(!s.id||seen.has(s.id))return false; seen.add(s.id); return true; }).slice(0,n); }
-    else if (source==='libre'){ if(!OM.enabled()){ srcStatus('Música libre desactivada.','err'); return; } songs = await OM.search(q,n); }
-    else { if(!IA.enabled()){ srcStatus('Internet Archive desactivado.','err'); return; } songs = await IA.search(q,n); }
-    await runSet(songs, srcStatus);
-  } catch(e){ srcStatus('error: '+(e.message||e),'err'); }
-}
-);
+$('#btnSet').addEventListener('click', runSet);
 
 if (!CONV.available()){ $('#ocOpus').checked=false; $('#ocOpus').disabled=true; }
 
+refreshSrcChips();
 renderMedia();
 
 /* ---- Para pruebas automatizadas (Playwright) ---- */
 window.__auditSound = { bridge, copilot, deckState, waves, getMode:()=>mode, autoOn:()=>autoOn,
-  refreshSuggestions, lib:LIB, libRows:()=>libRows, selectSource, doSearch, runSetBtn:()=>$('#btnSet').click(),
-  results:()=>results, subsonic:{ SubsonicClient, client:()=>nd }, openmusic:OM, archive:IA, converter:CONV, cc:CC };
+  refreshSuggestions, lib:LIB, libRows:()=>libRows, doSearch, runSet, results:()=>results,
+  search:SEARCH, providers, bytesOf, setSrcFilter:(arr)=>{ srcFilter=new Set(arr||[]); refreshSrcChips(); },
+  subsonic:{ SubsonicClient, client:()=>nd }, openmusic:OM, archive:IA, converter:CONV, cc:CC };
