@@ -31,6 +31,22 @@ $('#userAvatar')?.addEventListener('click', () => {
   if (confirm('¿Cerrar la sesión del Command Center?')) { CC.logout(); location.replace('./login.html'); }
 });
 
+/* ---- Aviso de capacidades (A1.6): la consola PRO necesita aislamiento de origen
+   (COOP/COEP → SharedArrayBuffer) + AudioWorklet, que iPhone/Safari no ofrece.
+   Se avisa en la pantalla de inicio y se apunta a la página de escucha. ---- */
+(function capCheck(){
+  const isolated = (typeof window.crossOriginIsolated === 'undefined') ? true : window.crossOriginIsolated;
+  const okEngine = (typeof AudioWorkletNode !== 'undefined') && (typeof SharedArrayBuffer !== 'undefined') && isolated;
+  if (!okEngine){
+    const c = document.querySelector('#ov .c'); if (!c) return;
+    const n = document.createElement('p');
+    n.id = 'capWarn';
+    n.style.cssText = 'color:#ffcf6b;max-width:42ch;margin:0 auto 14px;font-size:13px;line-height:1.5';
+    n.innerHTML = 'Esta <b>consola PRO</b> necesita <b>Chrome o Edge en computadora</b> (o Android) con aislamiento de origen (COOP/COEP). En iPhone/Safari el motor de mezcla no está disponible; para seguir la sesión usa la <b>página de escucha</b>.';
+    c.insertBefore(n, c.querySelector('button'));
+  }
+})();
+
 /* ---- Estado del motor ---- */
 const bridge = new AudioBridge();
 const copilot = new Copilot();
