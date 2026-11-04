@@ -100,3 +100,8 @@ target_link_libraries(selector_test PRIVATE audit_sound_engine Threads::Threads)
 # auth por Bearer, rate limit de login (429), CORS por allowlist, 401/compat.
 add_executable(control_api_test ${ROOT}/tools/control_api_test.cpp)
 target_link_libraries(control_api_test PRIVATE audit_sound_engine Threads::Threads PkgConfig::CURL)
+
+# Prueba de reproducción continua + recuperación ante fallos (Etapa A / A1.4):
+# fuente de pistas que falla intermitentemente; el AutoMix se recupera y no corta.
+add_executable(playback_recovery_test ${ROOT}/tools/playback_recovery_test.cpp)
+target_link_libraries(playback_recovery_test PRIVATE audit_sound_engine Threads::Threads)
