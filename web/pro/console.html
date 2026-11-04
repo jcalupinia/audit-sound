@@ -192,6 +192,19 @@
   .mtile .cap .t{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mtile .cap .s{color:var(--muted);font-size:11px}
   .mtile.add{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--muted);border-style:dashed}
+  .mtile .cap .meta{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap}
+  .pill{font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 6px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+  .pill.src{background:#0b1512}
+  .pill.av-mezclar{color:#06220f;background:var(--green);border-color:transparent}
+  .pill.av-previsualizar{color:#2a1e00;background:var(--amber);border-color:transparent}
+  .pill.av-consultar{color:#2a0000;background:#ff7a7a;border-color:transparent}
+  .mtile .acts{display:flex;gap:5px;padding:0 9px 9px;flex-wrap:wrap}
+  .mtile .acts button{flex:0 0 auto;background:#0b1512;border:1px solid var(--line2);color:var(--text);border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;font-family:var(--head);cursor:pointer}
+  .mtile .acts button:hover:not(:disabled){border-color:var(--green)}
+  .mtile .acts button:disabled{opacity:.35;cursor:not-allowed}
+  .mtile .acts .a{color:var(--green)} .mtile .acts .b{color:var(--blue)}
+  .srcf.off{opacity:.4} .srcf.on{background:var(--green);color:#06220f;border-color:transparent}
+  .dur{font-variant-numeric:tabular-nums}
 
   /* ---------- pie fijo (barra inferior + estado) ---------- */
   body{padding-bottom:108px}
@@ -473,19 +486,25 @@
       <div class="libmain card glow">
         <div class="searchrow">
           <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
-            <input id="libQuery" type="search" placeholder="Buscar en la biblioteca / artista / género…"></div>
-          <div class="filters">
-            <button class="ibtn sm" id="srcNav">☁ Navidrome</button>
-            <button class="ibtn sm" id="srcLibre">♪ Libre</button>
-            <button class="ibtn sm" id="srcArchive">📚 Archive</button>
-            <label class="load">+ Importar<input type="file" accept="audio/*" multiple id="importIn"></label>
-          </div>
-        </div>
-        <div class="searchrow" id="srcRow" style="display:none">
-          <input id="setCount" type="number" min="2" max="30" value="10" class="loopsel" style="width:72px" title="nº de pistas del set">
+            <input id="libQuery" type="search" placeholder="Buscar en todas las fuentes: canción, artista, álbum o género…"></div>
           <button class="ibtn" id="btnSearch">Buscar</button>
-          <button class="ibtn" id="btnSet">🎶 Armar set y mezclar</button>
-          <span id="srcStatus" style="font-size:12px;color:var(--muted);align-self:center"></span>
+          <label class="load">+ Importar<input type="file" accept="audio/*" multiple id="importIn"></label>
+        </div>
+        <div class="searchrow" id="srcRow">
+          <span class="lbl" style="align-self:center">Fuentes:</span>
+          <button class="ibtn sm srcf" data-src="navidrome" id="srcNav" title="Navidrome / Subsonic (tu servidor)">☁ Navidrome</button>
+          <button class="ibtn sm srcf" data-src="libre" id="srcLibre" title="Jamendo (música libre CC)">♪ Libre</button>
+          <button class="ibtn sm srcf" data-src="archive" id="srcArchive" title="Internet Archive">📚 Archive</button>
+          <button class="ibtn sm srcf" data-src="local" id="srcLocal" title="Biblioteca local">💾 Local</button>
+          <span style="flex:1"></span>
+          <input id="setCount" type="number" min="2" max="30" value="10" class="loopsel" style="width:64px" title="nº de pistas del set">
+          <button class="ibtn" id="btnSet">🎶 Armar set</button>
+        </div>
+        <div class="searchrow" style="font-size:11px;color:var(--muted);gap:14px;align-items:center">
+          <span id="srcStatus" style="flex:1"></span>
+          <span title="se puede cargar a los decks y a la cola">⬤ <span style="color:var(--green)">mezclar</span></span>
+          <span title="licencia restringida: solo escucha"><span style="color:var(--amber)">⬤ previsualizar</span></span>
+          <span title="licencia no apta para mezclar"><span style="color:#ff7a7a">⬤ solo consultar</span></span>
         </div>
         <div class="media" id="mediaGrid"></div>
       </div>

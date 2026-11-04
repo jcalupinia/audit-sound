@@ -68,7 +68,30 @@ target_include_directories(audit_selftest PRIVATE
   ${ROOT}/engine ${ROOT}/third_party/dr_libs ${ROOT}/third_party/signalsmith-stretch
   ${ROOT}/third_party/signalsmith-linear/include ${ROOT}/third_party/qm-dsp)
 target_link_libraries(audit_selftest PRIVATE qm_dsp opusfile)
+
+# Fixture de audio para la autoprueba. Si existe un track.wav versionado se usa;
+# si no, se sintetiza uno (solo stdlib de Python) en el dir de build. Antes el
+# preload apuntaba a un binario ausente y rompía TODO el build del WASM (A1).
+set(_selftest_track "${CMAKE_CURRENT_SOURCE_DIR}/track.wav")
+if(NOT EXISTS "${_selftest_track}")
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(NOT Python3_Interpreter_FOUND)
+    find_program(Python3_EXECUTABLE NAMES python3 python)
+  endif()
+  if(Python3_EXECUTABLE)
+    set(_selftest_track "${CMAKE_CURRENT_BINARY_DIR}/track.wav")
+    execute_process(
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/make_track_fixture.py" "${_selftest_track}"
+      RESULT_VARIABLE _mk_track_rc)
+    if(NOT _mk_track_rc EQUAL 0)
+      message(FATAL_ERROR "No se pudo generar el fixture track.wav para audit_selftest (rc=${_mk_track_rc}).")
+    endif()
+  else()
+    message(FATAL_ERROR "Falta track.wav y no hay Python para generarlo; audit_selftest no puede enlazarse.")
+  endif()
+endif()
+
 target_link_options(audit_selftest PRIVATE
   -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXIT_RUNTIME=0
-  --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/track.wav@/track.wav)
+  --preload-file ${_selftest_track}@/track.wav)
 set_target_properties(audit_selftest PROPERTIES SUFFIX ".html")

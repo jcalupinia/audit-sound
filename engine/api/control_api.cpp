@@ -4,6 +4,12 @@
 
 #include <microhttpd.h>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+
+#include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -20,6 +26,18 @@
 namespace {
 
 constexpr long SESSION_TTL_SECONDS = 7200;  // sesiones inactivas se purgan tras 2 h
+
+// --- Endurecimiento (Etapa A / A1.3) ---
+// Rate limit de /api/login: máx. intentos por IP en una ventana deslizante.
+constexpr int LOGIN_MAX_ATTEMPTS = 8;
+constexpr long LOGIN_WINDOW_SECONDS = 300;  // 5 min
+
+// Allowlist de orígenes CORS, tomada de AUDIT_SOUND_API_ORIGIN (lista separada por
+// comas) en el arranque. Vacía → se mantiene el comodín "*" (retrocompat; el token
+// NO viaja en cookie, así que "*" no expone credenciales de navegador, pero acotar
+// el origen es mejor práctica). Con uno o más orígenes, solo se refleja el que
+// coincida con la cabecera Origin de la petición.
+std::vector<std::string> g_cors_origins;
 
 struct Catalog {
   std::vector<std::string> titles;
@@ -39,6 +57,7 @@ struct Api {
   std::string user, pass;
   std::map<std::string, Session> sessions;  // token -> sesión
   std::string controller;                    // token del controlador activo ("" = ninguno)
+  std::map<std::string, std::vector<time_t>> loginAttempts;  // IP -> timestamps (rate limit)
   Catalog cat;
   std::mutex mu;
   bool manual = false;
@@ -77,6 +96,66 @@ std::string jsonEsc(const std::string& in) {
   return o;
 }
 
+// Comparación en tiempo constante (no revela la longitud ni corta en el primer
+// byte distinto): evita un canal lateral de temporización sobre user/pass.
+bool ctEqual(const std::string& a, const std::string& b) {
+  const size_t n = a.size() > b.size() ? a.size() : b.size();
+  unsigned char diff = (unsigned char)(a.size() ^ b.size());
+  for (size_t i = 0; i < n; ++i) {
+    unsigned char ca = i < a.size() ? (unsigned char)a[i] : 0;
+    unsigned char cb = i < b.size() ? (unsigned char)b[i] : 0;
+    diff |= (unsigned char)(ca ^ cb);
+  }
+  return diff == 0;
+}
+
+// Cabecera HTTP (devuelve nullptr si no está).
+const char* hdr(struct MHD_Connection* c, const char* key) {
+  return MHD_lookup_connection_value(c, MHD_HEADER_KIND, key);
+}
+
+// Token de sesión: se prefiere `Authorization: Bearer <token>` (no viaja en la
+// URL → no se filtra por Referer ni por logs intermedios). Se acepta el query
+// `?token=` solo como respaldo retrocompatible.
+std::string authToken(struct MHD_Connection* c) {
+  const char* a = hdr(c, "Authorization");
+  if (a) {
+    const char* pfx = "Bearer ";
+    if (0 == std::strncmp(a, pfx, 7) && a[7]) return std::string(a + 7);
+  }
+  const char* q = MHD_lookup_connection_value(c, MHD_GET_ARGUMENT_KIND, "token");
+  return q ? std::string(q) : std::string();
+}
+
+// IP del cliente para el rate limit. Detrás del proxy (nginx/Coolify) la IP real
+// llega en X-Forwarded-For (primer salto); si no, se usa la dirección del socket.
+std::string clientIp(struct MHD_Connection* c) {
+  const char* xff = hdr(c, "X-Forwarded-For");
+  if (xff && *xff) {
+    std::string s(xff);
+    size_t comma = s.find(',');
+    std::string first = comma == std::string::npos ? s : s.substr(0, comma);
+    size_t a = first.find_first_not_of(" \t");
+    size_t b = first.find_last_not_of(" \t");
+    if (a != std::string::npos) return first.substr(a, b - a + 1);
+  }
+  const union MHD_ConnectionInfo* info =
+      MHD_get_connection_info(c, MHD_CONNECTION_INFO_CLIENT_ADDRESS);
+  if (info && info->client_addr) {
+    char host[64] = {0};
+    const struct sockaddr* sa = info->client_addr;
+    if (sa->sa_family == AF_INET) {
+      const auto* s4 = reinterpret_cast<const struct sockaddr_in*>(sa);
+      inet_ntop(AF_INET, &s4->sin_addr, host, sizeof(host));
+    } else if (sa->sa_family == AF_INET6) {
+      const auto* s6 = reinterpret_cast<const struct sockaddr_in6*>(sa);
+      inet_ntop(AF_INET6, &s6->sin6_addr, host, sizeof(host));
+    }
+    if (host[0]) return std::string(host);
+  }
+  return std::string("unknown");
+}
+
 std::string basenameNoExt(const std::string& path) {
   size_t a = path.find_last_of('/');
   std::string b = a == std::string::npos ? path : path.substr(a + 1);
@@ -101,7 +180,18 @@ MHD_Result reply(struct MHD_Connection* c, int code, const std::string& body) {
   struct MHD_Response* r =
       MHD_create_response_from_buffer(body.size(), (void*)body.data(), MHD_RESPMEM_MUST_COPY);
   MHD_add_response_header(r, "Content-Type", "application/json");
-  MHD_add_response_header(r, "Access-Control-Allow-Origin", "*");
+  // CORS: con allowlist configurada, se refleja SOLO el Origin que coincida
+  // (y nada si no coincide → el navegador bloquea). Sin allowlist, "*" (retrocompat).
+  if (g_cors_origins.empty()) {
+    MHD_add_response_header(r, "Access-Control-Allow-Origin", "*");
+  } else {
+    const char* origin = MHD_lookup_connection_value(c, MHD_HEADER_KIND, "Origin");
+    if (origin && std::find(g_cors_origins.begin(), g_cors_origins.end(),
+                            std::string(origin)) != g_cors_origins.end()) {
+      MHD_add_response_header(r, "Access-Control-Allow-Origin", origin);
+      MHD_add_response_header(r, "Vary", "Origin");
+    }
+  }
   MHD_add_response_header(r, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   MHD_add_response_header(r, "Access-Control-Allow-Headers", "Content-Type, Authorization");
   MHD_Result ret = MHD_queue_response(c, code, r);
@@ -137,9 +227,25 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   const std::string path = url;
 
   if (path == "/api/login" && 0 == std::strcmp(method, "POST")) {
+    // Rate limit por IP (anti fuerza bruta): ventana deslizante bajo el lock.
+    const std::string ip = clientIp(c);
+    {
+      std::lock_guard<std::mutex> lk(api->mu);
+      const time_t now = time(nullptr);
+      auto& hits = api->loginAttempts[ip];
+      hits.erase(std::remove_if(hits.begin(), hits.end(),
+                                [&](time_t t) { return now - t > LOGIN_WINDOW_SECONDS; }),
+                 hits.end());
+      if ((int)hits.size() >= LOGIN_MAX_ATTEMPTS)
+        return reply(c, 429, "{\"error\":\"demasiados intentos; espera unos minutos\"}");
+      hits.push_back(now);
+    }
     const char* u = arg(c, "user");
     const char* p = arg(c, "pass");
-    if (!(u && p && api->user == u && api->pass == p))
+    // Comparación en tiempo constante; se evalúan ambos campos siempre.
+    const bool okUser = u && ctEqual(api->user, u);
+    const bool okPass = p && ctEqual(api->pass, p);
+    if (!(okUser && okPass))
       return reply(c, 401, "{\"error\":\"credenciales inválidas\"}");
     const char* nm = arg(c, "name");
     const std::string name = (nm && nm[0]) ? jsonEsc(nm) : std::string("Dispositivo");
@@ -164,9 +270,9 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   // A partir de aquí todo requiere un token de sesión válido. Un único lock cubre
   // la validación y el manejo (los handlers ya NO toman el lock por separado).
   std::lock_guard<std::mutex> lk(api->mu);
-  const char* tok = arg(c, "token");
-  auto sit = tok ? api->sessions.find(tok) : api->sessions.end();
-  if (!tok || sit == api->sessions.end()) return reply(c, 401, "{\"error\":\"no autorizado\"}");
+  const std::string tok = authToken(c);  // Authorization: Bearer … (o ?token= legado)
+  auto sit = tok.empty() ? api->sessions.end() : api->sessions.find(tok);
+  if (sit == api->sessions.end()) return reply(c, 401, "{\"error\":\"no autorizado\"}");
   sit->second.last = time(nullptr);
 
   if (path == "/api/control/take" && 0 == std::strcmp(method, "POST")) {
@@ -283,6 +389,25 @@ ControlApi control_api_start(int port, const char* user, const char* pass, DjEng
   api->automix = automix;
   api->user = user ? user : "";
   api->pass = pass ? pass : "";
+  // Allowlist CORS desde AUDIT_SOUND_API_ORIGIN (lista separada por comas). Vacía → "*".
+  g_cors_origins.clear();
+  if (const char* env = std::getenv("AUDIT_SOUND_API_ORIGIN")) {
+    std::string s(env), tok;
+    for (size_t i = 0; i <= s.size(); ++i) {
+      if (i == s.size() || s[i] == ',') {
+        size_t a = tok.find_first_not_of(" \t");
+        size_t b = tok.find_last_not_of(" \t");
+        if (a != std::string::npos) {
+          std::string o = tok.substr(a, b - a + 1);
+          while (!o.empty() && o.back() == '/') o.pop_back();  // sin barra final
+          if (!o.empty()) g_cors_origins.push_back(o);
+        }
+        tok.clear();
+      } else {
+        tok += s[i];
+      }
+    }
+  }
   api->daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, (uint16_t)port, nullptr,
                                  nullptr, &handler, api, MHD_OPTION_END);
   if (!api->daemon) {
