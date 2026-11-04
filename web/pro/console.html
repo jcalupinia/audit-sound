@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AUDIT SOUND · Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Rajdhani:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#06090b; --bg2:#0a1013; --panel:#0c1417; --panel2:#0e1a16; --panel3:#101e19;
+    --line:#1b2a26; --line2:#24392f;
+    --green:#39e66b; --green-bri:#6bff9a; --green-deep:#17a048; --glow:rgba(57,230,107,.4);
+    --blue:#39b7ff; --pink:#ff5db1; --amber:#ffcf3f;
+    --text:#eaf5ee; --muted:#88a699; --dim:#5f7a6d;
+    --disp:'Michroma',sans-serif; --head:'Rajdhani',sans-serif; --body:'DM Sans',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:
+      radial-gradient(1200px 700px at 50% -8%, #0b1a16 0%, transparent 55%),
+      linear-gradient(180deg,#05080a,#070d0b);
+    color:var(--text);font-family:var(--body);-webkit-user-select:none;user-select:none;overflow-x:hidden}
+  .app{max-width:1760px;margin:0 auto;padding:10px 14px 0}
+  .card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px}
+  .glow{box-shadow:0 0 0 1px rgba(57,230,107,.08), 0 10px 30px rgba(0,0,0,.4)}
+  button{font-family:var(--head);cursor:pointer}
+  .hl{color:var(--green)}
+
+  /* ---------- barra superior ---------- */
+  .topbar{display:flex;align-items:center;gap:18px;padding:8px 14px;margin-bottom:10px;border-radius:14px;
+    background:linear-gradient(180deg,#0b1512,#09110e);border:1px solid var(--line)}
+  .logo{display:flex;align-items:center;gap:11px}
+  .logo .word{font-family:var(--disp);font-size:20px;line-height:1}
+  .logo .word b{color:var(--green)}
+  .logo .tagline{font-family:var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-size:10px;margin-top:3px}
+  .nav{display:flex;gap:4px;margin:0 auto}
+  .nav button{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:1px solid transparent;border-radius:10px;
+    color:var(--muted);padding:7px 14px;font-weight:600;font-size:12px;letter-spacing:.02em}
+  .nav button .ni{display:flex}
+  .nav button.on{color:#06220f;background:linear-gradient(180deg,var(--green-bri),var(--green-deep));border-color:transparent;box-shadow:0 6px 16px var(--glow)}
+  .nav button:not(.on):hover{color:var(--text);border-color:var(--line2)}
+  .topbar .right{display:flex;align-items:center;gap:14px}
+  .topbar .right img{height:26px;opacity:.9}
+  .avatar{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#15352a,#0a1a14);
+    border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;color:var(--green)}
+
+  /* ---------- fila superior de contexto ---------- */
+  .ctxrow{display:grid;grid-template-columns:1.15fr 1.5fr 1fr;gap:12px;margin-bottom:12px}
+  .copilot-hero{display:flex;align-items:center;gap:14px;padding:14px}
+  .copilot-hero .ava{width:76px;height:76px;border-radius:14px;flex:0 0 auto;object-fit:cover;border:1px solid var(--line2);
+    background:radial-gradient(circle at 50% 35%,#133026,#081511)}
+  .copilot-hero h3{margin:0;font-family:var(--disp);font-size:20px}
+  .copilot-hero h3 .g{color:var(--green)}
+  .copilot-hero p{margin:4px 0 0;color:var(--muted);font-size:13px;max-width:34ch}
+  .block-h{font-family:var(--head);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-size:11px;margin:0 0 9px}
+  .seg{display:grid;gap:8px}
+  .seg.c3{grid-template-columns:repeat(3,1fr)} .seg.c2{grid-template-columns:repeat(2,1fr)}
+  .segbtn{display:flex;align-items:center;justify-content:center;gap:9px;padding:14px 10px;border-radius:12px;
+    background:#0b1512;border:1px solid var(--line2);color:var(--muted);font-weight:700;font-size:13px}
+  .segbtn .si{display:flex;color:var(--muted)}
+  .segbtn small{display:block;font-weight:500;color:var(--dim);font-family:var(--body);font-size:11px}
+  .segbtn.on{background:linear-gradient(180deg,rgba(57,230,107,.16),rgba(23,160,72,.06));border-color:var(--green);color:var(--text)}
+  .segbtn.on .si{color:var(--green)}
+  .pad14{padding:14px}
+
+  /* ---------- Preview / Program ---------- */
+  .pvcols{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch}
+  .screen{border:1px solid var(--line2);border-radius:12px;overflow:hidden;background:#05100c;position:relative;min-height:168px;display:flex;flex-direction:column}
+  .screen .hd{display:flex;align-items:center;gap:8px;padding:8px 11px;font-size:12px;color:var(--muted);font-weight:600}
+  .screen .hd .live{margin-left:auto;background:var(--pink);color:#2a0014;font-weight:800;border-radius:6px;padding:2px 8px;font-size:10px;letter-spacing:.08em}
+  .screen .body{flex:1;position:relative;background:#06100d}
+  .screen .body img{width:100%;height:100%;object-fit:cover;display:block;opacity:.92}
+  .screen .ov{position:absolute;inset:auto 0 0 0;display:flex;align-items:center;gap:10px;padding:8px 11px;
+    background:linear-gradient(0deg,rgba(0,0,0,.65),transparent);font-size:11px;color:#cfe}
+  .screen .ov .t{margin-left:auto;font-variant-numeric:tabular-nums}
+  .sendcol{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:120px}
+  .send{background:linear-gradient(180deg,var(--green-bri),var(--green-deep));color:#06220f;border:0;border-radius:11px;
+    padding:12px 14px;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 8px 20px var(--glow)}
+  .sel{background:#0a1512;color:var(--text);border:1px solid var(--line2);border-radius:9px;padding:9px;font-family:var(--body);font-size:12px;width:100%}
+  .lbl{font-size:11px;color:var(--muted);align-self:flex-start}
+
+  /* ---------- IA copiloto panel ---------- */
+  .cop{padding:14px;display:flex;flex-direction:column;gap:12px}
+  .cop .top{display:flex;align-items:center;gap:11px}
+  .cop .top img{width:46px;height:46px;border-radius:11px;border:1px solid var(--line2);background:#0a1a14}
+  .cop .top b{font-family:var(--head);font-size:16px}
+  .cop .top span{display:block;color:var(--muted);font-size:11px}
+  .cop .st{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--green);margin-left:auto}
+  .cop .st i{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+  .tabs button{background:none;border:0;color:var(--muted);padding:8px 4px;font-weight:600;font-size:12px;border-bottom:2px solid transparent}
+  .tabs button.on{color:var(--green);border-color:var(--green)}
+  .nextitem{display:flex;align-items:center;gap:10px}
+  .nextitem img{width:44px;height:44px;border-radius:9px;background:#0a1a14;border:1px solid var(--line2)}
+  .nextitem .nm{font-weight:700;font-size:14px}
+  .nextitem .mt{color:var(--muted);font-size:11px}
+  .nextitem .go{margin-left:auto;width:34px;height:34px;border-radius:50%;background:linear-gradient(180deg,var(--green-bri),var(--green-deep));border:0;color:#06220f;display:flex;align-items:center;justify-content:center}
+  .chk{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:3px 0}
+  .chk svg{color:var(--green);flex:0 0 auto}
+  .genbtns{display:grid;gap:8px}
+  .genbtn{display:flex;align-items:center;gap:10px;background:#0b1512;border:1px solid var(--line2);border-radius:10px;padding:11px;color:var(--text);font-weight:600;font-size:13px;text-align:left}
+  .genbtn small{color:var(--dim);font-weight:500;font-family:var(--body)}
+  .genbtn .gi{color:var(--green);display:flex}
+
+  /* ---------- decks + mixer ---------- */
+  .decks{display:grid;grid-template-columns:1fr 290px 1fr;gap:12px;margin-bottom:12px}
+  .deck{padding:12px}
+  .deck .dh{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .deck .dh .tag{font-family:var(--head);font-weight:800;font-size:13px;padding:3px 9px;border-radius:7px}
+  .deck.A .tag{color:#06220f;background:var(--green)} .deck.B .tag{color:#06220f;background:var(--blue)}
+  .deck .art{width:38px;height:38px;border-radius:8px;background:#0a1a14;border:1px solid var(--line2);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;color:var(--dim)}
+  .deck .ti{flex:1;min-width:0}
+  .deck .ti .t{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .deck .ti .s{color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .deck .bpm{text-align:right}
+  .deck .bpm b{font-family:var(--head);font-size:22px;line-height:1}
+  .deck .bpm small{display:block;color:var(--dim);font-size:10px}
+  canvas.wave{display:block;width:100%;height:60px;background:#05100c;border-radius:8px;border:1px solid var(--line);margin-bottom:10px}
+  .jog-row{display:flex;gap:12px;align-items:center}
+  .jog{width:150px;height:150px;border-radius:50%;flex:0 0 auto;position:relative;
+    background:radial-gradient(circle at 50% 50%, #0c0c0c 0 32%, #1a1a1a 33% 36%, #0a0a0a 37% 100%);
+    border:3px solid #141f1b;box-shadow:inset 0 0 20px #000, 0 6px 18px rgba(0,0,0,.5)}
+  .jog::before{content:"";position:absolute;inset:34%;border-radius:50%;background:radial-gradient(circle at 50% 40%,#1c2b25,#0a120f);border:1px solid var(--line2)}
+  .jog .ring{position:absolute;inset:3px;border-radius:50%;border:2px solid transparent;border-top-color:var(--green);opacity:.0}
+  .deck.B .jog .ring{border-top-color:var(--blue)}
+  .jog.spin .ring{opacity:.9;animation:spin 1.6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .jog .cue-dot{position:absolute;left:50%;top:5px;width:6px;height:6px;border-radius:50%;background:var(--amber);transform:translateX(-50%)}
+  .deck .rc{flex:1;display:flex;flex-direction:column;gap:8px}
+  .rc .r{display:flex;gap:6px;flex-wrap:wrap}
+  .ibtn{background:#0b1512;border:1px solid var(--line2);color:var(--text);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:700}
+  .ibtn:hover{border-color:var(--green)}
+  .ibtn.on{background:var(--green);color:#06220f;border-color:transparent}
+  .ibtn.sync.on{background:var(--green)}
+  .ibtn.sm{padding:7px 9px;font-size:11px}
+  .ibtn.icon{display:flex;align-items:center;justify-content:center;min-width:38px}
+  .loopsel{background:#0a1512;color:var(--text);border:1px solid var(--line2);border-radius:9px;padding:8px;font-family:var(--body);font-size:12px}
+  .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .pad{background:#0a1a14;border:1px solid var(--line2);border-radius:8px;padding:11px 0;text-align:center;font-weight:800;font-size:12px;color:var(--dim)}
+  .deck.A .pad.set{background:var(--green);color:#06220f;border-color:transparent}
+  .deck.B .pad.set{background:var(--blue);color:#06220f;border-color:transparent}
+  .transport{display:flex;gap:8px}
+  .play{flex:1;background:linear-gradient(180deg,var(--green-bri),var(--green-deep));color:#06220f;border:0;border-radius:10px;padding:12px;font-weight:800;font-size:15px}
+  .deck.B .play{background:linear-gradient(180deg,#7fd4ff,#1f86c9)}
+  .cue{background:#0b1512;border:1px solid var(--line2);color:var(--amber);border-radius:10px;padding:12px 18px;font-weight:800}
+  .load{background:transparent;border:1px dashed var(--line2);color:var(--muted);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:700}
+  input[type=file]{display:none}
+  .pitchrow{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+  .pitchrow input{flex:1;accent-color:var(--green)}
+
+  /* mixer central */
+  .mixer{padding:12px;display:flex;flex-direction:column}
+  .chs{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1}
+  .ch{display:flex;flex-direction:column;align-items:center;gap:9px}
+  .ch h4{margin:0;font-family:var(--head);font-size:11px;letter-spacing:.1em;color:var(--muted)}
+  .ch.A h4{color:var(--green)} .ch.B h4{color:var(--blue)}
+  .knob{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#15241f,#0a120f);border:1px solid var(--line2);position:relative;cursor:ns-resize;touch-action:none}
+  .knob::after{content:"";position:absolute;left:50%;top:5px;width:2px;height:14px;background:var(--green);transform-origin:50% 18px;transform:translateX(-50%) rotate(var(--rot,0deg))}
+  .ch.B .knob::after{background:var(--blue)}
+  .klabel{font-size:9px;color:var(--dim);letter-spacing:.08em}
+  .vu{display:flex;gap:3px;align-items:flex-end;height:120px}
+  .vu .bar{width:7px;flex:1;background:#09120f;border-radius:3px;position:relative;overflow:hidden;border:1px solid #122019}
+  .vu .bar i{position:absolute;left:0;bottom:0;width:100%;height:0;background:linear-gradient(0deg,var(--green) 0%,var(--green) 62%,var(--amber) 82%,#ff5d5d 100%)}
+  .cfader{height:120px;display:flex;align-items:center;justify-content:center}
+  .cfader input{writing-mode:vertical-lr;direction:rtl;width:24px;height:120px;accent-color:var(--green)}
+  .xf{margin-top:12px}
+  .xf .lab{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:5px}
+  .xf input{width:100%;accent-color:var(--green)}
+  .phones{display:flex;justify-content:center;margin:2px 0 8px;color:var(--dim)}
+
+  /* ---------- biblioteca ---------- */
+  .libgrid{display:grid;grid-template-columns:228px 1fr;gap:12px;margin-bottom:12px}
+  .libcats{padding:12px}
+  .libcats h3{margin:0 0 10px;font-family:var(--head);font-size:16px}
+  .libcats .cat{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--muted);font-size:13px;cursor:pointer}
+  .libcats .cat.on{background:rgba(57,230,107,.12);color:var(--text)}
+  .libcats .cat .ci{color:var(--green);display:flex}
+  .libmain{padding:12px}
+  .searchrow{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .search{flex:1;min-width:200px;display:flex;align-items:center;gap:9px;background:#0a120f;border:1px solid var(--line2);border-radius:10px;padding:0 12px}
+  .search input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--body);padding:11px 0;font-size:14px}
+  .search svg{color:var(--muted)}
+  .filters{display:flex;gap:8px}
+  .media{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .mtile{background:#0a1512;border:1px solid var(--line2);border-radius:11px;overflow:hidden;cursor:pointer;transition:border-color .15s,transform .1s}
+  .mtile:hover{border-color:var(--green);transform:translateY(-2px)}
+  .mtile .th{height:92px;background:linear-gradient(135deg,#102a20,#0a1a14);display:flex;align-items:center;justify-content:center;color:var(--green)}
+  .mtile .cap{padding:9px}
+  .mtile .cap .t{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mtile .cap .s{color:var(--muted);font-size:11px}
+  .mtile.add{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--muted);border-style:dashed}
+  .mtile .cap .meta{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap}
+  .pill{font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 6px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+  .pill.src{background:#0b1512}
+  .pill.av-mezclar{color:#06220f;background:var(--green);border-color:transparent}
+  .pill.av-previsualizar{color:#2a1e00;background:var(--amber);border-color:transparent}
+  .pill.av-consultar{color:#2a0000;background:#ff7a7a;border-color:transparent}
+  .mtile .acts{display:flex;gap:5px;padding:0 9px 9px;flex-wrap:wrap}
+  .mtile .acts button{flex:0 0 auto;background:#0b1512;border:1px solid var(--line2);color:var(--text);border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;font-family:var(--head);cursor:pointer}
+  .mtile .acts button:hover:not(:disabled){border-color:var(--green)}
+  .mtile .acts button:disabled{opacity:.35;cursor:not-allowed}
+  .mtile .acts .a{color:var(--green)} .mtile .acts .b{color:var(--blue)}
+  .srcf.off{opacity:.4} .srcf.on{background:var(--green);color:#06220f;border-color:transparent}
+  .dur{font-variant-numeric:tabular-nums}
+
+  /* ---------- pie fijo (barra inferior + estado) ---------- */
+  body{padding-bottom:108px}
+  .appfooter{position:fixed;inset:auto 0 0 0;z-index:30}
+  .bottombar{display:flex;align-items:center;gap:18px;padding:10px 16px;
+    background:linear-gradient(0deg,#060b09,#091210);border-top:1px solid var(--line2);flex-wrap:wrap}
+  .toggle{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted)}
+  .sw{width:40px;height:22px;border-radius:12px;background:#17241f;border:1px solid var(--line2);position:relative;cursor:pointer}
+  .sw i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--dim);transition:all .15s}
+  .sw.on{background:linear-gradient(180deg,var(--green-bri),var(--green-deep))}
+  .sw.on i{left:20px;background:#06220f}
+  .meter{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+  .meter .bars{display:flex;gap:2px}
+  .meter .bars i{width:6px;height:13px;border-radius:2px;background:#13201b}
+  .meter .bars i.on{background:var(--green)} .meter .bars i.hot{background:var(--amber)}
+  .outs{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:11px;color:var(--muted)}
+  .statusline{display:flex;align-items:center;gap:16px;padding:7px 16px;background:#050a08;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+  .statusline .live{color:var(--green)}
+  .statusline b{color:var(--text)}
+
+  /* páginas secundarias (placeholder) */
+  .page{display:none;padding:60px 20px;text-align:center;color:var(--muted)}
+  .page.on{display:block}
+  .page h2{font-family:var(--disp);color:var(--text);font-size:24px}
+  .page .soon{display:inline-block;margin-top:8px;padding:6px 14px;border:1px solid var(--line2);border-radius:20px;color:var(--green);font-size:12px}
+  #viewConsola{display:block} #viewConsola.off{display:none}
+
+  /* overlay inicio */
+  .ov{position:fixed;inset:0;z-index:40;background:rgba(5,9,8,.94);display:flex;align-items:center;justify-content:center}
+  .ov.hide{display:none}
+  .ov .c{text-align:center}
+  .ov h1{font-family:var(--disp);letter-spacing:.06em;margin:0 0 6px}
+  .ov h1 b{color:var(--green)}
+  .ov p{color:var(--muted);margin:0 0 18px}
+  .ov button{background:linear-gradient(180deg,var(--green-bri),var(--green-deep));color:#06220f;border:0;border-radius:12px;padding:14px 30px;font-weight:800;letter-spacing:.04em;font-size:15px}
+  .hidden{display:none!important}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0c1a15;border:1px solid var(--green);color:var(--text);
+    padding:10px 16px;border-radius:10px;font-size:13px;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .2s}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="ov" id="ov"><div class="c">
+  <h1>AUDIT <b>SOUND</b></h1>
+  <p>Command Center · motor de audio en el navegador</p>
+  <button id="startBtn">Iniciar consola</button>
+</div></div>
+
+<div class="app">
+  <!-- barra superior -->
+  <div class="topbar">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 46 46"><g fill="none" stroke="#39e66b" stroke-width="3" stroke-linecap="round"><line x1="6" y1="14" x2="6" y2="32"/><line x1="14" y1="8" x2="14" y2="38"/><line x1="22" y1="16" x2="22" y2="30"/><line x1="30" y1="5" x2="30" y2="41"/><line x1="38" y1="18" x2="38" y2="28"/></g></svg>
+      <div><div class="word">AUDIT <b>SOUND</b></div><div class="tagline">DJ &amp; producción audiovisual con IA</div></div>
+    </div>
+    <div class="nav" id="nav">
+      <button data-view="Consola" class="on"><span class="ni"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>Consola</button>
+      <button data-view="Biblioteca"><span class="ni"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h5v16H4zM10 4h4v16h-4zM15 5l4 14-3 1-4-14z"/></svg></span>Biblioteca</button>
+      <button data-view="Playlists"><span class="ni"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="7" x2="16" y2="7"/><line x1="4" y1="12" x2="16" y2="12"/><line x1="4" y1="17" x2="12" y2="17"/><circle cx="19" cy="16" r="2"/></svg></span>Playlists</button>
+      <button data-view="Eventos"><span class="ni"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg></span>Eventos</button>
+      <button data-view="Generador"><span class="ni"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8l4.4-1.6z"/><circle cx="18" cy="17" r="1.4"/></svg></span>Generador IA</button>
+      <button data-view="Config"><span class="ni"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></span>Configuración</button>
+    </div>
+    <div class="right">
+      <img src="./assets/logo_auditconsulting_blanco.png" alt="AuditConsulting Group" onerror="this.style.display='none'">
+      <div class="avatar" id="userAvatar" title="Sesión"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+    </div>
+  </div>
+
+  <!-- ====== VISTA CONSOLA ====== -->
+  <div id="viewConsola">
+    <!-- fila contexto -->
+    <div class="ctxrow">
+      <div class="card glow copilot-hero">
+        <div class="ava"></div>
+        <div>
+          <h3>IA <span class="g">Copiloto</span></h3>
+          <p>Tu asistente audiovisual para música, video y eventos.</p>
+        </div>
+      </div>
+      <div class="card glow pad14">
+        <p class="block-h">Tipo de contenido</p>
+        <div class="seg c3" id="contentSeg">
+          <button class="segbtn on" data-c="musica"><span class="si"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></span> Música <small>(DJ)</small></button>
+          <button class="segbtn" data-c="video"><span class="si"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span> Video <small>(VJ)</small></button>
+          <button class="segbtn" data-c="eventos"><span class="si"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></span> Present. <small>/ Eventos</small></button>
+        </div>
+      </div>
+      <div class="card glow pad14">
+        <p class="block-h">Vista de consola</p>
+        <div class="seg c2" id="viewSeg">
+          <button class="segbtn" data-v="sencillo"><span class="si"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/></svg></span> Sencillo</button>
+          <button class="segbtn on" data-v="pro"><span class="si"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2"/></svg></span> Profesional</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- modo operación / preview-program / copiloto -->
+    <div class="ctxrow">
+      <div class="card glow pad14">
+        <p class="block-h">Modo de operación (en vivo)</p>
+        <div class="seg c3" id="modeSeg">
+          <button class="segbtn" data-m="manual"><span class="si"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a4 4 0 0 1 8 0 4 4 0 0 0 8 0"/><path d="M3 12v4M19 12v4"/></svg></span><span>DJ Manual<small>Profesional</small></span></button>
+          <button class="segbtn on" data-m="asistido"><span class="si"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8l4.4-1.6z"/></svg></span><span>DJ Híbrido<small>(Asistido por IA)</small></span></button>
+          <button class="segbtn" data-m="auto"><span class="si"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span>DJ Automático<small>(IA 24/7)</small></span></button>
+        </div>
+      </div>
+
+      <div class="card glow pad14">
+        <div class="pvcols">
+          <div class="screen">
+            <div class="hd"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg> Previsualización <small style="color:var(--dim)">(Preparar)</small></div>
+            <div class="body"><img src="./assets/preview.jpg" alt="" onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(135deg,#0c2a20,#081511)'">
+              <div class="ov"><span>❚❚ ▶▶</span><span class="t">00:00 / 00:15</span></div></div>
+          </div>
+          <div class="sendcol">
+            <button class="send" id="sendLive">▶ Enviar a vivo</button>
+            <span class="lbl">Transición</span>
+            <select class="sel" id="transSel"><option>Desvanecer</option><option>Corte</option><option>Deslizar</option><option>Zoom</option></select>
+          </div>
+          <div class="screen">
+            <div class="hd"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M4 12a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.6"/></svg> Salida en vivo <small style="color:var(--dim)">(Programa)</small> <span class="live">EN VIVO</span></div>
+            <div class="body"><img src="./assets/program.jpg" alt="" onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(135deg,#231042,#3a1038)'">
+              <div class="ov"><span>❚❚ ▶▶</span><span class="t" id="progTime">00:00 / 00:00</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card glow cop">
+        <div class="top">
+          <img src="./assets/logo_audit_ia.jpg" alt="" onerror="this.style.display='none'">
+          <div><b>IA Copiloto</b><span>Sugerencias en tiempo real</span></div>
+          <div class="st"><i></i> Activo · <span id="copModeLbl">Modo Híbrido</span></div>
+        </div>
+        <div class="tabs" id="copTabs">
+          <button class="on" data-t="sug">Sugerencias</button>
+          <button data-t="trans">Transiciones</button>
+          <button data-t="ia">Contenido IA</button>
+        </div>
+        <div id="copBody">
+          <p class="block-h" style="margin-top:4px">Siguiente en la sesión</p>
+          <div class="nextitem" id="nextItem">
+            <img src="" alt="" onerror="this.style.visibility='hidden'">
+            <div><div class="nm" id="nextNm">—</div><div class="mt" id="nextMt">reproduce una pista para recibir sugerencias</div></div>
+            <button class="go" id="nextGo">▶</button>
+          </div>
+          <div id="copChecks" style="margin-top:12px"></div>
+        </div>
+        <div>
+          <p class="block-h">Generar contenido con IA</p>
+          <div class="genbtns">
+            <button class="genbtn" data-gen="video"><span class="gi"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span> <span>Video <small>(clip / fondo)</small></span></button>
+            <button class="genbtn" data-gen="imagen"><span class="gi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M4 19l5-5 4 4 3-3 4 4"/></svg></span> <span>Imagen <small>(visual / fondo)</small></span></button>
+            <button class="genbtn" data-gen="present"><span class="gi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> <span>Presentación <small>(diapositivas / evento)</small></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- decks + mixer -->
+    <div class="decks">
+      <!-- DECK A -->
+      <section class="deck A card glow" id="deckA">
+        <div class="dh">
+          <span class="tag">A</span>
+          <div class="art"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></div>
+          <div class="ti"><div class="t" id="titleA">— sin pista —</div><div class="s" id="subA">carga un archivo o la biblioteca</div></div>
+          <div class="bpm"><b id="bpmA">—</b><small>BPM · <span id="keyA">—</span></small></div>
+        </div>
+        <canvas class="wave" id="waveA"></canvas>
+        <div class="jog-row">
+          <div class="jog" id="jogA"><div class="ring"></div><div class="cue-dot"></div></div>
+          <div class="rc">
+            <div class="r">
+              <button class="ibtn sync" data-deck="0" data-act="sync">SYNC</button>
+              <button class="ibtn icon tog" data-deck="0" data-act="keylock" title="Keylock">🔒</button>
+              <button class="ibtn icon" data-deck="0" data-act="bj" data-beats="-4">‹</button>
+              <button class="ibtn icon" data-deck="0" data-act="bj" data-beats="4">›</button>
+            </div>
+            <div class="r">
+              <select class="loopsel" data-deck="0"><option value="1">1 Beat</option><option value="2">2</option><option value="4" selected>4 Beats</option><option value="8">8</option></select>
+              <button class="ibtn sm loopb" data-deck="0">IN</button>
+              <button class="ibtn sm loopb-out" data-deck="0">OUT</button>
+              <button class="ibtn sm icon loopb-tog" data-deck="0" title="Loop">⟲</button>
+            </div>
+            <div class="pads" data-deck="0">
+              <div class="pad" data-cue="0">1</div><div class="pad" data-cue="1">2</div><div class="pad" data-cue="2">3</div><div class="pad" data-cue="3">4</div>
+            </div>
+          </div>
+        </div>
+        <div class="pitchrow">PITCH <input type="range" class="pitchin" data-deck="0" min="-8" max="8" step="0.1" value="0"><b id="pitchA">0.0%</b></div>
+        <div class="transport" style="margin-top:8px">
+          <label class="load">Cargar<input type="file" accept="audio/*" data-deck="0" class="loadin"></label>
+          <button class="play" data-deck="0" data-act="play">▶❚❚</button>
+          <button class="cue" data-deck="0" data-act="cue">CUE</button>
+        </div>
+      </section>
+
+      <!-- MIXER -->
+      <section class="mixer card glow">
+        <div class="phones"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="7" rx="1.5"/><rect x="17" y="13" width="4" height="7" rx="1.5"/></svg></div>
+        <div class="chs">
+          <div class="ch A" data-deck="0">
+            <h4>CANAL A</h4>
+            <div class="knob" data-k="hi" data-deck="0" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">HI</div>
+            <div class="knob" data-k="mid" data-deck="0" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">MID</div>
+            <div class="knob" data-k="low" data-deck="0" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">LOW</div>
+            <div class="vu"><div class="bar"><i id="vuA0"></i></div><div class="bar"><i id="vuA1"></i></div></div>
+            <div class="cfader"><input type="range" class="chfader" data-deck="0" min="0" max="1" step="0.01" value="1"></div>
+          </div>
+          <div class="ch B" data-deck="1">
+            <h4>CANAL B</h4>
+            <div class="knob" data-k="hi" data-deck="1" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">HI</div>
+            <div class="knob" data-k="mid" data-deck="1" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">MID</div>
+            <div class="knob" data-k="low" data-deck="1" data-min="-26" data-max="6" data-val="0"></div><div class="klabel">LOW</div>
+            <div class="vu"><div class="bar"><i id="vuB0"></i></div><div class="bar"><i id="vuB1"></i></div></div>
+            <div class="cfader"><input type="range" class="chfader" data-deck="1" min="0" max="1" step="0.01" value="1"></div>
+          </div>
+        </div>
+        <div class="xf">
+          <div class="lab"><span>A</span><span>CROSSFADER</span><span>B</span></div>
+          <input type="range" id="xfader" min="0" max="1" step="0.01" value="0.5">
+        </div>
+      </section>
+
+      <!-- DECK B -->
+      <section class="deck B card glow" id="deckB">
+        <div class="dh">
+          <span class="tag">B</span>
+          <div class="art"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></div>
+          <div class="ti"><div class="t" id="titleB">— sin pista —</div><div class="s" id="subB">carga un archivo o la biblioteca</div></div>
+          <div class="bpm"><b id="bpmB">—</b><small>BPM · <span id="keyB">—</span></small></div>
+        </div>
+        <canvas class="wave" id="waveB"></canvas>
+        <div class="jog-row">
+          <div class="jog" id="jogB"><div class="ring"></div><div class="cue-dot"></div></div>
+          <div class="rc">
+            <div class="r">
+              <button class="ibtn sync" data-deck="1" data-act="sync">SYNC</button>
+              <button class="ibtn icon tog" data-deck="1" data-act="keylock" title="Keylock">🔒</button>
+              <button class="ibtn icon" data-deck="1" data-act="bj" data-beats="-4">‹</button>
+              <button class="ibtn icon" data-deck="1" data-act="bj" data-beats="4">›</button>
+            </div>
+            <div class="r">
+              <select class="loopsel" data-deck="1"><option value="1">1 Beat</option><option value="2">2</option><option value="4">4</option><option value="8" selected>8 Beats</option></select>
+              <button class="ibtn sm loopb" data-deck="1">IN</button>
+              <button class="ibtn sm loopb-out" data-deck="1">OUT</button>
+              <button class="ibtn sm icon loopb-tog" data-deck="1" title="Loop">⟲</button>
+            </div>
+            <div class="pads" data-deck="1">
+              <div class="pad" data-cue="0">1</div><div class="pad" data-cue="1">2</div><div class="pad" data-cue="2">3</div><div class="pad" data-cue="3">4</div>
+            </div>
+          </div>
+        </div>
+        <div class="pitchrow">PITCH <input type="range" class="pitchin" data-deck="1" min="-8" max="8" step="0.1" value="0"><b id="pitchB">0.0%</b></div>
+        <div class="transport" style="margin-top:8px">
+          <label class="load">Cargar<input type="file" accept="audio/*" data-deck="1" class="loadin"></label>
+          <button class="play" data-deck="1" data-act="play">▶❚❚</button>
+          <button class="cue" data-deck="1" data-act="cue">CUE</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- biblioteca multimedia -->
+    <div class="libgrid">
+      <div class="libcats card glow">
+        <h3>Biblioteca multimedia</h3>
+        <div class="cat on" data-cat="todo"><span class="ci"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></span> Toda la biblioteca</div>
+        <div class="cat" data-cat="musica"><span class="ci"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></span> Música</div>
+        <div class="cat" data-cat="videos"><span class="ci"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span> Videos</div>
+        <div class="cat" data-cat="imagenes"><span class="ci"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M4 19l5-5 4 4 3-3 4 4"/></svg></span> Imágenes</div>
+        <div class="cat" data-cat="present"><span class="ci"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/></svg></span> Presentaciones</div>
+        <div class="cat" data-cat="ia"><span class="ci"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8z"/></svg></span> Generados por IA</div>
+        <div class="cat" data-cat="fav"><span class="ci"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17l-6 4 2-7-5-4 7-.5L12 3l2 6.5 7 .5-5 4 2 7z"/></svg></span> Favoritos</div>
+        <label class="cat" style="margin-top:10px;color:var(--muted)"><input type="checkbox" id="ocOpus" style="accent-color:var(--green)"> &nbsp;Guardar como Opus 160</label>
+      </div>
+
+      <div class="libmain card glow">
+        <div class="searchrow">
+          <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+            <input id="libQuery" type="search" placeholder="Buscar en todas las fuentes: canción, artista, álbum o género…"></div>
+          <button class="ibtn" id="btnSearch">Buscar</button>
+          <label class="load">+ Importar<input type="file" accept="audio/*" multiple id="importIn"></label>
+        </div>
+        <div class="searchrow" id="srcRow">
+          <span class="lbl" style="align-self:center">Fuentes:</span>
+          <button class="ibtn sm srcf" data-src="navidrome" id="srcNav" title="Navidrome / Subsonic (tu servidor)">☁ Navidrome</button>
+          <button class="ibtn sm srcf" data-src="libre" id="srcLibre" title="Jamendo (música libre CC)">♪ Libre</button>
+          <button class="ibtn sm srcf" data-src="archive" id="srcArchive" title="Internet Archive">📚 Archive</button>
+          <button class="ibtn sm srcf" data-src="local" id="srcLocal" title="Biblioteca local">💾 Local</button>
+          <span style="flex:1"></span>
+          <input id="setCount" type="number" min="2" max="30" value="10" class="loopsel" style="width:64px" title="nº de pistas del set">
+          <button class="ibtn" id="btnSet">🎶 Armar set</button>
+        </div>
+        <div class="searchrow" style="font-size:11px;color:var(--muted);gap:14px;align-items:center">
+          <span id="srcStatus" style="flex:1"></span>
+          <span title="se puede cargar a los decks y a la cola">⬤ <span style="color:var(--green)">mezclar</span></span>
+          <span title="licencia restringida: solo escucha"><span style="color:var(--amber)">⬤ previsualizar</span></span>
+          <span title="licencia no apta para mezclar"><span style="color:#ff7a7a">⬤ solo consultar</span></span>
+        </div>
+        <div class="media" id="mediaGrid"></div>
+      </div>
+    </div>
+  </div><!-- /viewConsola -->
+
+  <!-- páginas secundarias -->
+  <div class="page" id="viewBiblioteca"><h2>Biblioteca</h2><p>Gestión completa de la biblioteca multimedia.</p><div class="soon">Vista disponible desde la consola · gestión avanzada próximamente</div></div>
+  <div class="page" id="viewPlaylists"><h2>Playlists</h2><p>Crea y organiza listas para tus sesiones y eventos.</p><div class="soon">Interfaz lista · backend próximamente</div></div>
+  <div class="page" id="viewEventos"><h2>Eventos</h2><p>Programa sesiones, cabinas y transmisiones por evento.</p><div class="soon">Interfaz lista · backend próximamente</div></div>
+  <div class="page" id="viewGenerador"><h2>Generador IA</h2><p>Genera música, video, imágenes y presentaciones con IA para tus sets.</p><div class="soon">Interfaz lista · motores de IA próximamente</div></div>
+  <div class="page" id="viewConfig"><h2>Configuración</h2><p>Fuentes de música, Navidrome, salidas de video, MIDI y Command Center.</p><div class="soon">Interfaz lista · ajustes próximamente</div></div>
+
+  <!-- pie fijo: barra inferior + estado -->
+  <div class="appfooter">
+  <div class="bottombar">
+    <div class="toggle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg> Micrófono <div class="sw" id="micSw"><i></i></div></div>
+    <div class="toggle">Talkover <div class="sw" id="talkSw"><i></i></div></div>
+    <div class="meter">🎧 Cue <div class="bars" id="cueMeter"></div></div>
+    <div class="meter">🔊 Master <div class="bars" id="masterMeter"></div></div>
+    <div class="outs"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg> Salidas de video
+      <select class="sel" style="width:auto"><option>Pantalla 1 (Principal)</option></select>
+      <select class="sel" style="width:auto"><option>Pantalla 2 (Extendida)</option></select>
+      <button class="ibtn icon" id="fsBtn" title="Pantalla completa">⛶</button>
+    </div>
+  </div>
+  <div class="statusline">
+    <span class="live">● En vivo:</span> <b id="nowPlaying">en espera</b>
+    <span>♪ <b id="stBpm">—</b> BPM</span>
+    <span>✦ <b id="stKey">—</b></span>
+    <span>⏱ <b id="stTime">0:00 / 0:00</b></span>
+    <span style="margin-left:auto">🔊 MASTER <input type="range" id="master" min="0" max="1" step="0.01" value="0.9" style="accent-color:var(--green);width:120px;vertical-align:middle"></span>
+  </div>
+  </div><!-- /appfooter -->
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js" onerror="void 0"></script>
+<script type="module" src="./console.js"></script>
+</body>
+</html>

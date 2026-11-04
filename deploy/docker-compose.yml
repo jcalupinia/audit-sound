@@ -58,6 +58,8 @@ services:
       AUDIT_SOUND_API_USER: ${AUDIT_SOUND_API_USER:-}
       AUDIT_SOUND_API_PASS: ${AUDIT_SOUND_API_PASS:-}
       AUDIT_SOUND_API_PORT: "8787"
+      # Endurecimiento A1.3: allowlist CORS (coma-separada). Vacío → "*" (retrocompat).
+      AUDIT_SOUND_API_ORIGIN: ${AUDIT_SOUND_API_ORIGIN:-}
     # Para probar sin el proxy de Coolify, descomentar (y asignar dominio api.audit-ia.ec):
     # ports:
     #   - "8787:8787"

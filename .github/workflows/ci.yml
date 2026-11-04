@@ -46,3 +46,29 @@ jobs:
           cmake --build build -j"$(nproc)"
       - name: Autoprueba headless (arranque del motor + OfflineSink)
         run: ./build/engine_selftest
+      - name: Prueba del selector inteligente (armonía/tempo/energía)
+        run: ./build/selector_test
+      - name: Prueba de seguridad del Control API (auth Bearer, rate limit, CORS)
+        run: ./build/control_api_test
+      - name: Prueba de reproducción continua + recuperación ante fallos (A1.4)
+        run: ./build/playback_recovery_test
+
+  wasm:
+    name: Build WASM del motor (emscripten) + autoprueba de enlace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar Emscripten 6.0.13
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 6.0.13
+      - name: Compilar el WASM completo (audit_engine + audit_selftest)
+        run: |
+          emcmake cmake -S wasm -B wasm/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build wasm/build -j"$(nproc)"
+      - name: Comprobar artefactos del motor
+        run: |
+          test -f wasm/build/audit_engine.js
+          test -f wasm/build/audit_engine.wasm
+          test -f wasm/build/audit_selftest.html
+          echo "WASM OK: audit_engine.{js,wasm} + audit_selftest.html"
