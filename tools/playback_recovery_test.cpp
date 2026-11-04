@@ -50,21 +50,29 @@ bool writeWav(const std::string& path, double seconds, double freq, int sr = 441
 struct Provider {
   std::mutex mu;
   std::vector<std::string> good;   // rutas válidas
+  std::string corrupt;             // ruta a un archivo corrupto (existe, no decodifica)
   size_t i = 0;
-  std::atomic<int> badServed{0};
+  std::atomic<int> missingServed{0};
+  std::atomic<int> corruptServed{0};
   std::atomic<int> goodServed{0};
   std::atomic<int> servedGood0{0}, servedGood1{0};
 };
 
-// Callback del AutoMix: una de cada dos pistas es una ruta INEXISTENTE (fallo de
-// fuente). El resto rota entre las pistas buenas.
+// Callback del AutoMix: una de cada dos pistas FALLA, alternando entre una ruta
+// INEXISTENTE y un archivo CORRUPTO (existe pero no se puede decodificar). El resto
+// rota entre las pistas buenas. Ejercita las dos rutas de fallo del motor.
 int nextTrack(void* user, char* out, int cap) {
   auto* p = static_cast<Provider*>(user);
   std::lock_guard<std::mutex> lk(p->mu);
   const size_t idx = p->i++;
-  if (idx % 2 == 1) {  // intermitente: ruta mala
-    std::snprintf(out, cap, "/no/existe/pista_%zu.wav", idx);
-    p->badServed++;
+  if (idx % 2 == 1) {
+    if ((idx / 2) % 2 == 0) {  // ruta inexistente
+      std::snprintf(out, cap, "/no/existe/pista_%zu.wav", idx);
+      p->missingServed++;
+    } else {                   // archivo corrupto
+      std::snprintf(out, cap, "%s", p->corrupt.c_str());
+      p->corruptServed++;
+    }
     return 1;
   }
   const size_t g = (idx / 2) % p->good.size();
@@ -83,9 +91,11 @@ int main() {
   if (!dir) { std::fprintf(stderr, "no se pudo crear dir temporal\n"); return 2; }
   const std::string g0 = std::string(dir) + "/good0.wav";
   const std::string g1 = std::string(dir) + "/good1.wav";
+  const std::string gc = std::string(dir) + "/corrupt.wav";
   if (!writeWav(g0, 2.0, 440.0) || !writeWav(g1, 2.0, 330.0)) {
     std::fprintf(stderr, "no se pudieron escribir los WAV\n"); return 2;
   }
+  { std::ofstream f(gc, std::ios::binary); f << "RIFFxxxxWAVE-basura-no-decodificable"; }  // corrupto
 
   DjEngine e = dj_create();
   if (!dj_start(e)) { std::fprintf(stderr, "dj_start falló (sink no disponible)\n"); return 2; }
@@ -93,6 +103,7 @@ int main() {
 
   Provider prov;
   prov.good = { g0, g1 };
+  prov.corrupt = gc;
   automix_set_next_track(am, nextTrack, &prov);
   automix_set_transition_time(am, 1.0);
   automix_set_mode(am, 0);  // skip-silence (transiciones más rápidas para el test)
@@ -102,33 +113,41 @@ int main() {
   // Deja que arranque y adopte/cargue la primera pista.
   std::this_thread::sleep_for(std::chrono::milliseconds(600));
 
-  // Observa continuidad mientras se fuerzan transiciones (incluye las malas).
-  int samples = 0, playingSamples = 0, gaps = 0;
+  // Observa continuidad mientras se fuerzan transiciones (incluye las malas) y MIDE
+  // la mayor interrupción observada (sin declarar continuidad perfecta sin medición).
+  const int SAMPLE_MS = 200;
+  int samples = 0, playingSamples = 0, gaps = 0, curGap = 0, maxGap = 0;
   for (int t = 0; t < 40; ++t) {                 // ~8 s de observación
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    std::this_thread::sleep_for(std::chrono::milliseconds(SAMPLE_MS));
     const bool playing = dj_playing(e, 0) || dj_playing(e, 1);
     samples++;
-    if (playing) playingSamples++; else gaps++;
+    if (playing) { playingSamples++; curGap = 0; }
+    else { gaps++; curGap++; if (curGap > maxGap) maxGap = curGap; }
     if (t % 6 == 3) automix_skip(am);            // fuerza una transición periódicamente
   }
+  const int maxGapMs = maxGap * SAMPLE_MS;
 
   automix_enable(am, 0);
   automix_destroy(am);
   dj_destroy(e);
-  std::remove(g0.c_str()); std::remove(g1.c_str()); rmdir(dir);
+  std::remove(g0.c_str()); std::remove(g1.c_str()); std::remove(gc.c_str()); rmdir(dir);
 
   // --- Aserciones ---
   int pass = 0, fail = 0;
   auto ok = [&](bool c, const char* m) { if (c) { pass++; std::printf("  OK   %s\n", m); } else { fail++; std::printf("  FAIL %s\n", m); } };
 
   const double contPct = samples ? (100.0 * playingSamples / samples) : 0;
-  std::printf("muestras=%d sonando=%d (%.0f%%) huecos=%d · buenas servidas=%d malas servidas=%d\n",
-              samples, playingSamples, contPct, gaps, prov.goodServed.load(), prov.badServed.load());
+  std::printf("muestras=%d sonando=%d (%.0f%%) huecos=%d · interrupcion_maxima=%dms · "
+              "ausentes=%d corruptas=%d buenas=%d\n",
+              samples, playingSamples, contPct, gaps, maxGapMs,
+              prov.missingServed.load(), prov.corruptServed.load(), prov.goodServed.load());
 
-  ok(prov.badServed.load() > 0, "la fuente falló al menos una vez (se ejercitó la recuperación)");
+  ok(prov.missingServed.load() > 0, "se ejercitó una fuente con archivos AUSENTES");
+  ok(prov.corruptServed.load() > 0, "se ejercitó una fuente con archivos CORRUPTOS");
   ok(prov.goodServed.load() >= 2, "se sirvieron pistas buenas tras los fallos (recuperación)");
   ok(prov.servedGood0.load() > 0 && prov.servedGood1.load() > 0, "se reprodujeron ambas pistas buenas");
   ok(contPct >= 90.0, "reproducción continua ≥90% del tiempo pese a los fallos");
+  ok(maxGapMs <= 400, "la mayor interrupción observada fue breve (≤400ms, medida real)");
   ok(true, "sin cuelgue ni caída (el test llegó al final)");
 
   std::printf("\nRESULTADO: %d OK, %d FAIL\n", pass, fail);
