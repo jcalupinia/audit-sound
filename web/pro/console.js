@@ -469,13 +469,13 @@ function providers(){
   if (window.__AS_PROVIDERS_OVERRIDE) return window.__AS_PROVIDERS_OVERRIDE;  // gancho de pruebas (inerte en producción)
   return [
     { source:'navidrome', label:'Navidrome', enabled: sourceEnabled('navidrome'),
-      search: async (q,n)=>{ const t=await nd.search(q,n); let g=[]; if(q){ try{ g=await nd.songsByGenre(q,n); }catch(e){} }
+      search: async (q,n,signal)=>{ const t=await nd.search(q,n,signal); let g=[]; if(q){ try{ g=await nd.songsByGenre(q,n); }catch(e){} }
         const seen=new Set(); return [...t,...g].filter(s=>{ if(!s.id||seen.has(s.id))return false; seen.add(s.id); return true; })
           .map(s=>SEARCH.normNavidrome(s, SubsonicClient.filename(s))); } },
     { source:'libre', label:'Libre', enabled: OM.enabled(),
-      search: async (q,n)=> (await OM.search(q,n)).map(s=>SEARCH.normLibre(s, OM.filename(s))) },
+      search: async (q,n,signal)=> (await OM.search(q,n,signal)).map(s=>SEARCH.normLibre(s, OM.filename(s))) },
     { source:'archive', label:'Archive', enabled: IA.enabled(),
-      search: async (q,n)=> (await IA.search(q,n)).map(s=>SEARCH.normArchive(s, IA.filename(s))) },
+      search: async (q,n,signal)=> (await IA.search(q,n,signal)).map(s=>SEARCH.normArchive(s, IA.filename(s))) },
     { source:'local', label:'Local', enabled: true,
       search: async (q)=> localSearch(q) },
   ];
@@ -491,17 +491,27 @@ async function bytesOf(r){
   return LIB.getBytes(r.id);
 }
 
-// Búsqueda unificada: paralela, deduplicada, con filtro por fuente y manejo de errores/timeout.
-// NO bloquea el audio: son fetch asíncronos; el motor sigue sonando en su worklet.
+// Búsqueda unificada: paralela, deduplicada, con filtro por fuente, manejo de
+// errores/timeout y CANCELACIÓN (A4.2-C). NO bloquea el audio: son fetch asíncronos;
+// el motor sigue sonando en su worklet.
+let searchEpoch = 0, searchAbort = null;
 async function doSearch(){
   const q=$('#libQuery').value.trim();
   const only = srcFilter.size ? Array.from(srcFilter) : null;
+  const epoch = ++searchEpoch;
+  if (searchAbort) { try { searchAbort.abort(); } catch(e){} }  // cancela la búsqueda anterior
+  const ac = (typeof AbortController!=='undefined') ? new AbortController() : null;
+  searchAbort = ac;
   srcStatus('buscando…');
-  const { results: rows, errors, bySource } = await SEARCH.searchAll(q, { providers: providers(), only, perSource:30, timeoutMs:9000 });
+  let out;
+  try { out = await SEARCH.searchAll(q, { providers: providers(), only, perSource:30, timeoutMs:9000, signal: ac&&ac.signal }); }
+  catch(e){ if (e && e.name==='AbortError') return; srcStatus('error de búsqueda','err'); return; }
+  if (epoch !== searchEpoch) return;  // respuesta obsoleta (llegó otra búsqueda después)
+  const { results: rows, errors, bySource } = out;
   results = rows; renderResults();
   const ok=[]; for (const s in bySource){ if(bySource[s]>=0) ok.push(bySource[s]+' '+s); }
   let msg = results.length+' resultado(s)'+(ok.length?' ('+ok.join(', ')+')':'');
-  if (errors.length) msg += ' · '+errors.map(e=>e.label+': '+(/timeout/.test(e.error)?'tardó demasiado':'error')).join(', ');
+  if (errors.length) msg += ' · '+errors.map(e=>e.label+': '+(/timeout|abort/i.test(e.error)?'tardó demasiado':'error')).join(', ');
   srcStatus(msg, results.length?'ok':(errors.length?'err':''));
 }
 $('#btnSearch').addEventListener('click', doSearch);
@@ -522,7 +532,8 @@ function resultTile(r){
     `<div class="cap"><div class="t" title="${esc(r.title)}">${esc(r.title||r.filename)}</div>`+
     `<div class="s">${esc(r.artist||'—')}${r.album?' · '+esc(r.album):''}</div>`+
     `<div class="meta"><span class="pill src">${esc(r.sourceLabel)}${also}</span>`+
-    `<span class="pill av-${r.availability}">${r.availability}</span>`+
+    `<span class="pill av-${r.availability}" title="${esc(r.licenseLabel||'')}">${r.availability}</span>`+
+    (r.restrictions&&r.restrictions.length ? r.restrictions.map(x=>`<span class="pill" style="border-color:var(--amber);color:var(--amber)" title="${esc(r.licenseLabel||'')}">${esc(x)}</span>`).join('') : '')+
     `<span class="dur">${SEARCH.fmtDuration(r.duration)}</span></div></div>`+
     `<div class="acts"></div>`;
   const acts = el.querySelector('.acts');

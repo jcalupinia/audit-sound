@@ -16,8 +16,8 @@ export function enabled() {
   return typeof window !== 'undefined' && window.AUDIT_SOUND_ARCHIVE === true;
 }
 
-export async function search(query, count = 30) {
-  const res = await fetch(`/api/archive/search?q=${encodeURIComponent(query || '')}&limit=${count}`);
+export async function search(query, count = 30, signal) {
+  const res = await fetch(`/api/archive/search?q=${encodeURIComponent(query || '')}&limit=${count}`, signal ? { signal } : undefined);
   const j = await res.json().catch(() => ({ error: 'respuesta no válida del servidor' }));
   if (!res.ok || j.error) throw new Error(j.error || ('HTTP ' + res.status));
   return Array.isArray(j.results) ? j.results : [];
