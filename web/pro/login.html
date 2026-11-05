@@ -194,7 +194,11 @@
   const eq = $('#eq'); for (let i=0;i<28;i++){ const b=document.createElement('i'); b.style.animationDelay=(-(Math.random()*1.4)).toFixed(2)+'s'; eq.appendChild(b); }
   // Si ya hay sesión, a la consola
   if (CC.isAuthed()) location.replace('./console.html');
-  if (!CC.configured()) $('#demo').textContent = 'Modo demostración: el login aún no está conectado al Command Center; cualquier usuario entra para navegar el front.';
+  if (!CC.configured()) {
+    $('#demo').textContent = CC.demoAllowed()
+      ? 'Modo demostración habilitado: cualquier usuario entra, solo para navegar el front.'
+      : 'El inicio de sesión aún no está configurado. Contacta al administrador.';
+  }
   // Ojo de contraseña
   $('#eye').addEventListener('click', ()=>{ const p=$('#pass'); p.type = p.type==='password' ? 'text':'password'; });
   $('#forgot').addEventListener('click', (e)=>{ e.preventDefault(); $('#msg').className='msg'; $('#msg').textContent='La gestión de usuarios y claves se hace en el Command Center (AuditBrain).'; });

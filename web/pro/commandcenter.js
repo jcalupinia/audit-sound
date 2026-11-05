@@ -16,8 +16,9 @@
 // credenciales, 403 { detail:{ code:"app_forbidden" } } (cuenta sin acceso a la app),
 // 429 rate-limit. El token va luego en Authorization: Bearer (no usa cookie).
 //
-// Mientras no haya backend conectado, cae a un MODO DEMO (cualquier usuario/clave
-// entra) para poder navegar el front; se avisa en la pantalla.
+// Si falta AUDIT_SOUND_CC_API, el login se BLOQUEA con un aviso (no admite a nadie).
+// El MODO DEMO (cualquier usuario/clave entra, solo para navegar el front) es OPT-IN:
+// hay que habilitarlo a propósito con window.AUDIT_SOUND_ALLOW_DEMO = true.
 
 const LS_TOKEN = 'auditsound.cc.token';
 const LS_USER = 'auditsound.cc.user';
@@ -28,6 +29,15 @@ export function apiBase() {
   return String(b).replace(/\/+$/, '');
 }
 export function configured() { return !!apiBase(); }
+
+// El MODO DEMO (cualquier usuario entra, solo para navegar el front) es OPT-IN:
+// está APAGADO por defecto. Así, si falta AUDIT_SOUND_CC_API, el login NO admite
+// a nadie en silencio: se bloquea con un aviso. Para habilitarlo a propósito en un
+// entorno de navegación, define window.AUDIT_SOUND_ALLOW_DEMO = true (o "1"/"true").
+export function demoAllowed() {
+  const v = (typeof window !== 'undefined') ? window.AUDIT_SOUND_ALLOW_DEMO : undefined;
+  return v === true || v === 1 || v === '1' || v === 'true';
+}
 
 export function appKey() {
   return (typeof window !== 'undefined' && window.AUDIT_SOUND_CC_APP) || 'audit_sound';
@@ -71,7 +81,15 @@ export async function login(user, password, remember) {
   user = String(user || '').trim();
   if (!user || !password) return { ok: false, error: 'Escribe usuario y contraseña.' };
 
-  if (!configured()) {  // sin backend conectado todavía → modo demo para navegar el front
+  if (!configured()) {  // sin backend conectado
+    if (!demoAllowed()) {
+      return {
+        ok: false,
+        notConfigured: true,
+        error: 'El inicio de sesión aún no está configurado. Falta AUDIT_SOUND_CC_API (base del Command Center). Avisa al administrador.',
+      };
+    }
+    // Demo explícitamente habilitado (solo para navegar el front).
     const token = 'demo-' + Math.random().toString(36).slice(2);
     save(token, user, [appKey()], remember);
     return { ok: true, token, user, apps: [appKey()], demo: true };

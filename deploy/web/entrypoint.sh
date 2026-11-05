@@ -26,9 +26,11 @@ LISTEN_VALUE="${LISTEN_URL:-/}"
 printf 'window.AUDIT_SOUND_LISTEN=%s;\n' "\"$LISTEN_VALUE\"" >> "$OUT"
 echo "config.js: LISTEN_URL=$LISTEN_VALUE"
 # Enlace al Command Center (AuditBrain): el login de la consola (/pro/login.html)
-# reutiliza sus usuarios/claves. AUDIT_SOUND_CC_API = base del backend (p. ej.
-# "https://api.audit-ia.ec"). Recuerda añadir el origen de AUDIT SOUND a
-# CORS_ALLOW_ORIGINS del Command Center. CC_API_URL sirve de alias.
+# reutiliza las Cuentas de Aplicaciones AUDIT-IA. AUDIT_SOUND_CC_API = base del
+# backend INCLUYENDO el prefijo de la API: "https://api.audit-ia.ec/api/v1".
+# Recuerda añadir el origen de AUDIT SOUND a CORS_ALLOW_ORIGINS del Command Center.
+# CC_API_URL sirve de alias. El modo demo es OPT-IN: sin AUDIT_SOUND_CC_API el
+# login se bloquea, salvo que se habilite a propósito AUDIT_SOUND_ALLOW_DEMO=1.
 CC_API="${AUDIT_SOUND_CC_API:-${CC_API_URL:-}}"
 if [ -n "$CC_API" ]; then
   CC_API=$(printf '%s' "$CC_API" | sed 's:/*$::')   # sin barra final
@@ -37,7 +39,13 @@ if [ -n "$CC_API" ]; then
   [ -n "${AUDIT_SOUND_CC_ME_PATH:-}" ] && printf 'window.AUDIT_SOUND_CC_ME_PATH=%s;\n' "\"$AUDIT_SOUND_CC_ME_PATH\"" >> "$OUT"
   echo "config.js: Command Center LIGADO ($CC_API)"
 else
-  echo "config.js: Command Center sin ligar (modo demo; define AUDIT_SOUND_CC_API)"
+  case "$(printf '%s' "${AUDIT_SOUND_ALLOW_DEMO:-}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes)
+      printf 'window.AUDIT_SOUND_ALLOW_DEMO=true;\n' >> "$OUT"
+      echo "config.js: Command Center sin ligar — MODO DEMO habilitado (AUDIT_SOUND_ALLOW_DEMO)" ;;
+    *)
+      echo "config.js: Command Center sin ligar — LOGIN BLOQUEADO (define AUDIT_SOUND_CC_API)" ;;
+  esac
 fi
 # Copia para el mezclador profesional (/pro/config.js).
 mkdir -p "$ROOT/pro"
