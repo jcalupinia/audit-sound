@@ -48,7 +48,7 @@ try {
   // Enlace al Command Center (AuditBrain): el login de la consola reutiliza sus
   // usuarios/claves. AUDIT_SOUND_CC_API = base del backend (p. ej.
   // "https://api.audit-ia.ec"); los paths opcionales sobreescriben los default
-  // (/client/auth/login, /client/auth/me). Recuerda añadir el origen de AUDIT
+  // (/apps/auth/login, /apps/auth/me). Recuerda añadir el origen de AUDIT
   // SOUND a CORS_ALLOW_ORIGINS del Command Center.
   const ccApi = (process.env.AUDIT_SOUND_CC_API || process.env.CC_API_URL || '').replace(/\/+$/, '');
   if (ccApi) {
