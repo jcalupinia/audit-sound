@@ -83,6 +83,8 @@ jobs:
           node-version: '20'
       - name: Pruebas del login de la consola (demo opt-in, prefijo /api/v1, permiso por app)
         run: node web/pro/commandcenter_test.mjs
+      - name: Pruebas del cambio de clave propio del cliente (/apps/auth/change-password)
+        run: node web/pro/commandcenter_changepw_test.mjs
       - name: Pruebas unitarias del buscador unificado (licencias, dedup, cancelación)
         run: node web/pro/search_test.mjs
       - name: Prueba de integración del proxy de música (Jamendo/Archive, upstream simulado)

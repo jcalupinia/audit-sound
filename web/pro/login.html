@@ -169,6 +169,20 @@
         <div class="ft">Grupo empresarial<br>con <b>innovación</b> y <b>compromiso</b></div>
       </div>
     </form>
+
+    <form id="changeForm" hidden>
+      <p class="msg" style="margin:0 0 12px">Por seguridad, define tu propia contraseña para entrar a AUDIT SOUND.</p>
+      <div class="field">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input id="np1" type="password" placeholder="Nueva contraseña (mín. 8)" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input id="np2" type="password" placeholder="Repite la nueva contraseña" autocomplete="new-password">
+      </div>
+      <button class="btn-go" id="chgo" type="submit">Guardar y entrar</button>
+      <div class="msg" id="chgmsg"></div>
+    </form>
   </div>
 </div>
 
@@ -188,19 +202,46 @@
   // Ojo de contraseña
   $('#eye').addEventListener('click', ()=>{ const p=$('#pass'); p.type = p.type==='password' ? 'text':'password'; });
   $('#forgot').addEventListener('click', (e)=>{ e.preventDefault(); $('#msg').className='msg'; $('#msg').textContent='La gestión de usuarios y claves se hace en el Command Center (AuditBrain).'; });
-  // Enviar
+
+  let lastPass = '';  // la clave actual (recién usada), para el cambio obligatorio
+
+  // Enviar login
   $('#loginForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const btn=$('#go'); const msg=$('#msg'); msg.className='msg'; msg.textContent='';
     btn.disabled=true; btn.textContent='Ingresando…';
-    const r = await CC.login($('#user').value, $('#pass').value, $('#remember').checked);
+    lastPass = $('#pass').value;
+    const r = await CC.login($('#user').value, lastPass, $('#remember').checked);
     if (r.ok){
       msg.className='msg ok';
-      if (r.passwordResetRequired) msg.textContent='Acceso correcto. Debes cambiar tu contraseña en el Command Center. Abriendo la consola…';
-      else msg.textContent = r.demo ? 'Acceso (demo). Abriendo la consola…' : 'Acceso correcto. Abriendo la consola…';
+      if (r.passwordResetRequired && !r.demo){
+        // Primer ingreso: obliga a definir una clave propia (sin pasar por el Command Center).
+        msg.textContent='Acceso correcto. Define tu nueva contraseña para continuar.';
+        $('#loginForm').hidden = true;
+        $('#changeForm').hidden = false;
+        $('#np1').focus();
+        return;
+      }
+      msg.textContent = r.demo ? 'Acceso (demo). Abriendo la consola…' : 'Acceso correcto. Abriendo la consola…';
       location.href='./console.html';
     }
     else { msg.textContent = r.error || 'No se pudo iniciar sesión.'; btn.disabled=false; btn.textContent='Ingresar'; }
+  });
+
+  // Cambio de clave obligatorio en el primer ingreso
+  $('#changeForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const btn=$('#chgo'); const msg=$('#chgmsg'); msg.className='msg'; msg.textContent='';
+    const np1=$('#np1').value, np2=$('#np2').value;
+    if (np1 !== np2){ msg.textContent='Las contraseñas no coinciden.'; return; }
+    btn.disabled=true; btn.textContent='Guardando…';
+    const r = await CC.changePassword(lastPass, np1);
+    if (r.ok){
+      msg.className='msg ok'; msg.textContent='Contraseña actualizada. Abriendo la consola…';
+      location.href='./console.html';
+    } else {
+      msg.textContent = r.error || 'No se pudo cambiar la contraseña.'; btn.disabled=false; btn.textContent='Guardar y entrar';
+    }
   });
 </script>
 </body>
