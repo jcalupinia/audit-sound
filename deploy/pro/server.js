@@ -45,22 +45,29 @@ try {
   let body = listen ? `window.AUDIT_SOUND_LISTEN=${JSON.stringify(listen)};\n` : '/* sin LISTEN_URL */\n';
   body += `window.AUDIT_SOUND_OPENMUSIC=${OM.clientId ? 'true' : 'false'};\n`;
   body += `window.AUDIT_SOUND_ARCHIVE=${IA.enabled ? 'true' : 'false'};\n`;
-  // Enlace al Command Center (AuditBrain): el login de la consola reutiliza sus
-  // usuarios/claves. AUDIT_SOUND_CC_API = base del backend (p. ej.
-  // "https://api.audit-ia.ec"); los paths opcionales sobreescriben los default
-  // (/apps/auth/login, /apps/auth/me). Recuerda añadir el origen de AUDIT
-  // SOUND a CORS_ALLOW_ORIGINS del Command Center.
+  // Enlace al Command Center (AuditBrain): el login de la consola reutiliza las
+  // Cuentas de Aplicaciones AUDIT-IA. AUDIT_SOUND_CC_API = base del backend
+  // INCLUYENDO el prefijo de la API: "https://api.audit-ia.ec/api/v1". Los paths
+  // opcionales sobreescriben los default (/apps/auth/login, /apps/auth/me).
+  // Recuerda añadir el origen de AUDIT SOUND a CORS_ALLOW_ORIGINS del Command Center.
   const ccApi = (process.env.AUDIT_SOUND_CC_API || process.env.CC_API_URL || '').replace(/\/+$/, '');
+  // Modo demo OPT-IN (por defecto APAGADO): sin AUDIT_SOUND_CC_API el login se
+  // bloquea, salvo que se habilite a propósito AUDIT_SOUND_ALLOW_DEMO=1.
+  const allowDemo = /^(1|true|yes)$/i.test(String(process.env.AUDIT_SOUND_ALLOW_DEMO || ''));
   if (ccApi) {
     body += `window.AUDIT_SOUND_CC_API=${JSON.stringify(ccApi)};\n`;
     if (process.env.AUDIT_SOUND_CC_LOGIN_PATH) body += `window.AUDIT_SOUND_CC_LOGIN_PATH=${JSON.stringify(process.env.AUDIT_SOUND_CC_LOGIN_PATH)};\n`;
     if (process.env.AUDIT_SOUND_CC_ME_PATH) body += `window.AUDIT_SOUND_CC_ME_PATH=${JSON.stringify(process.env.AUDIT_SOUND_CC_ME_PATH)};\n`;
   }
+  if (allowDemo) body += `window.AUDIT_SOUND_ALLOW_DEMO=true;\n`;
   fs.writeFileSync(path.join(ROOT, 'config.js'), body);
   if (listen) console.log('config.js: LISTEN_URL=' + listen);
   console.log('config.js: música libre ' + (OM.clientId ? 'ACTIVADA (Jamendo)' : 'desactivada (sin JAMENDO_CLIENT_ID)'));
   console.log('config.js: Internet Archive ' + (IA.enabled ? 'ACTIVADO' : 'desactivado'));
-  console.log('config.js: Command Center ' + (ccApi ? ('LIGADO (' + ccApi + ')') : 'sin ligar (modo demo; define AUDIT_SOUND_CC_API)'));
+  console.log('config.js: Command Center ' + (ccApi
+    ? ('LIGADO (' + ccApi + ')')
+    : (allowDemo ? 'sin ligar — MODO DEMO habilitado (AUDIT_SOUND_ALLOW_DEMO)'
+                 : 'sin ligar — LOGIN BLOQUEADO (define AUDIT_SOUND_CC_API)')));
 } catch (e) { /* no crítico */ }
 
 const TYPES = {

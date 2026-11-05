@@ -87,8 +87,9 @@ bloqueada**; para audio con pantalla bloqueada usa el Preview B.)*
    AUDIT_SOUND_API_USER    = dj
    AUDIT_SOUND_API_PASS    = (clave)
    # La demo viene activada: AUDIT_SOUND_DEMO=1 (sin tocar nada suena una demo sintética)
-   # Enlace al Command Center (login de la consola con los usuarios/claves de AuditBrain):
-   AUDIT_SOUND_CC_API      = https://api.audit-ia.ec   # base del backend del Command Center
+   # Enlace al Command Center (login de la consola con las Cuentas de Aplicaciones AUDIT-IA).
+   # OJO: la base DEBE incluir el prefijo /api/v1 (el endpoint real es {base}/apps/auth/login).
+   AUDIT_SOUND_CC_API      = https://api.audit-ia.ec/api/v1
    ```
 
    **Enlace al Command Center (login real de la consola).** La consola (`/pro/login.html`)
@@ -97,13 +98,16 @@ bloqueada**; para audio con pantalla bloqueada usa el Preview B.)*
    1. **En el Command Center:** crea la cuenta de la persona en **APP · Cuentas AUDIT-IA**
       y marca la casilla **AUDIT SOUND**. (Si la cuenta no tiene esa app, el login da 403.)
    2. **En este servicio (`web` de AUDIT SOUND):** define `AUDIT_SOUND_CC_API` con la base
-      del backend del Command Center (sin barra final). Si queda vacío, la consola entra en
-      **modo demo** (cualquier usuario entra, solo para navegar el front).
-   3. **En el Command Center (backend `auditbrain-python-runner`, su propio Coolify):**
+      del backend **incluyendo `/api/v1`** (sin barra final), p. ej.
+      `https://api.audit-ia.ec/api/v1`. Con la base **sin** `/api/v1` el login daría **404**.
+      Si la dejas **vacía**, el login queda **BLOQUEADO** (modo demo desactivado por defecto;
+      para navegar el front sin backend, habilítalo a propósito con `AUDIT_SOUND_ALLOW_DEMO=1`).
+   3. **En el Command Center (backend `auditbrain-backend`, su propio Coolify):**
       añade el **origen** de AUDIT SOUND (p. ej. `https://sound.audit-ia.ec`) a la variable
-      **`CORS_ALLOW_ORIGINS`** (lista separada por comas).
+      **`CORS_ALLOW_ORIGINS`** (lista separada por comas) y **redespliega** el backend.
 
-   > La consola llama a `POST /apps/auth/login?app=audit_sound`; el token va por
+   > La consola llama a `POST {base}/apps/auth/login?app=audit_sound` →
+   > `https://api.audit-ia.ec/api/v1/apps/auth/login?app=audit_sound`; el token va por
    > `Authorization: Bearer` (no usa cookie). Estas cuentas son un tipo dedicado,
    > independientes de los operadores y del portal de auditoría.
 4. **Domain (uno solo):**
