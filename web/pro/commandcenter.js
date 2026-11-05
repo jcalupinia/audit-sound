@@ -38,6 +38,9 @@ export function loginPath() {
 export function mePath() {
   return (typeof window !== 'undefined' && window.AUDIT_SOUND_CC_ME_PATH) || '/apps/auth/me';
 }
+export function changePasswordPath() {
+  return (typeof window !== 'undefined' && window.AUDIT_SOUND_CC_CHANGE_PATH) || '/apps/auth/change-password';
+}
 
 export function session() {
   try {
@@ -105,4 +108,38 @@ export async function login(user, password, remember) {
   const apps = Array.isArray(j.apps) ? j.apps : [];
   save(token, user, apps, remember);
   return { ok: true, token, user, apps, passwordResetRequired: !!j.password_reset_required };
+}
+
+// El cliente cambia su propia contraseña desde AUDIT SOUND (no necesita entrar al
+// Command Center). Devuelve { ok, error, demo }.
+export async function changePassword(currentPassword, newPassword) {
+  if (!currentPassword || !newPassword) return { ok: false, error: 'Escribe la clave actual y la nueva.' };
+  if (String(newPassword).length < 8) return { ok: false, error: 'La nueva clave debe tener al menos 8 caracteres.' };
+
+  const { token } = session();
+  if (!token) return { ok: false, error: 'Tu sesión expiró. Vuelve a iniciar sesión.' };
+
+  if (!configured()) {  // modo demo / sin backend: no hay dónde cambiarla de verdad
+    return { ok: true, demo: true };
+  }
+
+  let res;
+  try {
+    res = await fetch(apiBase() + changePasswordPath(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+  } catch (e) {
+    return { ok: false, error: 'No se pudo conectar con el Command Center: ' + (e.message || e) };
+  }
+
+  if (res.status === 401) { logout(); return { ok: false, error: 'Tu sesión expiró. Vuelve a iniciar sesión.' }; }
+  if (res.status === 400) {
+    let msg = '';
+    try { const d = (await res.json()).detail; msg = (typeof d === 'string') ? d : (d && d.message) || ''; } catch (e) {}
+    return { ok: false, error: msg || 'No se pudo cambiar la contraseña. Revisa la clave actual.' };
+  }
+  if (!res.ok) return { ok: false, error: 'El Command Center respondió HTTP ' + res.status + '.' };
+  return { ok: true };
 }
