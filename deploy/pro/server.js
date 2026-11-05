@@ -187,11 +187,26 @@ http.createServer((req, res) => {
   if (pathname === '/api/archive/search') { handleArchiveSearch(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
   if (pathname === '/api/archive/audio') { handleArchiveAudio(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
 
+  // Compatibilidad con enlaces/marcadores viejos bajo /pro/: este sitio se sirve en la
+  // RAÍZ del dominio (WEB_ROOT=web/pro), así que /pro/login.html no existe. Antes caía al
+  // fallback de index.html y, como index.html redirige a ./login.html (otra vez /pro/…),
+  // se producía un bucle infinito y pantalla negra. Redirigimos /pro/x -> /x (301).
+  if (pathname === '/pro' || pathname === '/pro/') { res.writeHead(301, { Location: '/' }); return res.end(); }
+  if (pathname.startsWith('/pro/')) {
+    const dest = (pathname.slice(4) || '/') + (u.search || '');  // quita "/pro", conserva query
+    res.writeHead(301, { Location: dest }); return res.end();
+  }
+
   const rel = pathname.replace(/^\/+/, '') || 'index.html';
   const file = path.normalize(path.join(ROOT, rel));
   if (!file.startsWith(ROOT)) return send(res, 403, 'forbidden');  // evita traversal
   fs.readFile(file, (err, buf) => {
-    if (err) {  // fallback a index.html
+    if (err) {
+      // Solo las NAVEGACIONES (ruta sin extensión de archivo) caen a index.html. Un
+      // archivo con extensión que no existe devuelve 404 real: así nunca servimos HTML
+      // en lugar de una imagen/JS (lo que rompía el render) ni alimentamos bucles de
+      // redirección.
+      if (path.extname(rel)) return send(res, 404, 'not found');
       fs.readFile(path.join(ROOT, 'index.html'), (e2, idx) => {
         if (e2) return send(res, 404, 'not found');
         send(res, 200, idx, TYPES['.html']);
