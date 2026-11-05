@@ -17,20 +17,40 @@ la parte de **música / sonido / consola DJ** (🟡 del inventario) y después l
 
 Referencia del inventario: `INVENTARIO_FRONTEND_VS_BACKEND.md` (mismo directorio).
 
+## No se construye desde cero: el motor DJ ya existe (código abierto forkeado)
+Verificado en `NOTICE` y `README` del repo: el motor de audio de AUDIT SOUND es un **fork de
+SideDeck** (C++, GPLv3, `engine/`) con **ports de Mixxx** (crossfader, EQ/isolator, filtro, Auto DJ)
+y DSP abierto en `third_party/` (**qm-dsp** = beat/tono; **Signalsmith Stretch** = keylock;
+**dr_libs/opus/opusfile/ogg** = decodificación). El `README` declara **M1–M5 implementados y
+verificados** (AutoMix M3, selector inteligente M4, Control API + mezclador web WASM M5). El puente
+`web/pro/engine_worker.js` ya expone al navegador las funciones reales del motor: `dj_set_eq`,
+`dj_set_filter`, `dj_set_rate` (SYNC/pitch), `dj_set_keylock`, `dj_set_xfader`, `dj_set_master`,
+`dj_set_fader`, `dj_set_hotcue`/`dj_jump_hotcue`, `dj_set_loop`, `dj_beat_jump`, `dj_seek`,
+`dj_set_cue`, `dj_set_gain`. `web/pro/mixer.html` ya cablea todo eso.
+
+**Consecuencia para el Bloque 1 (música):** NO es desarrollo de DSP; es **integración frontend** —
+enganchar la imagen aprobada (`console.html`) al motor WASM que ya existe, reutilizando el cableado
+de `engine_worker.js`/`audio_bridge.js`/`mixer.html`. El Bloque 2 (audiovisual) sí es desarrollo
+nuevo (SideDeck/Mixxx son motores de audio; no traen video).
+
 ---
 
 ## BLOQUE 1 — MÚSICA / SONIDO / CONSOLA (cablear lo que ya existe)
 
-### Fase 0 — Cimiento: motor real detrás de la imagen
-**Qué:** reemplazar en `console.html` el reproductor HTML5 `<audio>` (etapa 1) por el **motor WASM +
-AudioWorklet** (`audio_bridge.js` + `engine_worker.js`), manteniendo funcionando los controles que
-ya hay (Importar, Play/Cue A-B, crossfader, master). Es prerrequisito de todo lo demás (EQ, SYNC,
-loops, hotcues y waveform solo existen en el motor real).
-**Archivos:** `web/pro/console.html` (+ un controlador nuevo, p. ej. `console_overlay.js`, que
-reutilice la lógica de `console.js`/`mixer.html`).
-**Criterio verde:** cargar 2 pistas y reproducir/mezclar con el motor WASM (no HTML5); COOP/COEP y
-`.wasm` sirviéndose bien; sin regresión de la etapa 1.
-**Prueba:** carga/reproducción en el navegador; `proxy_test.mjs` intacto.
+### Fase 0 — Cimiento: motor WASM real (forkeado) detrás de la imagen
+**Qué:** (a) compilar el **motor WASM existente** (fork SideDeck+Mixxx) con Emscripten 6.0.13 y
+demostrarlo funcionando de verdad en un navegador vía `mixer.html` (cargar pista, BPM/tono reales,
+EQ/crossfader afectan el audio); (b) reemplazar en `console.html` el reproductor HTML5 `<audio>`
+(etapa 1) por ese **motor WASM + AudioWorklet** (`audio_bridge.js` + `engine_worker.js`), manteniendo
+los controles ya presentes (Importar, Play/Cue A-B, crossfader, master). Prerrequisito de todo lo
+demás (EQ, SYNC, loops, hotcues, waveform solo existen en el motor real).
+**Archivos:** `web/pro/console.html` (+ un controlador nuevo `console_overlay.js` que reutilice la
+lógica de `engine_worker.js`/`audio_bridge.js`/`mixer.html`).
+**Criterio verde:** el WASM compila (artefactos `audit_engine.js/.wasm`); `mixer.html` carga y
+reproduce con el motor real en navegador; `console.html` carga 2 pistas y mezcla **con el motor WASM**
+(no HTML5); COOP/COEP y `.wasm` sirviéndose bien; sin regresión de la etapa 1.
+**Prueba:** autoprueba WASM del repo (`wasm/` selftest) + prueba de navegador real (Playwright) sobre
+`mixer.html` y `console.html`; `proxy_test.mjs` intacto.
 
 ### Fase 1 — Carga, biblioteca y buscador
 **Qué:** cablear la barra «Buscar en la biblioteca» + filtros Tipo/Género/BPM al **buscador
