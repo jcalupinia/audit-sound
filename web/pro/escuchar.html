@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AUDIT SOUND · En vivo</title>
+<meta name="description" content="Estás escuchando AUDIT SOUND — música continua, mezcla en vivo, 24/7.">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:#05060f;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#eaf2ff}
+  .frame{position:relative;width:100%;max-width:470px;margin:auto}
+  .frame img{display:block;width:100%;height:auto}
+  .hot{position:absolute;display:block;background:transparent;border:0;cursor:pointer;border-radius:12px;padding:0}
+  .hot:focus-visible{outline:2px solid #36e26a}
+  /* Toda la imagen: reproducir / pausar */
+  .toggle{inset:0;z-index:1}
+  /* Controles reales encima de los iconos del diseño */
+  .ctl{z-index:2}
+  @media(hover:hover){.ctl:hover{background:rgba(255,255,255,.06)}}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;max-width:470px;margin:12px auto 0;padding:0 16px}
+  .back{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);
+    color:#dce8fb;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap}
+  .back:hover{background:rgba(255,255,255,.1)}
+  .status{flex:1;min-height:20px;font-size:13px;color:#93a6c9;text-align:right}
+  .status.err{color:#ff8ba0}
+  .status a{color:#7bdcff}
+  svg{display:block}
+</style>
+</head>
+<body>
+  <!-- Puerta de acceso: sin sesión, al login (antes de pintar, sin parpadeo). -->
+  <script>try{if(!localStorage.getItem('auditsound.cc.token'))location.replace('./login.html');}catch(e){location.replace('./login.html');}</script>
+
+  <div class="frame">
+    <img src="./assets/landing_envivo.webp" alt="Estás escuchando AUDIT SOUND — música continua, mezcla en vivo, 24/7." fetchpriority="high">
+    <!-- Tocar la imagen reproduce o pausa la transmisión -->
+    <button class="hot toggle" id="toggle" aria-label="Reproducir o pausar la transmisión"></button>
+    <!-- Compartir (sobre el icono del diseño) -->
+    <button class="hot ctl" id="share" aria-label="Compartir" style="left:75%;top:72%;width:12%;height:9%"></button>
+    <!-- Pantalla completa (sobre el icono del diseño) -->
+    <button class="hot ctl" id="full" aria-label="Pantalla completa" style="left:84%;top:72%;width:12.5%;height:9%"></button>
+  </div>
+  <div class="bar">
+    <a class="back" href="./index.html"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Volver</a>
+    <div class="status" id="status">Toca la imagen para reproducir.</div>
+  </div>
+
+  <audio id="audio" preload="none" crossorigin="anonymous"></audio>
+
+<script src="config.js" onerror="void 0"></script>
+<script type="module">
+  import { isAuthed } from './commandcenter.js';
+  if (!isAuthed()) location.replace('./login.html');
+</script>
+<script>
+  (function(){
+    var audio = document.getElementById('audio');
+    var status = document.getElementById('status');
+    var params = new URLSearchParams(location.search);
+    var stream = params.get('stream') || (typeof window.AUDIT_SOUND_STREAM==='string' && window.AUDIT_SOUND_STREAM) || '';
+    var listen = (typeof window.AUDIT_SOUND_LISTEN==='string' && window.AUDIT_SOUND_LISTEN) || '';
+    if (!stream) stream = '/stream.mp3';
+    audio.src = stream; audio.volume = 0.85;
+
+    document.getElementById('toggle').addEventListener('click', function(){
+      if (audio.paused){ audio.load(); status.className='status'; status.textContent='Conectando con la transmisión…';
+        var pr = audio.play(); if (pr && pr.catch) pr.catch(function(){}); }
+      else { audio.pause(); }
+    });
+    audio.addEventListener('playing', function(){ status.className='status'; status.textContent='● En vivo — reproduciendo'; });
+    audio.addEventListener('pause', function(){ status.className='status'; status.textContent='En pausa. Toca la imagen para continuar.'; });
+    audio.addEventListener('waiting', function(){ status.className='status'; status.textContent='Cargando…'; });
+    audio.addEventListener('error', function(){
+      status.className='status err';
+      status.textContent = 'No se pudo conectar con la transmisión en este momento.';
+      if (listen){ status.innerHTML = 'No se pudo conectar aquí. <a href="'+listen.replace(/"/g,'&quot;')+'">Abrir la transmisión ▸</a>'; }
+    });
+
+    document.getElementById('share').addEventListener('click', function(){
+      var data = { title:'AUDIT SOUND · En vivo', text:'Escucha AUDIT SOUND en vivo', url: location.href };
+      if (navigator.share){ navigator.share(data).catch(function(){}); }
+      else if (navigator.clipboard){ navigator.clipboard.writeText(location.href); status.className='status'; status.textContent='Enlace copiado.'; }
+    });
+    document.getElementById('full').addEventListener('click', function(){
+      var el = document.documentElement;
+      if (!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el); }
+      else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+    });
+
+    if ('mediaSession' in navigator){
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({ title:'AUDIT SOUND · En vivo', artist:'DJ con IA · 24/7', album:'AuditConsulting Group' });
+        navigator.mediaSession.setActionHandler('play', function(){ audio.play(); });
+        navigator.mediaSession.setActionHandler('pause', function(){ audio.pause(); });
+      } catch(e){}
+    }
+  })();
+</script>
+</body>
+</html>
