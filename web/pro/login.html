@@ -193,7 +193,7 @@
   // Ecualizador de fondo
   const eq = $('#eq'); for (let i=0;i<28;i++){ const b=document.createElement('i'); b.style.animationDelay=(-(Math.random()*1.4)).toFixed(2)+'s'; eq.appendChild(b); }
   // Si ya hay sesión, a la consola
-  if (CC.isAuthed()) location.replace('./console.html');
+  if (CC.isAuthed()) location.replace('./index.html');
   if (!CC.configured()) {
     $('#demo').textContent = CC.demoAllowed()
       ? 'Modo demostración habilitado: cualquier usuario entra, solo para navegar el front.'
@@ -223,7 +223,7 @@
         return;
       }
       msg.textContent = r.demo ? 'Acceso (demo). Abriendo la consola…' : 'Acceso correcto. Abriendo la consola…';
-      location.href='./console.html';
+      location.href='./index.html';
     }
     else { msg.textContent = r.error || 'No se pudo iniciar sesión.'; btn.disabled=false; btn.textContent='Ingresar'; }
   });
@@ -238,7 +238,7 @@
     const r = await CC.changePassword(lastPass, np1);
     if (r.ok){
       msg.className='msg ok'; msg.textContent='Contraseña actualizada. Abriendo la consola…';
-      location.href='./console.html';
+      location.href='./index.html';
     } else {
       msg.textContent = r.error || 'No se pudo cambiar la contraseña.'; btn.disabled=false; btn.textContent='Guardar y entrar';
     }

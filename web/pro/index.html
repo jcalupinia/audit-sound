@@ -43,21 +43,24 @@
 </style>
 </head>
 <body>
+  <!-- Puerta de acceso: sin sesión, al login (se ejecuta antes de pintar, sin parpadeo). -->
+  <script>try{if(!localStorage.getItem('auditsound.cc.token'))location.replace('./login.html');}catch(e){location.replace('./login.html');}</script>
   <div class="wrap">
     <div class="masthead">
       <img class="logo-ia" src="./assets/logo_audit_ia.jpg" alt="AUDIT IA — Artificial Intelligence">
       <div class="brand">AUDIT <span class="g">SOUND</span></div>
-      <div class="tag">Mezcla musical con inteligencia artificial</div>
+      <div class="tag">¿Qué quieres hacer?</div>
+      <div style="margin-top:10px"><a href="#" id="logout" style="color:var(--muted);font-size:12px;text-decoration:underline">Salir</a></div>
     </div>
 
     <div class="cards">
-      <a class="card mix" id="cardMix" href="./mixer.html">
+      <a class="card mix" id="cardMix" href="./console.html">
         <div class="ic">🎛️</div>
-        <h2>Mezclar</h2>
-        <p>Consola de DJ profesional en el navegador: dos platos, ecualización, crossfader,
-          efectos, hotcues, grabación y MIDI. Con copiloto de IA (asistido) o DJ automático.
+        <h2>Mezcladora</h2>
+        <p>Command Center de DJ y producción audiovisual con IA: dos platos, ecualización,
+          crossfader, efectos, hotcues, video/VJ, previsualización y copiloto de IA.
           Ideal en computadora, tablet o móvil <b>en primer plano</b>.</p>
-        <span class="go">Entrar al mezclador ▸</span>
+        <span class="go">Abrir el Command Center ▸</span>
       </a>
 
       <a class="card listen" id="cardListen" href="#">
@@ -90,6 +93,13 @@
       document.getElementById('listenNote').textContent = 'Configura la URL de escucha (LISTEN_URL) para habilitar este enlace.';
     }
   })();
+</script>
+<script type="module">
+  import { isAuthed, logout } from './commandcenter.js';
+  // Refuerzo del guardia (por si el token quedó inconsistente) y botón Salir.
+  if (!isAuthed()) location.replace('./login.html');
+  const out = document.getElementById('logout');
+  if (out) out.addEventListener('click', (e) => { e.preventDefault(); logout(); location.replace('./login.html'); });
 </script>
 </body>
 </html>

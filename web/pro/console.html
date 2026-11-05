@@ -247,6 +247,8 @@
 </style>
 </head>
 <body>
+<!-- Puerta de acceso: sin sesión, al login (antes de pintar, sin parpadeo). -->
+<script>try{if(!localStorage.getItem('auditsound.cc.token'))location.replace('./login.html');}catch(e){location.replace('./login.html');}</script>
 
 <div class="ov" id="ov"><div class="c">
   <h1>AUDIT <b>SOUND</b></h1>
