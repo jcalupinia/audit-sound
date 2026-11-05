@@ -547,5 +547,66 @@
 
 <script src="config.js" onerror="void 0"></script>
 <script type="module" src="./console.js"></script>
+<!-- Contenido de EJEMPLO para ver la consola "llena" (como el mockup). No cambia la
+     estructura ni las opciones; se reemplaza en cuanto cargas música real. Corre tras
+     console.js (evento load) y solo rellena lo que está en reposo. -->
+<script>
+window.addEventListener('load', function(){
+  try {
+    var $ = function(s){ return document.querySelector(s); };
+    var set = function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+    // Platos (demo)
+    set('titleA','Flowers (Remix)');  set('subA','Miley Cyrus · 126 BPM · 8A'); set('bpmA','126.0'); set('keyA','8A');
+    set('titleB','Levitating (Extended)'); set('subB','Dua Lipa · 124 BPM · 8A'); set('bpmB','124.0'); set('keyB','8A');
+    // Onda de ejemplo (persiste: tickUI no la redibuja sin track real)
+    function demoWave(id, color){
+      var cv=document.getElementById(id); if(!cv) return;
+      var dpr=window.devicePixelRatio||1, w=cv.width=cv.clientWidth*dpr, h=cv.height=cv.clientHeight*dpr, mid=h/2;
+      var ctx=cv.getContext('2d'); ctx.clearRect(0,0,w,h);
+      ctx.strokeStyle=color; ctx.globalAlpha=.92; ctx.lineWidth=1; ctx.beginPath();
+      var seed=id.length*7; var n=Math.max(120,Math.floor(w/2));
+      for(var i=0;i<n;i++){ seed=(seed*9301+49297)%233280; var r=seed/233280;
+        var env=0.35+0.65*Math.abs(Math.sin(i/n*Math.PI*3)); var a=r*env*mid*0.95;
+        var x=i/n*w; ctx.moveTo(x,mid-a); ctx.lineTo(x,mid+a); }
+      ctx.stroke(); ctx.globalAlpha=1;
+    }
+    demoWave('waveA','#39e66b'); demoWave('waveB','#39b7ff');
+    // IA Copiloto (demo)
+    set('nextNm','Houdini (Remix)'); set('nextMt','Dua Lipa · 125 BPM · 8A');
+    var checks=$('#copChecks');
+    if(checks){ checks.innerHTML=[
+      ['Compatibilidad armónica','8A → 8A'],['Transición sugerida','16 beats (suave)'],
+      ['Energía','Alta (↑ +4%)'],['Tipo','Dance / Pop']
+    ].map(function(r){ return '<div style="display:flex;gap:9px;align-items:center;margin:7px 0;font-size:13px">'
+      +'<span style="color:#39e66b;flex:none">✓</span><span style="color:#aebfd8">'+r[0]+': </span>'
+      +'<b style="color:#eaf2ff">'+r[1]+'</b></div>'; }).join(''); }
+    // Pie de estado (stBpm/stKey/stTime no se resetean en reposo)
+    set('stBpm','126.0'); set('stKey','8A'); set('stTime','02:18 / 04:20'); set('progTime','00:00 / 00:15');
+    // Avatares del copiloto
+    var ava=document.querySelector('.copilot-hero .ava');
+    if(ava){ ava.style.background='radial-gradient(60px 50px at 40% 25%,rgba(54,230,107,.5),transparent 70%),linear-gradient(150deg,#15314a,#0c1b36)'; }
+    // Biblioteca multimedia (demo) — se reemplaza al buscar
+    var grid=document.getElementById('mediaGrid');
+    if(grid && !grid.children.length){
+      var items=[
+        ['Flowers','Miley Cyrus · 04:20','Música','av-mezclar','mezclar','#39e66b'],
+        ['Evento Corporate','Video MP4 · 02:30','Video','','',''],
+        ['Fondo Dinámico','Video Loop · 00:20','Video','',' ',''],
+        ['Presentación Empresa','PPT / Video · 10:00','Present.','',' ',''],
+        ['Visual Fiesta','Imagen 4K','Imagen','',' ','']
+      ];
+      var ic={'Música':'♪','Video':'▶','Present.':'▦','Imagen':'▣'};
+      var html=items.map(function(it){
+        var av = it[3]? '<span class="pill '+it[3]+'">'+it[4]+'</span>' : '';
+        return '<div class="mtile"><div class="th" style="font-size:26px">'+(ic[it[2]]||'♪')+'</div>'
+          +'<div class="cap"><div class="t">'+it[0]+'</div><div class="s">'+it[1]+'</div>'
+          +'<div class="meta"><span class="pill src">'+it[2]+'</span>'+av+'</div></div></div>';
+      }).join('');
+      html += '<div class="mtile add"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div>Importar Archivos</div></div>';
+      grid.innerHTML = html;
+    }
+  } catch(e){ /* el demo nunca debe romper la consola */ }
+});
+</script>
 </body>
 </html>
