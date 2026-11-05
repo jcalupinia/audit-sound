@@ -5,227 +5,42 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AUDIT SOUND</title>
 <meta name="description" content="AUDIT SOUND — elige tu modo: Mezclar en la consola DJ o Escuchar la transmisión en vivo.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800;0,9..40,900&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#05060f; --bg2:#0a1024; --card:#0c1430; --card2:#0e1838;
-    --line:#1b2b52; --text:#eaf2ff; --muted:#93a6c9;
-    --green:#36e26a; --green-soft:#8dffb0; --cyan:#30c6ff; --magenta:#ff5bd0; --violet:#7a5cff;
-  }
   *{box-sizing:border-box}
-  html,body{margin:0;min-height:100%}
-  body{
-    background:#05060f;
-    color:var(--text);
-    font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    min-height:100dvh; display:flex; flex-direction:column;
-    -webkit-font-smoothing:antialiased;
-  }
-  /* Fondo con ondas neón arriba y abajo */
-  .bgfx{position:fixed;inset:0;z-index:-1;overflow:hidden;background:
-    radial-gradient(900px 420px at 50% -8%, #122152 0%, rgba(10,16,36,0) 62%),
-    radial-gradient(1100px 520px at 50% 112%, #241152 0%, rgba(5,6,15,0) 60%),
-    linear-gradient(180deg,#05060f 0%,#070a1a 48%,#05060f 100%)}
-  .bgfx svg{position:absolute;left:-5%;width:110%;opacity:.5;filter:blur(.3px)}
-  .bgfx .top{top:-40px} .bgfx .bot{bottom:-40px;transform:scaleY(-1)}
-
-  .app{width:100%;max-width:520px;margin:0 auto;padding:18px 18px 0;flex:1;display:flex;flex-direction:column}
-
-  /* Barra superior */
-  .top-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 2px 2px}
-  .logo{display:flex;align-items:center;gap:11px;min-width:0}
-  .logo .mark{filter:drop-shadow(0 0 6px rgba(54,226,106,.55))}
-  .logo .name{font-weight:800;letter-spacing:.06em;font-size:21px;line-height:1}
-  .logo .name .g{color:var(--green)}
-  .logo .sub{font-size:9.5px;letter-spacing:.34em;color:var(--muted);margin-top:4px;font-weight:600}
-  .tb-actions{display:flex;align-items:center;gap:6px}
-  .iconbtn{position:relative;width:42px;height:42px;border-radius:12px;border:1px solid var(--line);
-    background:rgba(255,255,255,.02);color:#cfe0f7;display:flex;align-items:center;justify-content:center;cursor:pointer;
-    transition:border-color .15s,background .15s}
-  .iconbtn:hover{border-color:var(--green);background:rgba(54,226,106,.08)}
-  .iconbtn .dot{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--green);
-    box-shadow:0 0 8px var(--green)}
-
-  /* Héroe */
-  .hero{text-align:center;margin-top:16px}
-  .hero .head{display:flex;align-items:flex-end;justify-content:center;gap:6px;height:112px;margin-bottom:6px}
-  .hero h1{font-size:40px;line-height:1.02;font-weight:900;margin:6px 0 2px;letter-spacing:-.01em}
-  .hero .lead{color:var(--muted);font-size:15px;margin:0 0 16px}
-  .chip{display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border-radius:999px;
-    border:1.5px solid rgba(54,226,106,.7);color:var(--green-soft);font-weight:800;font-size:14px;letter-spacing:.02em;
-    background:rgba(54,226,106,.06);box-shadow:0 0 22px rgba(54,226,106,.18) inset,0 0 16px rgba(54,226,106,.12)}
-  .chip .cpu{display:inline-flex;width:24px;height:24px;border-radius:7px;background:rgba(54,226,106,.16);
-    align-items:center;justify-content:center;color:var(--green)}
-
-  /* Tarjetas de elección */
-  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
-  @media(max-width:380px){.cards{grid-template-columns:1fr}}
-  .pick{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;
-    text-decoration:none;color:inherit;border-radius:20px;padding:16px 13px 20px;overflow:hidden;
-    border:1.5px solid var(--line);background:linear-gradient(180deg,var(--card2),var(--card));
-    transition:transform .16s,border-color .16s,box-shadow .16s}
-  .pick:hover{transform:translateY(-3px)}
-  .pick .thumb{width:100%;height:92px;border-radius:14px;margin-bottom:14px;display:flex;align-items:center;
-    justify-content:center;border:1px solid rgba(255,255,255,.06);position:relative;overflow:hidden}
-  .pick h2{margin:0 0 6px;font-size:19px;font-weight:900;display:flex;align-items:center;gap:7px}
-  .pick p{margin:0 0 14px;color:var(--muted);font-size:12.5px;line-height:1.45;max-width:20ch}
-  .arrow{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    border:1.6px solid currentColor}
-  /* Mezclar (verde) */
-  .pick.mix{color:var(--green)}
-  .pick.mix{border-color:rgba(54,226,106,.55);box-shadow:0 0 0 1px rgba(54,226,106,.15),0 14px 40px rgba(54,226,106,.12)}
-  .pick.mix:hover{border-color:var(--green);box-shadow:0 0 0 1px rgba(54,226,106,.5),0 18px 50px rgba(54,226,106,.22)}
-  .pick.mix .thumb{background:
-    radial-gradient(120px 80px at 30% 20%,rgba(54,226,106,.28),transparent 70%),
-    linear-gradient(150deg,#0c2a1a,#0a1f30)}
-  .pick.mix h2,.pick.mix .arrow{color:var(--green)}
-  /* Escuchar (cyan) */
-  .pick.live{color:var(--cyan)}
-  .pick.live{border-color:rgba(48,198,255,.5);box-shadow:0 0 0 1px rgba(48,198,255,.14),0 14px 40px rgba(48,198,255,.12)}
-  .pick.live:hover{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(48,198,255,.5),0 18px 50px rgba(48,198,255,.22)}
-  .pick.live .thumb{background:
-    radial-gradient(120px 80px at 70% 20%,rgba(122,92,255,.32),transparent 70%),
-    linear-gradient(150deg,#141043,#10233f)}
-  .pick.live h2,.pick.live .arrow{color:var(--cyan)}
-  .pick .lede{color:var(--text)}
-  .pick.disabled{opacity:.6;pointer-events:none}
-  .pick .note{font-size:11px;color:var(--muted);margin-top:-8px}
-
-  /* Navegación inferior */
-  .nav{margin-top:auto;display:flex;justify-content:space-between;gap:4px;
-    padding:14px 8px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
-  .nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted);
-    text-decoration:none;font-size:11px;font-weight:600;padding:4px 0;border-radius:10px;transition:color .15s}
-  .nav a:hover{color:var(--text)}
-  .nav a.on{color:var(--green)}
-  .nav .bar{height:3px;width:34px;border-radius:3px;background:transparent;margin-top:3px}
-  .nav a.on .bar{background:var(--green);box-shadow:0 0 10px var(--green)}
-  .foot{color:var(--muted);text-align:center;font-size:11px;padding:10px 0 16px}
-  .foot b{color:var(--text)}
-  svg{display:block}
+  html,body{margin:0;height:100%}
+  body{background:#05060f;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .frame{position:relative;width:100%;max-width:470px;margin:auto}
+  .frame img{display:block;width:100%;height:auto;border-radius:0}
+  /* Zonas de clic sobre la imagen (transparentes). */
+  .hot{position:absolute;display:block;background:transparent;border:0;cursor:pointer;border-radius:16px}
+  .hot:focus-visible{outline:2px solid #36e26a}
+  @media(hover:hover){.hot:hover{background:rgba(255,255,255,.04)}}
 </style>
 </head>
 <body>
   <!-- Puerta de acceso: sin sesión, al login (antes de pintar, sin parpadeo). -->
   <script>try{if(!localStorage.getItem('auditsound.cc.token'))location.replace('./login.html');}catch(e){location.replace('./login.html');}</script>
 
-  <div class="bgfx" aria-hidden="true">
-    <svg class="top" viewBox="0 0 1200 180" preserveAspectRatio="none"><path d="M0 90 C 200 20 380 160 600 90 S 1000 20 1200 90 L1200 0 L0 0 Z" fill="none" stroke="#2b8cff" stroke-width="2"/><path d="M0 120 C 220 50 420 190 640 120 S 1020 50 1200 120" fill="none" stroke="#7a5cff" stroke-width="2" opacity=".7"/></svg>
-    <svg class="bot" viewBox="0 0 1200 180" preserveAspectRatio="none"><path d="M0 90 C 200 20 380 160 600 90 S 1000 20 1200 90" fill="none" stroke="#7a5cff" stroke-width="2"/><path d="M0 120 C 220 50 420 190 640 120 S 1020 50 1200 120" fill="none" stroke="#ff5bd0" stroke-width="2" opacity=".6"/></svg>
-  </div>
-
-  <div class="app">
-    <!-- Barra superior -->
-    <header class="top-bar">
-      <div class="logo">
-        <svg class="mark" width="34" height="34" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-          <g stroke="#36e26a" stroke-width="3" stroke-linecap="round">
-            <line x1="5" y1="26" x2="5" y2="22"/><line x1="11" y1="30" x2="11" y2="18"/>
-            <line x1="17" y1="34" x2="17" y2="14"/><line x1="23" y1="24" x2="23" y2="24"/>
-          </g>
-          <g stroke="#30c6ff" stroke-width="3" stroke-linecap="round">
-            <line x1="23" y1="31" x2="23" y2="17"/><line x1="29" y1="36" x2="29" y2="12"/>
-            <line x1="35" y1="30" x2="35" y2="18"/><line x1="41" y1="27" x2="41" y2="21"/>
-          </g>
-        </svg>
-        <div>
-          <div class="name">AUDIT <span class="g">SOUND</span></div>
-          <div class="sub">DJ · MÚSICA · EVENTOS · IA</div>
-        </div>
-      </div>
-      <div class="tb-actions">
-        <button class="iconbtn" id="btnBell" title="Novedades" aria-label="Novedades">
-          <span class="dot"></span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-        </button>
-        <button class="iconbtn" id="btnUser" title="Mi cuenta · Salir" aria-label="Mi cuenta">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-        </button>
-      </div>
-    </header>
-
-    <!-- Héroe -->
-    <section class="hero">
-      <div class="head">
-        <svg width="190" height="112" viewBox="0 0 200 118" fill="none" aria-hidden="true">
-          <!-- auriculares -->
-          <path d="M44 74 V58 a56 56 0 0 1 112 0 V74" fill="none" stroke="#bfe9ff" stroke-width="7" stroke-linecap="round"/>
-          <rect x="34" y="70" width="20" height="34" rx="9" fill="#0e1838" stroke="#30c6ff" stroke-width="4"/>
-          <rect x="146" y="70" width="20" height="34" rx="9" fill="#0e1838" stroke="#30c6ff" stroke-width="4"/>
-          <!-- ecualizador -->
-          <g stroke="#36e26a" stroke-width="6" stroke-linecap="round">
-            <line x1="74" y1="100" x2="74" y2="78"/><line x1="86" y1="100" x2="86" y2="64"/>
-            <line x1="98" y1="100" x2="98" y2="86"/><line x1="110" y1="100" x2="110" y2="58"/>
-            <line x1="122" y1="100" x2="122" y2="80"/>
-          </g>
-        </svg>
-      </div>
-      <h1>¿Qué deseas hacer?</h1>
-      <p class="lead">Elige tu modo de experiencia</p>
-      <span class="chip"><span class="cpu"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 2v3M14 2v3M10 19v3M14 19v3M2 10h3M2 14h3M19 10h3M19 14h3" stroke-linecap="round"/></svg></span>DJ con IA</span>
-    </section>
-
-    <!-- Tarjetas -->
-    <div class="cards">
-      <a class="pick mix" id="cardMix" href="./console.html">
-        <div class="thumb">
-          <svg width="92" height="70" viewBox="0 0 120 90" fill="none" aria-hidden="true">
-            <rect x="6" y="10" width="108" height="70" rx="10" fill="#07150d" stroke="#36e26a" stroke-width="2"/>
-            <circle cx="33" cy="45" r="19" fill="#0a2016" stroke="#36e26a" stroke-width="2"/><circle cx="33" cy="45" r="5" fill="#36e26a"/>
-            <circle cx="87" cy="45" r="19" fill="#0a2016" stroke="#8dffb0" stroke-width="2"/><circle cx="87" cy="45" r="5" fill="#8dffb0"/>
-            <g stroke="#36e26a" stroke-width="3" stroke-linecap="round"><line x1="58" y1="66" x2="58" y2="56"/><line x1="64" y1="66" x2="64" y2="50"/><line x1="70" y1="66" x2="70" y2="60"/></g>
-          </svg>
-        </div>
-        <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Mezclar</h2>
-        <p class="lede">Accede a la consola DJ profesional</p>
-        <span class="arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
-      </a>
-
-      <a class="pick live" id="cardLive" href="./escuchar.html">
-        <div class="thumb">
-          <svg width="92" height="70" viewBox="0 0 120 90" fill="none" aria-hidden="true">
-            <circle cx="60" cy="45" r="22" fill="#120b36" stroke="#30c6ff" stroke-width="2"/>
-            <path d="M54 34 L74 45 L54 56 Z" fill="#30c6ff"/>
-            <g stroke="#7a5cff" stroke-width="2.5" fill="none" opacity=".9"><path d="M88 30 a20 20 0 0 1 0 30"/><path d="M95 24 a30 30 0 0 1 0 42"/></g>
-            <g stroke="#7a5cff" stroke-width="2.5" fill="none" opacity=".9"><path d="M32 30 a20 20 0 0 0 0 30"/><path d="M25 24 a30 30 0 0 0 0 42"/></g>
-          </svg>
-        </div>
-        <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 0 1 20 0"/><path d="M6 12a6 6 0 0 1 12 0"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>Escuchar en vivo</h2>
-        <p class="lede">Conéctate a la transmisión y disfruta la música</p>
-        <span class="arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
-        <div class="note" id="liveNote"></div>
-      </a>
-    </div>
-
-    <!-- Navegación inferior -->
-    <nav class="nav">
-      <a href="./console.html#biblioteca"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Tu música<span class="bar"></span></a>
-      <a href="./console.html#playlists"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V6M18 18a3 3 0 1 0 0 .01zM3 6h12M3 12h12M3 18h7"/></svg>Playlists<span class="bar"></span></a>
-      <a href="./console.html#favoritos"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>Favoritos<span class="bar"></span></a>
-      <a href="./console.html#eventos"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Eventos<span class="bar"></span></a>
-      <a href="./console.html#config" class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.3a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.7 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 7 2.7h.1A1.6 1.6 0 0 0 9 1.1V1a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 15 2.7a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.1a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>Configuración<span class="bar"></span></a>
-    </nav>
+  <div class="frame">
+    <img src="./assets/landing_elige.webp" alt="AUDIT SOUND — ¿Qué deseas hacer? Elige tu modo: Mezclar o Escuchar en vivo." fetchpriority="high">
+    <!-- Tarjeta "Mezclar" -> consola -->
+    <a class="hot" href="./console.html" aria-label="Mezclar: consola DJ profesional"
+       style="left:4.5%;top:44%;width:44%;height:37%"></a>
+    <!-- Tarjeta "Escuchar en vivo" -> reproductor -->
+    <a class="hot" href="./escuchar.html" aria-label="Escuchar en vivo"
+       style="left:51%;top:44%;width:44.5%;height:37%"></a>
+    <!-- Icono de usuario (arriba derecha) -> salir -->
+    <a class="hot" id="hotUser" href="#" aria-label="Salir"
+       style="left:86%;top:1.5%;width:12%;height:7.5%"></a>
   </div>
 
 <script src="config.js" onerror="void 0"></script>
 <script type="module">
   import { isAuthed, logout } from './commandcenter.js';
   if (!isAuthed()) location.replace('./login.html');
-  const user = document.getElementById('btnUser');
-  if (user) user.addEventListener('click', () => {
-    if (confirm('¿Cerrar sesión?')) { logout(); location.replace('./login.html'); }
-  });
-  const bell = document.getElementById('btnBell');
-  if (bell) bell.addEventListener('click', () => alert('No tienes novedades nuevas.'));
-  // "Escuchar en vivo": si hay transmisión externa configurada, respeta el flujo;
-  // la página escuchar.html usa la misma fuente. Si no hay nada configurado, avisa.
-  const listen = (typeof window.AUDIT_SOUND_LISTEN === 'string' && window.AUDIT_SOUND_LISTEN) || '';
-  const stream = (typeof window.AUDIT_SOUND_STREAM === 'string' && window.AUDIT_SOUND_STREAM) || '';
-  if (!listen && !stream) {
-    document.getElementById('liveNote').textContent = 'La transmisión aún no está configurada.';
-  }
+  const u = document.getElementById('hotUser');
+  if (u) u.addEventListener('click', (e) => { e.preventDefault(); if (confirm('¿Cerrar sesión?')) { logout(); location.replace('./login.html'); } });
 </script>
 </body>
 </html>
