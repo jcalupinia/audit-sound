@@ -1,14 +1,11 @@
-// Prueba de integración del Control API endurecido (Etapa A / A1.3, A1.5).
-// Arranca el servidor embebido y lo ejercita con libcurl:
-//   - credenciales inválidas → 401; login correcto → 200 + token
-//   - token por cabecera Authorization: Bearer (preferido) → 200
-//   - token por query ?token= (respaldo retrocompatible) → 200
-//   - sin token → 401; comando del controlador → 200
-//   - rate limit de /api/login → 429 tras demasiados intentos
-//   - CORS por allowlist: refleja solo el Origin permitido
-//
-// Devuelve 0 si todo pasa; !=0 si algo falla. No necesita audio (no se llama a
-// dj_start): basta el handle del motor para que respondan los endpoints.
+// Prueba de integración del Control API endurecido (Etapa A4 / S-01..S-04).
+// Arranca el servidor embebido y verifica con libcurl:
+//   S-01  login por CUERPO POST (form); credenciales fuera de la URL; token por
+//         Authorization: Bearer; el legado ?token= queda RECHAZADO.
+//   S-02  CORS con denegación por defecto (sin allowlist no hay ACAO) y allowlist.
+//   S-03  transferencia de control con autorización (request/approve), y que una
+//         sesión secundaria NO puede arrebatar el control con /take si hay controlador.
+//   S-04  logout con revocación server-side (token no reutilizable) y rate limit.
 #include <curl/curl.h>
 
 #include <cstdio>
@@ -22,56 +19,46 @@
 
 namespace {
 
-struct Resp {
-  long code = 0;
-  std::string body;
-  std::string headers;
-};
-
-size_t wbody(char* p, size_t s, size_t n, void* u) {
-  ((std::string*)u)->append(p, s * n);
-  return s * n;
-}
-size_t whdr(char* p, size_t s, size_t n, void* u) {
-  ((std::string*)u)->append(p, s * n);
-  return s * n;
-}
+struct Resp { long code = 0; std::string body, headers; };
+size_t wbody(char* p, size_t s, size_t n, void* u) { ((std::string*)u)->append(p, s * n); return s * n; }
 
 Resp req(const std::string& url, const std::string& method, const char* bearer = nullptr,
-         const char* origin = nullptr) {
+         const char* origin = nullptr, const char* postBody = nullptr) {
   Resp r;
   CURL* h = curl_easy_init();
   curl_easy_setopt(h, CURLOPT_URL, url.c_str());
-  if (method == "POST") curl_easy_setopt(h, CURLOPT_POST, 1L);
-  if (method == "POST") curl_easy_setopt(h, CURLOPT_POSTFIELDS, "");
+  if (method == "POST") {
+    curl_easy_setopt(h, CURLOPT_POST, 1L);
+    curl_easy_setopt(h, CURLOPT_POSTFIELDS, postBody ? postBody : "");
+    curl_easy_setopt(h, CURLOPT_POSTFIELDSIZE, (long)(postBody ? std::strlen(postBody) : 0));
+  }
   curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, wbody);
   curl_easy_setopt(h, CURLOPT_WRITEDATA, &r.body);
-  curl_easy_setopt(h, CURLOPT_HEADERFUNCTION, whdr);
+  curl_easy_setopt(h, CURLOPT_HEADERFUNCTION, wbody);
   curl_easy_setopt(h, CURLOPT_HEADERDATA, &r.headers);
   curl_easy_setopt(h, CURLOPT_TIMEOUT, 5L);
-  struct curl_slist* hdrs = nullptr;
-  if (bearer) hdrs = curl_slist_append(hdrs, (std::string("Authorization: Bearer ") + bearer).c_str());
-  if (origin) hdrs = curl_slist_append(hdrs, (std::string("Origin: ") + origin).c_str());
-  if (hdrs) curl_easy_setopt(h, CURLOPT_HTTPHEADER, hdrs);
+  struct curl_slist* hs = nullptr;
+  if (bearer) hs = curl_slist_append(hs, (std::string("Authorization: Bearer ") + bearer).c_str());
+  if (origin) hs = curl_slist_append(hs, (std::string("Origin: ") + origin).c_str());
+  if (postBody) hs = curl_slist_append(hs, "Content-Type: application/x-www-form-urlencoded");
+  if (hs) curl_easy_setopt(h, CURLOPT_HTTPHEADER, hs);
   curl_easy_perform(h);
   curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &r.code);
-  if (hdrs) curl_slist_free_all(hdrs);
+  if (hs) curl_slist_free_all(hs);
   curl_easy_cleanup(h);
   return r;
 }
 
 int g_pass = 0, g_fail = 0;
-void check(bool cond, const std::string& msg) {
-  if (cond) { ++g_pass; std::printf("  OK   %s\n", msg.c_str()); }
-  else { ++g_fail; std::printf("  FAIL %s\n", msg.c_str()); }
+void check(bool cond, const std::string& m) {
+  if (cond) { ++g_pass; std::printf("  OK   %s\n", m.c_str()); }
+  else { ++g_fail; std::printf("  FAIL %s\n", m.c_str()); }
 }
-
-std::string tokenFrom(const std::string& body) {
-  auto k = body.find("\"token\":\"");
+std::string field(const std::string& body, const std::string& key) {
+  auto k = body.find("\"" + key + "\":\"");
   if (k == std::string::npos) return "";
-  k += 9;
-  auto e = body.find('"', k);
-  return body.substr(k, e - k);
+  k += key.size() + 4;
+  return body.substr(k, body.find('"', k) - k);
 }
 
 }  // namespace
@@ -79,63 +66,90 @@ std::string tokenFrom(const std::string& body) {
 int main() {
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
-  // --- Instancia 1: funcional (sin allowlist CORS) ---
+  // ---- Instancia 1: funcional (sin allowlist CORS → denegación por defecto) ----
   unsetenv("AUDIT_SOUND_API_ORIGIN");
-  DjEngine e1 = dj_create();
-  AutoMix a1 = automix_create(e1);
+  unsetenv("AUDIT_SOUND_API_CORS_ALLOW_ALL");
+  DjEngine e1 = dj_create(); AutoMix a1 = automix_create(e1);
   const int P1 = 18791;
   ControlApi api1 = control_api_start(P1, "dj", "secreto", e1, a1);
-  if (!api1) { std::fprintf(stderr, "no se pudo arrancar control_api en %d\n", P1); return 2; }
+  if (!api1) { std::fprintf(stderr, "no arrancó control_api\n"); return 2; }
   const std::string B1 = "http://127.0.0.1:" + std::to_string(P1);
 
-  check(req(B1 + "/api/login?user=dj&pass=MALA", "POST").code == 401, "login con clave mala → 401");
-  Resp lo = req(B1 + "/api/login?user=dj&pass=secreto&name=Test", "POST");
-  check(lo.code == 200, "login correcto → 200");
-  std::string tok = tokenFrom(lo.body);
-  check(!tok.empty(), "login devuelve token");
-
-  check(req(B1 + "/api/status", "GET", tok.c_str()).code == 200, "status con Bearer → 200");
-  check(req(B1 + "/api/status?token=" + tok, "GET").code == 200, "status con ?token= (compat) → 200");
+  // S-01: credenciales por cuerpo POST
+  check(req(B1 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=MALA").code == 401,
+        "S-01 login (body) clave mala → 401");
+  Resp lo = req(B1 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=secreto&name=A");
+  const std::string tokA = field(lo.body, "token");
+  check(lo.code == 200 && !tokA.empty(), "S-01 login (body) correcto → 200 + token");
+  check(req(B1 + "/api/status", "GET", tokA.c_str()).code == 200, "S-01 status con Bearer → 200");
+  // S-01: el legado ?token= ya NO autentica
+  check(req(B1 + "/api/status?token=" + tokA, "GET").code == 401, "S-01 ?token= en la URL → 401 (eliminado)");
   check(req(B1 + "/api/status", "GET").code == 401, "status sin token → 401");
-  check(req(B1 + "/api/status", "GET", "token-falso").code == 401, "status con token inválido → 401");
-  // El que hizo login es el controlador (primero en entrar) → su comando pasa.
-  check(req(B1 + "/api/command?action=skip", "POST", tok.c_str()).code == 200,
-        "comando del controlador → 200");
+  check(req(B1 + "/api/command?action=skip", "POST", tokA.c_str()).code == 200, "comando del controlador → 200");
 
+  // S-02: CORS denegación por defecto (sin allowlist no hay ACAO ni con Origin)
+  Resp co = req(B1 + "/api/status", "GET", tokA.c_str(), "https://sound.audit-ia.ec");
+  check(co.headers.find("Access-Control-Allow-Origin") == std::string::npos,
+        "S-02 sin allowlist → NO se emite Access-Control-Allow-Origin (deny por defecto)");
+
+  // S-04: logout revoca el token (no reutilizable)
+  check(req(B1 + "/api/logout", "POST", tokA.c_str()).code == 200, "S-04 logout → 200");
+  check(req(B1 + "/api/status", "GET", tokA.c_str()).code == 401, "S-04 token revocado tras logout → 401");
   control_api_stop(api1);
 
-  // --- Instancia 2: rate limit de login ---
-  DjEngine e2 = dj_create();
-  AutoMix a2 = automix_create(e2);
+  // ---- Instancia 2: rate limit ----
+  DjEngine e2 = dj_create(); AutoMix a2 = automix_create(e2);
   const int P2 = 18792;
   ControlApi api2 = control_api_start(P2, "dj", "secreto", e2, a2);
   const std::string B2 = "http://127.0.0.1:" + std::to_string(P2);
   int got429 = 0, got401 = 0;
   for (int i = 0; i < 12; ++i) {
-    long code = req(B2 + "/api/login?user=dj&pass=MALA", "POST").code;
-    if (code == 429) ++got429;
-    else if (code == 401) ++got401;
+    long code = req(B2 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=MALA").code;
+    if (code == 429) ++got429; else if (code == 401) ++got401;
   }
-  check(got401 >= 1 && got429 >= 1, "rate limit: primeros intentos 401, luego 429 (" +
-        std::to_string(got401) + " x401, " + std::to_string(got429) + " x429)");
+  check(got401 >= 1 && got429 >= 1, "S-04 rate limit: 401 y luego 429 (" +
+        std::to_string(got401) + "x401, " + std::to_string(got429) + "x429)");
   control_api_stop(api2);
 
-  // --- Instancia 3: CORS por allowlist ---
+  // ---- Instancia 3: CORS allowlist ----
   setenv("AUDIT_SOUND_API_ORIGIN", "https://sound.audit-ia.ec", 1);
-  DjEngine e3 = dj_create();
-  AutoMix a3 = automix_create(e3);
+  DjEngine e3 = dj_create(); AutoMix a3 = automix_create(e3);
   const int P3 = 18793;
   ControlApi api3 = control_api_start(P3, "dj", "secreto", e3, a3);
   const std::string B3 = "http://127.0.0.1:" + std::to_string(P3);
-  Resp okOrigin = req(B3 + "/api/status", "GET", nullptr, "https://sound.audit-ia.ec");
-  check(okOrigin.headers.find("Access-Control-Allow-Origin: https://sound.audit-ia.ec") !=
-        std::string::npos, "CORS refleja el Origin permitido");
-  Resp badOrigin = req(B3 + "/api/status", "GET", nullptr, "https://malicioso.example");
-  check(badOrigin.headers.find("Access-Control-Allow-Origin") == std::string::npos,
-        "CORS no refleja un Origin no permitido");
-  check(okOrigin.headers.find("Access-Control-Allow-Origin: *") == std::string::npos,
-        "CORS: con allowlist NO se emite el comodín *");
+  Resp okO = req(B3 + "/api/status", "GET", nullptr, "https://sound.audit-ia.ec");
+  check(okO.headers.find("Access-Control-Allow-Origin: https://sound.audit-ia.ec") != std::string::npos,
+        "S-02 allowlist refleja el Origin permitido");
+  Resp badO = req(B3 + "/api/status", "GET", nullptr, "https://malicioso.example");
+  check(badO.headers.find("Access-Control-Allow-Origin") == std::string::npos,
+        "S-02 allowlist bloquea un Origin no permitido");
   control_api_stop(api3);
+  unsetenv("AUDIT_SOUND_API_ORIGIN");
+
+  // ---- Instancia 4: transferencia de control con autorización (S-03) ----
+  DjEngine e4 = dj_create(); AutoMix a4 = automix_create(e4);
+  const int P4 = 18794;
+  ControlApi api4 = control_api_start(P4, "dj", "secreto", e4, a4);
+  const std::string B4 = "http://127.0.0.1:" + std::to_string(P4);
+  // Sesión A (primera → controladora), sesión B (secundaria)
+  const std::string A = field(req(B4 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=secreto&name=A").body, "token");
+  const std::string Bk = field(req(B4 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=secreto&name=B").body, "token");
+  check(!A.empty() && !Bk.empty(), "S-03 dos sesiones simultáneas con token propio");
+  check(req(B4 + "/api/command?action=skip", "POST", A.c_str()).code == 200, "S-03 A (controlador) comanda → 200");
+  check(req(B4 + "/api/command?action=skip", "POST", Bk.c_str()).code == 409, "S-03 B (secundaria) comanda → 409");
+  // B no puede arrebatar con /take mientras A controla
+  check(req(B4 + "/api/control/take", "POST", Bk.c_str()).code == 409, "S-03 B /take con controlador activo → 409");
+  // B solicita el control
+  Resp rq = req(B4 + "/api/control/request", "POST", Bk.c_str());
+  check(rq.code == 200 && field(rq.body, "status") == "requested", "S-03 B solicita control → requested");
+  // A ve la solicitud pendiente
+  check(field(req(B4 + "/api/status", "GET", A.c_str()).body, "pendingRequest") == "B",
+        "S-03 A ve pendingRequest=B");
+  // A aprueba → B pasa a controlar
+  check(req(B4 + "/api/control/approve", "POST", A.c_str()).code == 200, "S-03 A aprueba → 200");
+  check(req(B4 + "/api/command?action=skip", "POST", Bk.c_str()).code == 200, "S-03 B ya controla → 200");
+  check(req(B4 + "/api/command?action=skip", "POST", A.c_str()).code == 409, "S-03 A dejó de controlar → 409");
+  control_api_stop(api4);
 
   curl_global_cleanup();
   std::printf("\nRESULTADO: %d OK, %d FAIL\n", g_pass, g_fail);

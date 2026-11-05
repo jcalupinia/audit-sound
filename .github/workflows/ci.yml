@@ -72,3 +72,16 @@ jobs:
           test -f wasm/build/audit_engine.wasm
           test -f wasm/build/audit_selftest.html
           echo "WASM OK: audit_engine.{js,wasm} + audit_selftest.html"
+
+  frontend:
+    name: Pruebas del frontend (buscador + proxy de música)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Pruebas unitarias del buscador unificado (licencias, dedup, cancelación)
+        run: node web/pro/search_test.mjs
+      - name: Prueba de integración del proxy de música (Jamendo/Archive, upstream simulado)
+        run: node deploy/pro/proxy_test.mjs

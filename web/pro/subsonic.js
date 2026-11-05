@@ -115,8 +115,8 @@ export class SubsonicClient {
   }
 
   // Busca canciones. Devuelve [{id,title,artist,album,duration,suffix,size}].
-  async search(query, count = 25) {
-    const res = await fetch(this._url('search3.view', { query: query || '', songCount: count, artistCount: 0, albumCount: 0, f: 'json' }), { mode: 'cors' });
+  async search(query, count = 25, signal) {
+    const res = await fetch(this._url('search3.view', { query: query || '', songCount: count, artistCount: 0, albumCount: 0, f: 'json' }), signal ? { mode: 'cors', signal } : { mode: 'cors' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const r = (await res.json())['subsonic-response'] || {};
     if (r.status !== 'ok') throw new Error((r.error && r.error.message) || 'búsqueda rechazada');
