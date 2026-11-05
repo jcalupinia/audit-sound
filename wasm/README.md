@@ -54,6 +54,24 @@ Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
+## Verificar el motor completo (2 decks + EQ + crossfader + hotcue + loop + keylock)
+
+`wasm/verify_engine.mjs` (ESM) carga **dos** pistas, las mezcla y prueba las mismas
+funciones C que disparan los botones de `mixer.html`. La build de Emscripten 6.0.13
+emite el motor como **módulo ES6** (`export default`), por eso el verificador es `.mjs`
+(el antiguo `wasm_verify.js` era CommonJS y no aplica a esa build):
+
+```bash
+emcmake cmake -S wasm -B wasm/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake --build wasm/build --target audit_engine -j"$(nproc)"
+ffmpeg -f lavfi -i "sine=frequency=440:duration=6" -ac 2 -ar 44100 /tmp/a.wav -y
+ffmpeg -f lavfi -i "sine=frequency=220:duration=6" -ac 2 -ar 44100 /tmp/b.wav -y
+node wasm/verify_engine.mjs wasm/build/audit_engine.js /tmp/a.wav /tmp/b.wav
+```
+
+Resultado esperado: `RESULTADO MOTOR WASM: 7/7 OK` (mezcla con `pico PCM > 0.01`, BPM real
+de qm-dsp, hotcue que salta exacto, loop y keylock aceptados). Verificado 2026-11-05.
+
 ## Verificar (prueba empírica de que produce audio real)
 
 La autoprueba (`wasm_selftest.cpp`) carga `/track.wav` embebido, reproduce, renderiza
