@@ -92,7 +92,8 @@ bloqueada**; para audio con pantalla bloqueada usa el Preview B.)*
    AUDIT_SOUND_CC_API      = https://api.audit-ia.ec/api/v1
    ```
 
-   **Enlace al Command Center (login real de la consola).** La consola (`/pro/login.html`)
+   **Enlace al Command Center (login real de la consola).** La consola (`/login.html`,
+   en la RAÍZ del dominio: `https://sound.audit-ia.ec/login.html`; **no** `/pro/…`)
    usa las **Cuentas de Aplicaciones AUDIT-IA** del Command Center (sección
    **APP · Cuentas AUDIT-IA**), con permiso por app. Tres pasos:
    1. **En el Command Center:** crea la cuenta de la persona en **APP · Cuentas AUDIT-IA**
