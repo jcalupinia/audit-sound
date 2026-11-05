@@ -97,6 +97,10 @@ bloqueada**; para audio con pantalla bloqueada usa el Preview B.)*
    **APP · Cuentas AUDIT-IA**), con permiso por app. Tres pasos:
    1. **En el Command Center:** crea la cuenta de la persona en **APP · Cuentas AUDIT-IA**
       y marca la casilla **AUDIT SOUND**. (Si la cuenta no tiene esa app, el login da 403.)
+      Para dejar 4 **cuentas de prueba** de una sola vez (matriz: con app / sin app / inactiva),
+      corre `python3 deploy/seed_app_accounts.py --base https://api.audit-ia.ec/api/v1` con las
+      variables `CC_ADMIN_EMAIL` y `CC_ADMIN_PASSWORD` de un operador admin (imprime las claves
+      temporales; no requiere pip).
    2. **En este servicio (`web` de AUDIT SOUND):** define `AUDIT_SOUND_CC_API` con la base
       del backend **incluyendo `/api/v1`** (sin barra final), p. ej.
       `https://api.audit-ia.ec/api/v1`. Con la base **sin** `/api/v1` el login daría **404**.
