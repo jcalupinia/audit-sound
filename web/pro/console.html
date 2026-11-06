@@ -102,6 +102,7 @@
   import { setupSearch } from './console_search.js';
   import { setupMixer } from './console_mixer.js';
   import { setupFeedback } from './console_feedback.js';
+  import { setupCopilot } from './console_copilot.js';
   if (!isAuthed()) location.replace('./login.html');
 
   const $ = (s) => document.getElementById(s);
@@ -116,7 +117,7 @@
   const loaded = [false, false];
   const playing = [false, false];
   // Estado vivo por plato para la capa de feedback (ondas, cabezal, tiempo, BPM).
-  const st = { pos: [0, 0], dur: [0, 0], bpm: [0, 0], beatOffset: [0, 0], playing: [false, false], waves: [null, null] };
+  const st = { pos: [0, 0], dur: [0, 0], bpm: [0, 0], beatOffset: [0, 0], playing: [false, false], waves: [null, null], name: ['', ''], key: [-1, -1] };
 
   let started = false;
 
@@ -125,6 +126,8 @@
       loaded[m.deck] = true;
       if (m.bpm) st.bpm[m.deck] = m.bpm;
       if (typeof m.dur === 'number') st.dur[m.deck] = m.dur;
+      st.name[m.deck] = m.name || '';
+      if (typeof m.key === 'number') st.key[m.deck] = m.key;
       st.waves[m.deck] = null;
       bridge.requestWaveform(m.deck);   // pide la forma de onda real para dibujarla
       const lbl = m.deck ? 'B' : 'A';
@@ -165,20 +168,19 @@
     }
   }
 
-  // Guarda una pista en la biblioteca local persistente (IndexedDB) para que aparezca
-  // en la fuente "Local" del buscador y se recuerde entre sesiones (Fase 1).
-  async function saveToLibrary(f) { try { if (LIB.available()) await LIB.putTrack({ name: f.name, bytes: await f.arrayBuffer() }); } catch (e) {} }
-
-  // Importar -> selector -> cargar 1ª pista en A, 2ª en B (y guardarlas en la biblioteca).
-  let search = null;
+  // Importar -> selector -> cargar 1ª pista en A, 2ª en B. TODAS las importadas se analizan
+  // (bpm/tono/energía) y se recuerdan en la biblioteca local (IndexedDB) + el pool del
+  // Copiloto, para la fuente "Local" del buscador y las sugerencias de la IA.
+  let search = null, copilot = null;
   const fileIn = $('fileIn');
   $('importar').addEventListener('click', async () => { if (await ensureStarted()) fileIn.click(); });
   fileIn.addEventListener('change', async () => {
     const files = Array.prototype.slice.call(fileIn.files || []);
     if (!files.length) return;
     if (!(await ensureStarted())) return;
-    if (files[0]) { say('Cargando <b>' + files[0].name + '</b> en A…'); await bridge.load(0, files[0], files[0].name); await saveToLibrary(files[0]); }
-    if (files[1]) { await bridge.load(1, files[1], files[1].name); await saveToLibrary(files[1]); }
+    if (files[0]) { say('Cargando <b>' + files[0].name + '</b> en A…'); await bridge.load(0, files[0], files[0].name); }
+    if (files[1]) { await bridge.load(1, files[1], files[1].name); }
+    for (const f of files) { if (copilot) { try { await copilot.remember(f, f.name); } catch (e) {} } }
     fileIn.value = '';
     if (search) await search.refreshLocal();
   });
@@ -230,6 +232,20 @@
   // Capa de feedback (Fase 2b): ondas reales, cabezal, tiempo, BPM y VU sobre la imagen.
   const fb = setupFeedback({ frame: $('frame'), bridge, state: st });
 
+  // Copiloto IA (Fase 3A): sugiere la siguiente pista compatible de tu biblioteca y la
+  // carga al plato libre con «Preparar». Read-only hasta que pulsas el botón.
+  copilot = setupCopilot({
+    frame: $('frame'), bridge, ensureStarted,
+    getDeckInfo: (d) => ({ name: st.name[d], bpm: st.bpm[d], key: st.key[d], loaded: loaded[d], playing: playing[d] }),
+    chooseFreeDeck: () => {
+      if (!playing[0]) return 0;
+      if (!playing[1]) return 1;
+      const remA = (st.dur[0] || 0) - (st.pos[0] || 0), remB = (st.dur[1] || 0) - (st.pos[1] || 0);
+      return remA <= remB ? 0 : 1;    // ambos suenan: el que está por terminar
+    },
+    onStatus: say,
+  });
+
   // Enganche mínimo para pruebas automatizadas (no afecta la UI).
   window.__audit = {
     bridge, lib: LIB,
@@ -242,6 +258,9 @@
     get beatOffset() { return st.beatOffset.slice(); },
     get waves() { return st.waves.map((w) => (w ? w.bins : 0)); },
     refreshLocal: () => (search ? search.refreshLocal() : Promise.resolve()),
+    get copilot() { return copilot; },
+    get names() { return st.name.slice(); },
+    copilotSuggestion: () => (copilot ? copilot.best() : null),
     // Nivel en vivo (VU) que mantiene la capa de feedback leyendo CTRL.PEAK; sirve para
     // comprobar en pruebas si hay audio real saliendo del motor.
     peak() { return fb ? fb.vu() : 0; },

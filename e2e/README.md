@@ -101,3 +101,18 @@ node e2e/fase2c_pro_e2e.mjs /tmp
 Resultado esperado: `RESULTADO FASE 2c: 6/6 OK`. Nota: la pre‑escucha por auriculares (bus de cue
 separado) necesita un segundo bus en el motor C++ (no hay salida aparte en WASM); esto es el CUE de
 punto, estándar con una sola salida. Verificado 2026-11-06.
+
+## `fase3a_copiloto_e2e.mjs` — Copiloto IA (Fase 3A)
+
+Comprueba el Copiloto cableado al motor real sobre la imagen: la **tarjeta** «IA Copiloto ·
+Siguiente» existe en la columna derecha; al importar 3 pistas (2 a los platos, las 3 al **pool**
+con su bpm/tono/energía vía `analyzeAwait`), reproducir A hace que el copiloto **sugiera la 3ª**
+(la que no está en ningún plato), y **«Preparar»** la carga en el plato libre con el motor real.
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8200 node deploy/pro/server.js &
+node e2e/fase3a_copiloto_e2e.mjs "$tmp"   # usa cancionA/B/C.wav de <dir>
+```
+
+Resultado esperado: `RESULTADO FASE 3A: 8/8 OK`. La posición de la tarjeta (`CARD` en
+`console_copilot.js`) es ajustable al píxel sin tocar la lógica. Verificado 2026-11-06.
