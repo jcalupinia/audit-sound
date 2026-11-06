@@ -24,13 +24,20 @@ const COORDS = {
   syncB: [65.3, 53.3, 7.0, 4.2], lockB: [73.0, 53.3, 3.8, 4.2], bjBackB: [77.6, 53.3, 3.8, 4.2], bjFwdB: [82.6, 53.3, 3.8, 4.2],
   loopBeatsB: [65.0, 58.0, 10.0, 3.6], loopInB: [75.5, 58.0, 4.0, 3.6], loopOutB: [80.5, 58.0, 4.0, 3.6], reloopB: [85.5, 58.0, 3.6, 3.6],
   hc1B: [65.3, 62.2, 5.5, 5.0], hc2B: [71.3, 62.2, 5.0, 5.0], hc3B: [77.0, 62.2, 5.0, 5.0], hc4B: [82.5, 62.2, 5.5, 5.0],
+  // Pitch fader (vertical) por plato y jog (scrub) sobre el plato
+  // jog/pitch del plato A = su equivalente del plato B con el `left` −50% (misma regla de
+  // alineación del bloque de controles: platos separados exactamente 50%). Antes estaban
+  // puestos para el plato A sin alinear y el pitch caía sobre el bloque SYNC.
+  pitchA: [13.3, 52.0, 1.8, 11.0], pitchB: [63.3, 52.0, 1.8, 11.0],
+  jogA: [0.0, 51.0, 16.0, 11.5], jogB: [50.0, 51.0, 16.0, 11.5],
 };
 
 const pos = (id) => { const c = COORDS[id]; return `left:${c[0]}%;top:${c[1]}%;width:${c[2]}%;height:${c[3]}%`; };
 
-export function setupMixer({ frame, bridge, ensureStarted, onStatus, getBpm, getPos }) {
+export function setupMixer({ frame, bridge, ensureStarted, onStatus, getBpm, getPos, getDur }) {
   if (!frame) return;
   const say = (t, e) => onStatus && onStatus(t, e);
+  getDur = getDur || (() => 0);
 
   const addBtn = (id, title) => {
     const b = document.createElement('button');
@@ -47,6 +54,24 @@ export function setupMixer({ frame, bridge, ensureStarted, onStatus, getBpm, get
     r.style.cssText = 'position:absolute;-webkit-appearance:none;appearance:none;background:transparent;cursor:ns-resize;' +
       'writing-mode:vertical-lr;direction:rtl;z-index:2;' + pos(id);
     frame.appendChild(r); return r;
+  };
+  // Pitch fader vertical (±%): arriba = más rápido. value en % (-8..+8).
+  const addPitch = (id, title) => {
+    const r = document.createElement('input');
+    r.type = 'range'; r.id = id; r.min = '-8'; r.max = '8'; r.step = '0.1'; r.value = '0';
+    r.setAttribute('aria-label', title); r.title = title + ' (doble clic = 0%)';
+    r.style.cssText = 'position:absolute;-webkit-appearance:none;appearance:none;background:transparent;cursor:ns-resize;' +
+      'writing-mode:vertical-lr;direction:rtl;z-index:2;' + pos(id);
+    frame.appendChild(r); return r;
+  };
+  // Zona de jog (scrub): arrastrar horizontal mueve el cabezal (seek) como un plato.
+  const addJog = (id, title) => {
+    const b = document.createElement('div');
+    b.id = id; b.setAttribute('role', 'slider'); b.setAttribute('aria-label', title); b.title = title;
+    // z-index 1: el jog va DEBAJO de los botones discretos (loop/hotcue/sync/pitch) para
+    // que un solapamiento no bloquee un clic; el jog solo captura el arrastre en el plato libre.
+    b.style.cssText = 'position:absolute;background:transparent;cursor:ew-resize;touch-action:none;z-index:1;border-radius:50%;' + pos(id);
+    frame.appendChild(b); return b;
   };
 
   // --- EQ por plato ---
@@ -114,5 +139,37 @@ export function setupMixer({ frame, bridge, ensureStarted, onStatus, getBpm, get
       });
       el.addEventListener('dblclick', async () => { if (!(await ensureStarted())) return; bridge.hotcueClear(deck, i); hcSet[i] = false; el.classList.remove('on'); el.setAttribute('aria-pressed', 'false'); say('Hotcue ' + (i + 1) + ' ' + P + ' borrado'); });
     }
+  });
+
+  // Pitch fader + Jog (scrub) por plato
+  [0, 1].forEach((deck) => {
+    const P = deck ? 'B' : 'A';
+
+    // Pitch ±8%: rate = 1 + v/100
+    const pf = addPitch('pitch' + P, 'Pitch ' + P);
+    pf.addEventListener('input', async () => { if (!(await ensureStarted())) return; bridge.rate(deck, 1 + parseFloat(pf.value) / 100); });
+    pf.addEventListener('dblclick', async () => { if (!(await ensureStarted())) return; pf.value = '0'; bridge.rate(deck, 1); say('Pitch ' + P + ' = 0%'); });
+
+    // Jog: arrastrar horizontal mueve el cabezal (seek). Un ancho completo ≈ SCRUB_S segundos.
+    const SCRUB_S = 8;
+    const jog = addJog('jog' + P, 'Jog (scrub) ' + P);
+    let dragging = false, startX = 0, startPos = 0, w = 1;
+    jog.addEventListener('pointerdown', async (e) => {
+      if (!(await ensureStarted())) return;
+      dragging = true; startX = e.clientX; startPos = getPos(deck); w = jog.getBoundingClientRect().width || 1;
+      try { jog.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    jog.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dx = (e.clientX - startX) / w;            // -1..1 aprox
+      const dur = getDur(deck) || 0;
+      let t = startPos + dx * SCRUB_S;                 // derecha = adelante
+      if (dur > 0) t = Math.max(0, Math.min(dur - 0.05, t));
+      bridge.seek(deck, t);
+    });
+    const endDrag = () => { dragging = false; };
+    jog.addEventListener('pointerup', endDrag);
+    jog.addEventListener('pointercancel', endDrag);
+    jog.addEventListener('pointerleave', endDrag);
   });
 }
