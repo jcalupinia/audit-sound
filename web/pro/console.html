@@ -103,6 +103,7 @@
   import { setupMixer } from './console_mixer.js';
   import { setupFeedback } from './console_feedback.js';
   import { setupCopilot } from './console_copilot.js';
+  import { setupAutoDJ } from './console_autodj.js';
   if (!isAuthed()) location.replace('./login.html');
 
   const $ = (s) => document.getElementById(s);
@@ -246,6 +247,11 @@
     onStatus: say,
   });
 
+  // DJ Automático (Fase 3B): «Armar set y mezclar». Escribe un artista/género en el
+  // buscador y pulsa «DJ Automático (IA 24/7)»: la IA arma un set con las fuentes y lo
+  // mezcla solo (AutoMix del motor). Reutiliza el buscador (search) y el AutoMix WASM.
+  const autodj = setupAutoDJ({ frame: $('frame'), bridge, ensureStarted, search, onStatus: say });
+
   // Enganche mínimo para pruebas automatizadas (no afecta la UI).
   window.__audit = {
     bridge, lib: LIB,
@@ -259,6 +265,7 @@
     get waves() { return st.waves.map((w) => (w ? w.bins : 0)); },
     refreshLocal: () => (search ? search.refreshLocal() : Promise.resolve()),
     get copilot() { return copilot; },
+    get autodj() { return autodj; },
     get names() { return st.name.slice(); },
     copilotSuggestion: () => (copilot ? copilot.best() : null),
     // Nivel en vivo (VU) que mantiene la capa de feedback leyendo CTRL.PEAK; sirve para
