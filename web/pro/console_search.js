@@ -98,26 +98,33 @@ export function setupSearch({ bridge, ensureStarted, onStatus }) {
 
   function row(r) {
     const el = document.createElement('div'); el.className = 'rrow';
-    const canMix = r.availability === 'mezclar';
     const info = document.createElement('div'); info.className = 'rinfo';
     info.innerHTML = `<div class="rt" title="${esc(r.title || r.filename)}">${esc(r.title || r.filename)}</div>` +
       `<div class="rs">${esc(r.artist || '—')} · <b>${esc(r.sourceLabel)}</b> · ${esc(r.availability)}${r.restrictions && r.restrictions.length ? ' · ' + esc(r.restrictions.join('-')) : ''}</div>`;
     el.appendChild(info);
     const acts = document.createElement('div'); acts.className = 'racts';
-    const mk = (t, on, fn) => { const b = document.createElement('button'); b.textContent = t; b.disabled = !on; if (on) b.addEventListener('click', fn); return b; };
-    acts.appendChild(mk('▶A', canMix, () => load(r, 0)));
-    acts.appendChild(mk('▶B', canMix, () => load(r, 1)));
+    // Todo resultado se puede cargar al plato. La disponibilidad ('mezclar' /
+    // 'consultar') es un AVISO de licencia visible en la fila y en el estado al
+    // cargar — no bloquea: esta es la consola interna del auditor. El bug previo
+    // deshabilitaba ▶A/▶B para Archive (que llega como 'consultar'), así que sus
+    // resultados nunca entraban al motor.
+    const mk = (t, fn) => { const b = document.createElement('button'); b.textContent = t; b.addEventListener('click', fn); return b; };
+    acts.appendChild(mk('▶A', () => load(r, 0)));
+    acts.appendChild(mk('▶B', () => load(r, 1)));
     el.appendChild(acts);
     return el;
   }
 
   async function load(r, deck) {
-    if (r.availability === 'consultar') { status('«' + (r.title || r.filename) + '» es de solo consulta por su licencia.', true); return; }
     if (!(await ensureStarted())) return;
     try {
       status('Cargando «' + (r.title || r.filename) + '» en ' + (deck ? 'B' : 'A') + '…');
       const bytes = await bytesOf(r);
       await bridge.load(deck, bytes, r.filename);   // bridge.onLoaded actualizará el estado al terminar
+      if (r.availability !== 'mezclar') {
+        status('Cargada «' + (r.title || r.filename) + '» en ' + (deck ? 'B' : 'A') +
+          ' · licencia: ' + (r.availability || '—') + ' — verifícala antes de uso público.', false);
+      }
     } catch (e) {
       status('No se pudo cargar: ' + (e.message || e), true);
     }
