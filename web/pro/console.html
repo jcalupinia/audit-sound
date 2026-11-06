@@ -104,6 +104,7 @@
   import { setupFeedback } from './console_feedback.js';
   import { setupCopilot } from './console_copilot.js';
   import { setupAutoDJ } from './console_autodj.js';
+  import { setupSetAI } from './console_setai.js';
   if (!isAuthed()) location.replace('./login.html');
 
   const $ = (s) => document.getElementById(s);
@@ -252,6 +253,10 @@
   // mezcla solo (AutoMix del motor). Reutiliza el buscador (search) y el AutoMix WASM.
   const autodj = setupAutoDJ({ frame: $('frame'), bridge, ensureStarted, search, onStatus: say });
 
+  // Generador de sets por IA (Fase 3C): «Generador IA» (barra superior) abre un recuadro
+  // donde describes el set en texto; la IA lo interpreta, lo arma y lo mezcla solo.
+  const setai = setupSetAI({ frame: $('frame'), search, autodj, ensureStarted, onStatus: say });
+
   // Enganche mínimo para pruebas automatizadas (no afecta la UI).
   window.__audit = {
     bridge, lib: LIB,
@@ -266,6 +271,7 @@
     refreshLocal: () => (search ? search.refreshLocal() : Promise.resolve()),
     get copilot() { return copilot; },
     get autodj() { return autodj; },
+    get setai() { return setai; },
     get names() { return st.name.slice(); },
     copilotSuggestion: () => (copilot ? copilot.best() : null),
     // Nivel en vivo (VU) que mantiene la capa de feedback leyendo CTRL.PEAK; sirve para

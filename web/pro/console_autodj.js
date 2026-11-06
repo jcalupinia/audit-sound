@@ -39,36 +39,45 @@ export function setupAutoDJ({ frame, bridge, ensureStarted, search, onStatus, ge
     say('DJ Automático detenido.');
   }
 
-  // Arma un set con una búsqueda (artista/género) y arranca la auto-mezcla.
-  async function buildSet(query, n) {
+  // Carga una lista YA ORDENADA de resultados en el AutoMix y arranca la auto-mezcla.
+  // La usa buildSet (búsqueda simple) y el Generador de sets por IA (Fase 3C, orden propio).
+  async function loadSet(results, transition) {
     if (building) return 0;
     building = true;
     try {
       if (!(await ensureStarted())) return 0;
-      const count = Math.min(30, Math.max(2, n || (getCount ? getCount() : 10)));
-      say('DJ Automático: armando set' + (query ? ' de «' + query + '»' : '') + '…');
-      let out;
-      try { out = await search.searchAll(query, { perSource: count }); }
-      catch (e) { say('No se pudo buscar para el set: ' + (e.message || e), true); return 0; }
-      const mixable = (out.results || []).filter((r) => r.availability === 'mezclar').slice(0, count);
-      if (!mixable.length) {
-        say('No hay pistas aptas para mezclar' + (query ? ' para «' + query + '»' : '') +
-          '. Prueba otro término (p. ej. «lofi», «creative commons») o importa pistas tuyas.', true);
-        return 0;
-      }
+      const list = (results || []).filter((r) => r && r.availability === 'mezclar');
+      if (!list.length) { say('No hay pistas aptas para mezclar en ese resultado.', true); return 0; }
       let added = 0;
-      for (const r of mixable) {
-        say('DJ Automático: añadiendo ' + (added + 1) + '/' + mixable.length + ' · ' + (r.title || r.filename) + '…');
+      for (const r of list) {
+        say('DJ Automático: añadiendo ' + (added + 1) + '/' + list.length + ' · ' + (r.title || r.filename) + '…');
         try { const bytes = await search.bytesOf(r); await bridge.autoAdd(bytes, r.filename); added++; }
         catch (e) { /* salta la que no baje */ }
       }
       if (!added) { say('No se pudo cargar ninguna pista del set.', true); return 0; }
-      bridge.autoTransition(8);        // transición de ~8 s entre pistas
+      bridge.autoTransition(transition || 8);
       bridge.autoEnable(true);
       autoOn = true; ringAuto();
       say('DJ Automático en marcha: ' + added + ' pista(s) mezclándose solas. Pulsa «DJ Automático» otra vez para parar.');
       return added;
     } finally { building = false; }
+  }
+
+  // Arma un set con una búsqueda simple (artista/género) y arranca la auto-mezcla.
+  async function buildSet(query, n) {
+    if (building) return 0;
+    const count = Math.min(30, Math.max(2, n || (getCount ? getCount() : 10)));
+    say('DJ Automático: armando set' + (query ? ' de «' + query + '»' : '') + '…');
+    let out;
+    try { out = await search.searchAll(query, { perSource: count }); }
+    catch (e) { say('No se pudo buscar para el set: ' + (e.message || e), true); return 0; }
+    const mixable = (out.results || []).filter((r) => r.availability === 'mezclar').slice(0, count);
+    if (!mixable.length) {
+      say('No hay pistas aptas para mezclar' + (query ? ' para «' + query + '»' : '') +
+        '. Prueba otro término (p. ej. «lofi», «creative commons») o importa pistas tuyas.', true);
+      return 0;
+    }
+    return loadSet(mixable);
   }
 
   btnAuto.addEventListener('click', async () => {
@@ -80,5 +89,5 @@ export function setupAutoDJ({ frame, bridge, ensureStarted, search, onStatus, ge
   btnManual.addEventListener('click', () => { stop(); btnManual.classList.add('on'); btnHibrido.classList.remove('on'); say('Modo Manual.'); });
   btnHibrido.addEventListener('click', () => { stop(); btnHibrido.classList.add('on'); btnManual.classList.remove('on'); say('Modo Híbrido (copiloto asistiendo).'); });
 
-  return { buildSet, isAuto: () => autoOn, stop };
+  return { buildSet, loadSet, isAuto: () => autoOn, stop };
 }
