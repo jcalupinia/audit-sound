@@ -47,6 +47,10 @@
     font-size:12px;font-weight:700;cursor:pointer}
   .racts button:disabled{opacity:.4;cursor:not-allowed}
   .racts button:not(:disabled):hover{background:#36e26a;color:#06220f;border-color:#36e26a}
+  /* Capas: los controles núcleo (música/buscador) SIEMPRE reciben el clic por encima
+     de los overlays de Fase 2, para que nada se bloquee aunque alguno quede corrido. */
+  #importar,#playA,#cueA,#playB,#cueB,#xfader,#master,#hotUser{z-index:4}
+  #buscar,#resultados{z-index:6}
 </style>
 </head>
 <body>
@@ -94,6 +98,7 @@
   import { AudioBridge } from './audio_bridge.js';
   import * as LIB from './library.js';
   import { setupSearch } from './console_search.js';
+  import { setupMixer } from './console_mixer.js';
   if (!isAuthed()) location.replace('./login.html');
 
   const $ = (s) => document.getElementById(s);
@@ -107,17 +112,21 @@
   const bridge = new AudioBridge();
   const loaded = [false, false];
   const playing = [false, false];
+  const bpm = [0, 0];         // BPM real por plato (del análisis del motor)
+  const posn = [0, 0];        // posición (s) por plato, del estado periódico del motor
   let started = false;
 
   bridge.onLoaded = (m) => {
     if (m.ok) {
       loaded[m.deck] = true;
+      if (m.bpm) bpm[m.deck] = m.bpm;
       const lbl = m.deck ? 'B' : 'A';
       say(`Cargado en ${lbl}: <b>${m.name || 'pista'}</b>${m.bpm ? ` · ${Math.round(m.bpm)} BPM` : ''}${(m.key != null && m.key >= 0) ? ` · tono ${m.key}` : ''}. Usa ▶❚❚ para reproducir.`);
     } else {
       say(`No se pudo cargar en el plato ${m.deck ? 'B' : 'A'}: ${m.err || 'error'}`, true);
     }
   };
+  bridge.onStatus = (m) => { if (m && m.decks) m.decks.forEach((d, i) => { if (d && typeof d.pos === 'number') posn[i] = d.pos; }); };
   bridge.onError = (msg) => say('Motor de audio: ' + msg, true);
 
   // Arranca el motor en el primer gesto del usuario (política de autoplay).
@@ -176,14 +185,24 @@
   // Buscador unificado (Fase 1): barra "Buscar en la biblioteca" -> 4 fuentes -> cargar a A/B.
   search = setupSearch({ bridge, ensureStarted, onStatus: say });
 
+  // Controles de plato (Fase 2): EQ, keylock, SYNC, loop, hotcues, beatjump sobre la imagen.
+  setupMixer({
+    frame: $('frame'), bridge, ensureStarted, onStatus: say,
+    getBpm: (d) => bpm[d] || 0, getPos: (d) => posn[d] || 0,
+  });
+
   // Enganche mínimo para pruebas automatizadas (no afecta la UI).
   window.__audit = {
     bridge, lib: LIB,
     get started() { return started; },
     get loaded() { return loaded.slice(); },
     get playing() { return playing.slice(); },
+    get bpm() { return bpm.slice(); },
+    get posn() { return posn.slice(); },
     refreshLocal: () => (search ? search.refreshLocal() : Promise.resolve()),
-    peak() { try { return (Atomics.load(new Int32Array(bridge._buffers.ctrl), 3) || 0) / 1e6; } catch (e) { return -1; } },
+    // Pico del PCM que consume el worklet: se lee Y SE RESETEA (como mixer.html), para
+    // que mida el nivel de la ventana reciente y no un máximo histórico monotónico.
+    peak() { try { const c = new Int32Array(bridge._buffers.ctrl); const v = (Atomics.load(c, 3) || 0) / 1e6; Atomics.store(c, 3, 0); return v; } catch (e) { return -1; } },
   };
 </script>
 </body>
