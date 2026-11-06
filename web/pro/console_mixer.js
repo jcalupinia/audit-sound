@@ -25,8 +25,11 @@ const COORDS = {
   loopBeatsB: [65.0, 58.0, 10.0, 3.6], loopInB: [75.5, 58.0, 4.0, 3.6], loopOutB: [80.5, 58.0, 4.0, 3.6], reloopB: [85.5, 58.0, 3.6, 3.6],
   hc1B: [65.3, 62.2, 5.5, 5.0], hc2B: [71.3, 62.2, 5.0, 5.0], hc3B: [77.0, 62.2, 5.0, 5.0], hc4B: [82.5, 62.2, 5.5, 5.0],
   // Pitch fader (vertical) por plato y jog (scrub) sobre el plato
-  pitchA: [20.3, 52.0, 1.8, 11.0], pitchB: [63.3, 52.0, 1.8, 11.0],
-  jogA: [2.0, 51.0, 18.0, 11.5], jogB: [50.0, 51.0, 16.0, 11.5],
+  // jog/pitch del plato A = su equivalente del plato B con el `left` −50% (misma regla de
+  // alineación del bloque de controles: platos separados exactamente 50%). Antes estaban
+  // puestos para el plato A sin alinear y el pitch caía sobre el bloque SYNC.
+  pitchA: [13.3, 52.0, 1.8, 11.0], pitchB: [63.3, 52.0, 1.8, 11.0],
+  jogA: [0.0, 51.0, 16.0, 11.5], jogB: [50.0, 51.0, 16.0, 11.5],
 };
 
 const pos = (id) => { const c = COORDS[id]; return `left:${c[0]}%;top:${c[1]}%;width:${c[2]}%;height:${c[3]}%`; };
