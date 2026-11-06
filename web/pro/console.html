@@ -28,6 +28,16 @@
   input[type=range].ov{position:absolute;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer;margin:0}
   input[type=range].ov::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:28px;background:transparent;cursor:pointer}
   input[type=range].ov::-moz-range-thumb{width:18px;height:28px;background:transparent;border:0;cursor:pointer}
+  /* iOS/Safari: los sliders y botones overlay DEBEN ser invisibles sobre la imagen. iOS
+     pinta la PISTA del slider y algunos botones con estilo nativo (pastillas blancas) si no
+     se transparentan todos sus pseudo-elementos. Esta regla cubre también los sliders que
+     crea el JS (EQ/pitch/jog) dentro de #frame, que no llevan la clase .ov. */
+  #frame input[type=range]{-webkit-appearance:none!important;appearance:none!important;background:transparent!important}
+  #frame input[type=range]::-webkit-slider-runnable-track{-webkit-appearance:none;background:transparent;border:0}
+  #frame input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;background:transparent;border:0;box-shadow:none}
+  #frame input[type=range]::-moz-range-track{background:transparent;border:0}
+  #frame input[type=range]:focus{outline:none}
+  #frame button,#frame .hot{-webkit-appearance:none;appearance:none;background-color:transparent;-webkit-tap-highlight-color:transparent}
   .bar{width:100%;max-width:1680px;margin:10px auto 0;padding:0 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .bar .status{flex:1;min-width:180px;font-size:13px;color:#93a6c9}
   .bar .status b{color:#eaf2ff}
