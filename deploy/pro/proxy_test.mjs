@@ -10,8 +10,13 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createRequire } from 'node:module';
 
-const AUDIO = Buffer.from('ID3mock-audio-bytes-0123456789');  // "audio" simulado
+const require = createRequire(import.meta.url);
+const srv = require('./server.js');   // exporta pickArchiveAudioFile/iaIsAudioFile (no abre puerto al requerir)
+
+const AUDIO = Buffer.from('ID3mock-audio-bytes-0123456789');  // "audio" mp3 simulado
+const FLAC = Buffer.from('fLaC-mock-flac-bytes-0123456789');  // "audio" flac simulado (bytes distintos)
 
 // --- Upstream simulado (hace de Jamendo y de Internet Archive) ---
 const mock = http.createServer((req, res) => {
@@ -21,14 +26,27 @@ const mock = http.createServer((req, res) => {
     return j({ results: [{ id: 42, name: 'Tema Libre', artist_name: 'Artista CC', duration: 190,
       audio: `http://${MOCKHOST}/aud/42.mp3`, license_ccurl: 'http://creativecommons.org/licenses/by-sa/3.0/', album_name: 'Álbum' }] });
   }
-  if (u.pathname === '/aud/42.mp3' || u.pathname.startsWith('/download/')) {
-    res.writeHead(200, { 'content-type': 'audio/mpeg' }); return res.end(AUDIO);
+  if (u.pathname === '/aud/42.mp3') { res.writeHead(200, { 'content-type': 'audio/mpeg' }); return res.end(AUDIO); }
+  if (u.pathname.startsWith('/download/')) {
+    // Devuelve bytes distintos por extensión para poder comprobar QUÉ archivo eligió el proxy.
+    const isFlac = /\.flac$/i.test(u.pathname);
+    res.writeHead(200, { 'content-type': isFlac ? 'audio/flac' : 'audio/mpeg' });
+    return res.end(isFlac ? FLAC : AUDIO);
   }
   if (u.pathname === '/advancedsearch.php') {
     return j({ response: { docs: [{ identifier: 'item-demo', title: 'Grabación IA', creator: ['Sello X'],
       licenseurl: 'https://creativecommons.org/publicdomain/mark/1.0/' }] } });
   }
   if (u.pathname.startsWith('/metadata/')) {
+    const id = u.pathname.slice('/metadata/'.length);
+    if (id === 'item-noaudio')   // item de audio sin archivo descargable (solo portada/metadatos)
+      return j({ files: [{ name: 'cover.jpg', format: 'JPEG' }, { name: 'item_meta.xml', format: 'Metadata' }] });
+    if (id === 'item-formats')   // varios audios: muestra mp3, original flac y mp3 real → debe elegir el mp3 real
+      return j({ files: [
+        { name: 'song_sample.mp3', format: 'VBR MP3', source: 'derivative' },
+        { name: 'song.flac', format: 'Flac', source: 'original' },
+        { name: 'song.mp3', format: 'VBR MP3', source: 'derivative' },
+      ] });
     return j({ files: [{ name: 'pista.mp3', format: 'VBR MP3' }, { name: 'cover.jpg', format: 'JPEG' }] });
   }
   res.writeHead(404); res.end('no');
@@ -53,6 +71,23 @@ for (let i = 0; i < 50; i++) { try { await fetch(BASE + '/api/openmusic/search?q
 
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('  OK  ' + m); } else { fail++; console.log('  FAIL ' + m); } };
+
+// 0) Selector de audio de Internet Archive (unitario, sin red). Cubre el bug del 404:
+//    un item de audio sin archivo "reproducible" caía a 404 porque el selector solo
+//    miraba la extensión del nombre + "mp3" en formato.
+{
+  const { pickArchiveAudioFile: pick, iaIsAudioFile: isAudio } = srv;
+  ok(isAudio({ name: 'x.mp3' }) && isAudio({ name: 'sinext', format: 'VBR MP3' }) && !isAudio({ name: 'cover.jpg', format: 'JPEG' }),
+     'iaIsAudioFile reconoce audio por extensión O por formato');
+  ok(pick([{ name: 'cover.jpg', format: 'JPEG' }, { name: 'pista.mp3', format: 'VBR MP3' }])?.name === 'pista.mp3',
+     'selector elige el mp3 e ignora la portada');
+  ok(pick([{ name: 'song_sample.mp3', format: 'VBR MP3' }, { name: 'song.flac', format: 'Flac', source: 'original' }, { name: 'song.mp3', format: 'VBR MP3' }])?.name === 'song.mp3',
+     'selector prefiere el mp3 real sobre la muestra y el flac original');
+  ok(pick([{ name: 'a.flac', format: 'Flac' }, { name: 'b.ogg', format: 'Ogg Vorbis' }])?.name === 'b.ogg',
+     'selector prefiere ogg/opus sobre flac');
+  ok(pick([{ name: 'cover.jpg', format: 'JPEG' }, { name: 'meta.xml', format: 'Metadata' }]) === null,
+     'selector devuelve null si no hay ningún audio');
+}
 
 // 1) Jamendo search → normalizado
 {
@@ -83,6 +118,18 @@ const ok = (c, m) => { if (c) { pass++; console.log('  OK  ' + m); } else { fail
   ok(good.status === 200 && buf.length === AUDIO.length, 'Archive audio (id válido) → bytes (metadata→download)');
   const bad = await fetch(`${BASE}/api/archive/audio?id=${encodeURIComponent('../../etc/passwd')}`);
   ok(bad.status === 400, 'Archive audio (id inválido) → 400 (validación)');
+}
+// 5) Archive audio: item SIN archivo de audio → 404 con MOTIVO claro (no un genérico)
+{
+  const r = await fetch(`${BASE}/api/archive/audio?id=item-noaudio`);
+  const j = await r.json().catch(() => ({}));
+  ok(r.status === 404 && /audio/i.test(j.error || ''), 'Archive audio (item sin audio) → 404 con mensaje explicativo');
+}
+// 6) Archive audio: item con varios formatos → elige el MP3 real (no el flac ni la muestra)
+{
+  const r = await fetch(`${BASE}/api/archive/audio?id=item-formats`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  ok(r.status === 200 && buf.equals(AUDIO), 'Archive audio (varios formatos) → sirve el MP3 real (bytes mp3, no flac)');
 }
 
 child.kill('SIGKILL'); mock.close();

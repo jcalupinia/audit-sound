@@ -29,8 +29,14 @@ export function audioUrl(id) {
 
 export async function getBytes(id) {
   const res = await fetch(audioUrl(id));
-  if (!res.ok) throw new Error('HTTP ' + res.status + ' al descargar');
   const ct = (res.headers.get('content-type') || '').toLowerCase();
+  if (!res.ok) {
+    // El backend envía {error:"…"} en JSON con el motivo real (p. ej. "este item no
+    // tiene un archivo de audio descargable"). Mostrarlo en vez de un genérico HTTP 404.
+    let msg = 'HTTP ' + res.status + ' al descargar';
+    if (ct.includes('json')) { try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (e) {} }
+    throw new Error(msg);
+  }
   if (ct.includes('json')) {
     let msg = 'el servidor devolvió un error en vez de audio';
     try { const j = await res.json(); msg = j.error || msg; } catch (e) {}

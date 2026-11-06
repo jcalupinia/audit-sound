@@ -27,6 +27,21 @@ const ids = ['eqHiA','eqMidA','eqLowA','eqHiB','eqMidB','eqLowB','syncA','syncB'
 const present = await page.evaluate((ids) => ids.filter(i => document.getElementById(i)).length, ids);
 rec('Los controles de plato existen sobre la imagen', present === ids.length, present + '/' + ids.length + ' controles presentes');
 
+// Regresión de alineación (reporte de la extensión 2026-11-06): el bloque del plato A
+// estaba corrido a la derecha, sobre el EQ/crossfader central. Verificar que: (a) el
+// bloque del plato A queda a la IZQUIERDA del EQ central, y (b) A y B están separados
+// ~50% del ancho (centros de syncA/syncB y hc1A/hc1B). Centros en fracción del #frame.
+const geo = await page.evaluate(() => {
+  const f = document.getElementById('frame').getBoundingClientRect();
+  const cx = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return (r.left + r.width / 2 - f.left) / f.width; };
+  return { syncA: cx('syncA'), syncB: cx('syncB'), eq: cx('eqHiA'), hc1A: cx('hc1A'), hc1B: cx('hc1B') };
+});
+const sep = geo.syncB - geo.syncA, sepHc = geo.hc1B - geo.hc1A;
+rec('Alineación: el bloque del plato A está a la izquierda del EQ central',
+  geo.syncA < geo.eq && geo.syncB > geo.eq, `syncA=${geo.syncA.toFixed(3)} eq=${geo.eq.toFixed(3)} syncB=${geo.syncB.toFixed(3)}`);
+rec('Alineación: platos A y B separados ~50% (sync y hotcue)',
+  Math.abs(sep - 0.5) < 0.03 && Math.abs(sepHc - 0.5) < 0.03, `sep sync=${sep.toFixed(3)} · sep hc1=${sepHc.toFixed(3)}`);
+
 // Arrancar motor + cargar A
 page.on('filechooser', async fc => { try { await fc.setFiles([A]); } catch (e) {} });
 await page.click('#importar');

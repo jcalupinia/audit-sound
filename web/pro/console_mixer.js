@@ -10,10 +10,16 @@ const COORDS = {
   // EQ (rangos verticales sobre las perillas HI/MID/LOW)
   eqHiA: [36.8, 42.5, 3.4, 5.2], eqMidA: [36.8, 48.5, 3.4, 5.2], eqLowA: [36.8, 54.5, 3.4, 5.2],
   eqHiB: [43.6, 42.5, 3.4, 5.2], eqMidB: [43.6, 48.5, 3.4, 5.2], eqLowB: [43.6, 54.5, 3.4, 5.2],
-  // Deck A: SYNC, lock, beatjump, loop, hotcues
-  syncA: [31.4, 53.3, 7.0, 4.2], lockA: [39.3, 53.3, 3.8, 4.2], bjBackA: [45.8, 53.3, 3.8, 4.2], bjFwdA: [51.0, 53.3, 3.8, 4.2],
-  loopBeatsA: [31.0, 58.0, 10.5, 3.6], loopInA: [43.0, 58.0, 4.0, 3.6], loopOutA: [48.0, 58.0, 4.0, 3.6], reloopA: [53.0, 58.0, 3.6, 3.6],
-  hc1A: [33.0, 62.2, 5.5, 5.0], hc2A: [39.5, 62.2, 5.0, 5.0], hc3A: [45.5, 62.2, 5.0, 5.0], hc4A: [51.5, 62.2, 5.5, 5.0],
+  // Deck A: SYNC, lock, beatjump, loop, hotcues.
+  // Corrección de alineación (reporte de la extensión, 2026-11-06): este bloque estaba
+  // corrido ~16% a la DERECHA (caía sobre el EQ/crossfader central). El plato B está
+  // alineado y las tiras de onda (console_feedback.js) están separadas exactamente 50%
+  // (centro A 20.5% / centro B 70.5%), así que cada control del plato A = su equivalente
+  // del plato B con el `left` −50% y el MISMO ancho. El EQ-A no se toca (va en la columna
+  // central, par-espejo, y ya estaba bien ubicado).
+  syncA: [15.3, 53.3, 7.0, 4.2], lockA: [23.0, 53.3, 3.8, 4.2], bjBackA: [27.6, 53.3, 3.8, 4.2], bjFwdA: [32.6, 53.3, 3.8, 4.2],
+  loopBeatsA: [15.0, 58.0, 10.0, 3.6], loopInA: [25.5, 58.0, 4.0, 3.6], loopOutA: [30.5, 58.0, 4.0, 3.6], reloopA: [35.5, 58.0, 3.6, 3.6],
+  hc1A: [15.3, 62.2, 5.5, 5.0], hc2A: [21.3, 62.2, 5.0, 5.0], hc3A: [27.0, 62.2, 5.0, 5.0], hc4A: [32.5, 62.2, 5.5, 5.0],
   // Deck B
   syncB: [65.3, 53.3, 7.0, 4.2], lockB: [73.0, 53.3, 3.8, 4.2], bjBackB: [77.6, 53.3, 3.8, 4.2], bjFwdB: [82.6, 53.3, 3.8, 4.2],
   loopBeatsB: [65.0, 58.0, 10.0, 3.6], loopInB: [75.5, 58.0, 4.0, 3.6], loopOutB: [80.5, 58.0, 4.0, 3.6], reloopB: [85.5, 58.0, 3.6, 3.6],
