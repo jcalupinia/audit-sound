@@ -34,7 +34,7 @@
   <div class="frame" id="frame">
     <img src="./assets/landing_consola.webp" alt="AUDIT SOUND — Command Center: consola DJ, platos A y B, mezclador e IA Copiloto." fetchpriority="high">
 
-    <!-- ===== Parte de MÚSICA cableada (etapa 1) ===== -->
+    <!-- ===== Parte de MÚSICA cableada al MOTOR WASM real (Fase 0-B) ===== -->
     <!-- Cargar pistas (sobre "Importar Archivos" de la biblioteca) -->
     <button class="hot" id="importar" aria-label="Importar archivos de música" style="left:70.5%;top:73.5%;width:8%;height:12.5%"></button>
     <!-- Plato A: play / cue -->
@@ -50,68 +50,100 @@
     <!-- Icono de usuario (arriba derecha) -> salir -->
     <button class="hot" id="hotUser" aria-label="Salir" style="left:95%;top:1.5%;width:4.5%;height:7%"></button>
 
-    <!-- audios (música cableada) -->
-    <audio id="audioA" preload="none"></audio>
-    <audio id="audioB" preload="none"></audio>
     <!-- selector de archivos oculto -->
     <input id="fileIn" type="file" accept="audio/*" multiple style="display:none">
   </div>
 
   <div class="bar">
-    <div class="status" id="status">Música cableada (etapa 1): toca <b>Importar Archivos</b> para cargar pistas en A y B, luego los botones <b>▶❚❚</b>. El crossfader mezcla A↔B y el control de la derecha es el volumen. El video y los visuales vienen en la etapa 2.</div>
-    <span class="hint">v1 · música</span>
+    <div class="status" id="status">Música con el motor real (Fase 0-B): toca <b>Importar Archivos</b> para cargar pistas en A y B, luego los botones <b>▶❚❚</b>. El crossfader mezcla A↔B y el control de la derecha es el volumen. EQ, loops y hotcues llegan en la Fase 2; el video en el Bloque 2.</div>
+    <span class="hint">v2 · motor WASM</span>
   </div>
 
 <script src="config.js" onerror="void 0"></script>
 <script type="module">
   import { isAuthed, logout } from './commandcenter.js';
+  import { AudioBridge } from './audio_bridge.js';
   if (!isAuthed()) location.replace('./login.html');
-  const u = document.getElementById('hotUser');
-  if (u) u.addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) { logout(); location.replace('./login.html'); } });
-</script>
-<script>
-  (function(){
-    var $ = function(id){ return document.getElementById(id); };
-    var audioA = $('audioA'), audioB = $('audioB');
-    var status = $('status');
-    var loadedA = false, loadedB = false;
-    function say(t, err){ status.className = 'status' + (err?' err':''); status.innerHTML = t; }
 
-    // Mezcla: crossfader (0=A, 1=B) + master -> volumen de cada audio.
-    function applyMix(){
-      var x = parseFloat($('xfader').value), m = parseFloat($('master').value);
-      var gA = Math.min(1, 2*(1-x)), gB = Math.min(1, 2*x);   // corte en el centro
-      audioA.volume = gA*m; audioB.volume = gB*m;
+  const $ = (s) => document.getElementById(s);
+  const status = $('status');
+  const say = (t, err) => { status.className = 'status' + (err ? ' err' : ''); status.innerHTML = t; };
+
+  // Cerrar sesión (icono de usuario de tu imagen)
+  $('hotUser').addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) { logout(); location.replace('./login.html'); } });
+
+  // Motor de audio REAL (WASM + AudioWorklet), el mismo de mixer.html.
+  const bridge = new AudioBridge();
+  const loaded = [false, false];
+  const playing = [false, false];
+  let started = false;
+
+  bridge.onLoaded = (m) => {
+    if (m.ok) {
+      loaded[m.deck] = true;
+      const lbl = m.deck ? 'B' : 'A';
+      say(`Cargado en ${lbl}: <b>${m.name || 'pista'}</b>${m.bpm ? ` · ${Math.round(m.bpm)} BPM` : ''}${(m.key != null && m.key >= 0) ? ` · tono ${m.key}` : ''}. Usa ▶❚❚ para reproducir.`);
+    } else {
+      say(`No se pudo cargar en el plato ${m.deck ? 'B' : 'A'}: ${m.err || 'error'}`, true);
     }
-    $('xfader').addEventListener('input', applyMix);
-    $('master').addEventListener('input', applyMix);
-    applyMix();
+  };
+  bridge.onError = (msg) => say('Motor de audio: ' + msg, true);
 
-    // Cargar pistas: primera -> A, segunda -> B.
-    var fileIn = $('fileIn');
-    $('importar').addEventListener('click', function(){ fileIn.click(); });
-    fileIn.addEventListener('change', function(){
-      var files = Array.prototype.slice.call(fileIn.files||[]);
-      if (!files.length) return;
-      if (files[0]){ audioA.src = URL.createObjectURL(files[0]); loadedA = true; }
-      if (files[1]){ audioB.src = URL.createObjectURL(files[1]); loadedB = true; }
-      applyMix();
-      say('Cargado: <b>'+files[0].name+'</b> en A'+(files[1]?(' y <b>'+files[1].name+'</b> en B'):'')+'. Usa ▶❚❚ para reproducir.');
-    });
-
-    function toggle(audio, loaded, label){
-      if (!loaded){ say('Primero carga una pista con <b>Importar Archivos</b> (plato '+label+').', true); return; }
-      if (audio.paused){ audio.play().catch(function(e){ say('No se pudo reproducir: '+(e.message||e), true); }); }
-      else { audio.pause(); }
+  // Arranca el motor en el primer gesto del usuario (política de autoplay).
+  async function ensureStarted() {
+    if (started) return true;
+    try {
+      say('Iniciando el motor de audio…');
+      await bridge.start();
+      started = true;
+      bridge.master(parseFloat($('master').value));
+      bridge.xfader(parseFloat($('xfader').value));
+      say('Motor listo. Toca <b>Importar Archivos</b> para cargar A y B.');
+      return true;
+    } catch (e) {
+      say('No se pudo iniciar el motor de audio: ' + (e.message || e), true);
+      return false;
     }
-    $('playA').addEventListener('click', function(){ toggle(audioA, loadedA, 'A'); });
-    $('playB').addEventListener('click', function(){ toggle(audioB, loadedB, 'B'); });
-    $('cueA').addEventListener('click', function(){ if(loadedA){ audioA.pause(); audioA.currentTime = 0; } });
-    $('cueB').addEventListener('click', function(){ if(loadedB){ audioB.pause(); audioB.currentTime = 0; } });
+  }
 
-    audioA.addEventListener('play', function(){ say('Plato A reproduciendo.'); });
-    audioB.addEventListener('play', function(){ say('Plato B reproduciendo.'); });
-  })();
+  // Importar -> selector -> cargar 1ª pista en A, 2ª en B.
+  const fileIn = $('fileIn');
+  $('importar').addEventListener('click', async () => { if (await ensureStarted()) fileIn.click(); });
+  fileIn.addEventListener('change', async () => {
+    const files = Array.prototype.slice.call(fileIn.files || []);
+    if (!files.length) return;
+    if (!(await ensureStarted())) return;
+    if (files[0]) { say('Cargando <b>' + files[0].name + '</b> en A…'); await bridge.load(0, files[0], files[0].name); }
+    if (files[1]) { await bridge.load(1, files[1], files[1].name); }
+    fileIn.value = '';
+  });
+
+  function toggle(deck, label) {
+    if (!loaded[deck]) { say('Primero carga una pista con <b>Importar Archivos</b> (plato ' + label + ').', true); return; }
+    playing[deck] = !playing[deck];
+    bridge.play(deck, playing[deck]);
+    if (playing[deck]) say('Plato ' + label + ' reproduciendo.');
+  }
+  $('playA').addEventListener('click', async () => { if (await ensureStarted()) toggle(0, 'A'); });
+  $('playB').addEventListener('click', async () => { if (await ensureStarted()) toggle(1, 'B'); });
+
+  // CUE: pausa y vuelve al inicio (comportamiento conservado de la etapa 1).
+  function cue(deck) { if (!loaded[deck]) return; playing[deck] = false; bridge.play(deck, false); bridge.seek(deck, 0); }
+  $('cueA').addEventListener('click', () => cue(0));
+  $('cueB').addEventListener('click', () => cue(1));
+
+  // Crossfader y Master -> motor real.
+  $('xfader').addEventListener('input', (e) => { if (started) bridge.xfader(parseFloat(e.target.value)); });
+  $('master').addEventListener('input', (e) => { if (started) bridge.master(parseFloat(e.target.value)); });
+
+  // Enganche mínimo para pruebas automatizadas (no afecta la UI).
+  window.__audit = {
+    bridge,
+    get started() { return started; },
+    get loaded() { return loaded.slice(); },
+    get playing() { return playing.slice(); },
+    peak() { try { return (Atomics.load(new Int32Array(bridge._buffers.ctrl), 3) || 0) / 1e6; } catch (e) { return -1; } },
+  };
 </script>
 </body>
 </html>
