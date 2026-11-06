@@ -164,3 +164,18 @@ node e2e/fase_pwa_e2e.mjs "$tmp"
 
 Resultado esperado: `RESULTADO PWA: 6/6 OK`. El SW (`web/pro/service-worker.js`) re-añade
 COOP/COEP/CORP a toda respuesta de caché para no romper SharedArrayBuffer. Verificado 2026-11-06.
+
+## `fase_biblioteca_e2e.mjs` — Biblioteca REAL + arrastrar y soltar
+
+Comprueba que la zona «Biblioteca multimedia» muestra TU música importada (no las
+miniaturas decorativas): tras importar, el panel `#libPanel` lista las pistas reales con su
+BPM; cada una se carga con ▶A/▶B; y **arrastrar** una fila a un plato (pointer events: mouse
+o dedo) la carga ahí.
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8205 node deploy/pro/server.js &
+node e2e/fase_biblioteca_e2e.mjs "$tmp"   # usa cancionA/B/C.wav de <dir>
+```
+
+Resultado esperado: `RESULTADO BIBLIOTECA: 6/6 OK`. Posición del panel (`PANEL`) y zonas de
+soltado (`DECK_ZONES`) en `console_libpanel.js`, ajustables al píxel. Verificado 2026-11-06.
