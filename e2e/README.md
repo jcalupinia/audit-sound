@@ -52,3 +52,36 @@ node e2e/fase1_search_e2e.mjs /tmp   # usa cancionA.wav de <dir>
 Resultado esperado: `RESULTADO FASE 1: 8/8 OK`. Las fuentes **Jamendo / Internet Archive /
 Navidrome** requieren red o credenciales del backend (validación externa, no cubierta por
 esta prueba offline). Verificado 2026-11-06.
+
+## `fase2_decks_e2e.mjs` — controles de plato (Fase 2)
+
+Comprueba los controles de plato sobre la imagen cableados al motor real: existen los 26
+controles (EQ HI/MID/LOW, SYNC, keylock, loop, hotcues, beatjump por plato), y **prueba fuerte**
+de que el EQ afecta el audio: bajar HI+MID+LOW a −12 dB **silencia el motor** (PEAK→0) y
+restaurar a 0 dB devuelve el audio; keylock/SYNC/loop/beatjump/hotcue operan el motor sin romper
+el audio. Misma preparación que `console_engine_e2e.mjs`:
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8197 node deploy/pro/server.js &
+node e2e/fase2_decks_e2e.mjs /tmp   # usa cancionA.wav de <dir>
+```
+
+Resultado esperado: `RESULTADO FASE 2: 10/10 OK`. Nota: las coordenadas de los controles (COORDS en
+`console_mixer.js`) se midieron sobre la imagen con una rejilla y son **ajustables al píxel**; los
+controles núcleo (play/cue/importar/crossfader/master/buscador) llevan z-index superior para que
+nunca queden bloqueados por un overlay corrido. Verificado 2026-11-06.
+
+## `fase2b_feedback_e2e.mjs` — capa de feedback visual (Fase 2b)
+
+Comprueba lo que un DJ necesita VER, cableado al motor real sobre la imagen: canvas de onda
+por plato (`fbWaveA/B`) y barra de VU (`fbVu`); que la **forma de onda real** se recibe y el
+canvas se pinta; que el **BPM**, la **posición (cabezal/tiempo)** avanzan y el **VU** tiene nivel;
+y que el **estado** se refleja (hotcue fijado, loop activo, keylock → anillo verde). Misma
+preparación que `console_engine_e2e.mjs`.
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8198 node deploy/pro/server.js &
+node e2e/fase2b_feedback_e2e.mjs /tmp
+```
+
+Resultado esperado: `RESULTADO FASE 2b: 10/10 OK`. Verificado 2026-11-06.
