@@ -148,3 +148,19 @@ node e2e/fase3c_setai_e2e.mjs "$tmp"   # usa cancionA/B/C.wav de <dir>
 
 Resultado esperado: `RESULTADO FASE 3C: 7/7 OK`. La posición del lanzador (`LAUNCH` en
 `console_setai.js`, sobre «Generador IA») es ajustable al píxel sin tocar la lógica. Verificado 2026-11-06.
+
+## `fase_pwa_e2e.mjs` — PWA (instalable + offline) sin romper el aislamiento
+
+Comprueba que la consola es instalable y funciona sin conexión SIN perder el aislamiento de
+origen que el motor WASM necesita: el **manifest** es válido; el **service worker** se
+registra y controla la página; con el SW activo `crossOriginIsolated` sigue **true**
+(SharedArrayBuffer intacto) y el motor **reproduce audio real**; y la consola abre **sin
+conexión** (shell desde caché, aún aislada).
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8204 node deploy/pro/server.js &
+node e2e/fase_pwa_e2e.mjs "$tmp"
+```
+
+Resultado esperado: `RESULTADO PWA: 6/6 OK`. El SW (`web/pro/service-worker.js`) re-añade
+COOP/COEP/CORP a toda respuesta de caché para no romper SharedArrayBuffer. Verificado 2026-11-06.

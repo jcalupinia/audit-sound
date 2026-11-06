@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AUDIT SOUND · Command Center</title>
 <meta name="description" content="AUDIT SOUND — Command Center DJ y producción audiovisual con IA.">
+<!-- PWA: instalable en iPhone/Android y shell sin conexión -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#071B2F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AUDIT SOUND">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" type="image/png" href="/icon-192.png">
 <style>
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
@@ -105,6 +114,13 @@
   import { setupCopilot } from './console_copilot.js';
   import { setupAutoDJ } from './console_autodj.js';
   import { setupSetAI } from './console_setai.js';
+
+  // PWA: registra el service worker (instalable + shell sin conexión). No bloquea la
+  // consola si falla ni en contextos sin SW (p. ej. sin HTTPS).
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
+  }
+
   if (!isAuthed()) location.replace('./login.html');
 
   const $ = (s) => document.getElementById(s);
