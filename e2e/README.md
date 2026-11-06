@@ -116,3 +116,19 @@ node e2e/fase3a_copiloto_e2e.mjs "$tmp"   # usa cancionA/B/C.wav de <dir>
 
 Resultado esperado: `RESULTADO FASE 3A: 8/8 OK`. La posición de la tarjeta (`CARD` en
 `console_copilot.js`) es ajustable al píxel sin tocar la lógica. Verificado 2026-11-06.
+
+## `fase3b_autodj_e2e.mjs` — «Armar set y mezclar» / DJ Automático (Fase 3B)
+
+Comprueba el DJ Automático cableado al **AutoMix real del motor WASM** sobre la imagen:
+los overlays de «Modo de operación» (Manual/Híbrido/Automático) existen; al importar pistas
+(quedan en la biblioteca local) y **armar un set** (buscador → pistas aptas para mezclar →
+`dj_auto_add_track`), el motor **reproduce y mezcla solo** (PEAK del worklet > 0), el modo
+auto queda activo y «DJ Automático» otra vez lo apaga.
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8202 node deploy/pro/server.js &
+node e2e/fase3b_autodj_e2e.mjs "$tmp"   # usa cancionA/B/C.wav de <dir>
+```
+
+Resultado esperado: `RESULTADO FASE 3B: 7/7 OK`. Las posiciones de los overlays de modo
+(`MODES` en `console_autodj.js`) son ajustables al píxel sin tocar la lógica. Verificado 2026-11-06.

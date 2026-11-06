@@ -134,5 +134,10 @@ export function setupSearch({ bridge, ensureStarted, onStatus }) {
   input.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(doSearch, 350); });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(deb); doSearch(); } });
 
-  return { refreshLocal };
+  // Búsqueda cruda en todas las fuentes (la usa el DJ Automático para armar un set) y
+  // acceso a los bytes de un resultado, reutilizando la lógica/credenciales del buscador.
+  const searchAll = (q, opts = {}) =>
+    SEARCH.searchAll(q, { providers: providers(), perSource: opts.perSource || 25, timeoutMs: opts.timeoutMs || 9000, signal: opts.signal });
+
+  return { refreshLocal, searchAll, bytesOf, query: () => input.value.trim() };
 }
