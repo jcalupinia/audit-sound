@@ -46,6 +46,15 @@ rec('El buscador muestra resultados (fuente Local)', rows >= 1 && panelVisible, 
 const srcTxt = await page.evaluate(() => { const r = document.querySelector('#resultados .rrow .rs'); return r ? r.textContent : ''; });
 rec('El resultado indica su fuente y disponibilidad', /Local/.test(srcTxt) && /mezclar/.test(srcTxt), `"${srcTxt}"`);
 
+// Regresión del bug reportado por la extensión: los botones de carga (▶A/▶B)
+// NUNCA deben salir deshabilitados. Antes se deshabilitaban para los resultados
+// que no eran 'mezclar' (p. ej. Internet Archive, que llega como 'consultar'),
+// por lo que esos resultados jamás entraban al motor.
+const botonesHabilitados = await page.evaluate(() =>
+  [...document.querySelectorAll('#resultados .rrow .racts button')].every((b) => !b.disabled));
+rec('Los botones ▶A/▶B nunca salen deshabilitados (Archive puede cargar)', botonesHabilitados,
+  'todos habilitados=' + botonesHabilitados);
+
 // Cargar el resultado al deck B con el botón ▶B del panel
 const btnB = await page.$('#resultados .rrow .racts button:nth-child(2)');
 await btnB.click();
