@@ -150,19 +150,50 @@ async function handleArchiveSearch(u, res) {
 }
 
 // --- Proxy: audio de un item de Internet Archive (metadata -> elige archivo -> stream) ---
-const IA_AUDIO_RE = /\.(mp3|ogg|oga|flac|m4a|wav)$/i;
+// Reconoce el audio por la extensión del nombre O por el campo `format` (archive.org
+// usa "VBR MP3", "Ogg Vorbis", "Flac", "AIFF"…, que la extensión del nombre a veces no
+// refleja). Antes solo miraba el nombre + "mp3" en formato, así que items de audio con
+// derivados nombrados de otra forma caían a 404 "sin archivo reproducible".
+const IA_AUDIO_RE = /\.(mp3|ogg|oga|flac|m4a|aac|aif|aiff|wav|wave|opus)$/i;
+const IA_AUDIO_FMT_RE = /(mp3|mpeg\s*audio|ogg|vorbis|opus|flac|m4a|aac|aiff|wav|wave|shorten)/i;
+function iaIsAudioFile(f) {
+  if (!f || !f.name) return false;
+  return IA_AUDIO_RE.test(f.name) || IA_AUDIO_FMT_RE.test(String(f.format || ''));
+}
+// Elige el mejor audio reproducible en navegador: MP3 primero (ligero y universal),
+// luego ogg/opus, m4a/aac, flac y por último wav (originales enormes). El original se
+// usa solo como desempate; se penalizan las muestras cortas.
+function pickArchiveAudioFile(files) {
+  const audios = (files || []).filter(iaIsAudioFile);
+  if (!audios.length) return null;
+  const score = (f) => {
+    const fmt = String(f.format || '').toLowerCase();
+    const name = String(f.name || '').toLowerCase();
+    let s = 0;
+    if (/mp3|mpeg\s*audio/.test(fmt) || name.endsWith('.mp3')) s += 60;
+    else if (/ogg|vorbis|opus/.test(fmt) || /\.(ogg|oga|opus)$/.test(name)) s += 45;
+    else if (/m4a|aac/.test(fmt) || /\.(m4a|aac)$/.test(name)) s += 30;
+    else if (/flac/.test(fmt) || name.endsWith('.flac')) s += 15;
+    else if (/wav|wave|aiff|shorten/.test(fmt) || /\.(wav|wave|aif|aiff)$/.test(name)) s += 5;
+    if (f.source === 'original') s += 3;                       // desempate
+    if (/sample|preview|snippet|_spectrogram/.test(name)) s -= 50;
+    return s;
+  };
+  return audios.slice().sort((a, b) => score(b) - score(a))[0];
+}
 async function handleArchiveAudio(u, res) {
   if (!IA.enabled) return sendJson(res, 503, { error: 'Internet Archive desactivado en el servidor.' });
   const id = u.searchParams.get('id') || '';
   if (!/^[A-Za-z0-9._-]+$/.test(id)) return sendJson(res, 400, { error: 'identificador inválido' });
   let meta;
-  try { meta = await (await fetch(`${IA.apiBase}/metadata/${encodeURIComponent(id)}`)).json(); }
-  catch (e) { return sendJson(res, 502, { error: 'no se pudo leer metadata: ' + (e.message || e) }); }
+  try {
+    const mr = await fetch(`${IA.apiBase}/metadata/${encodeURIComponent(id)}`);
+    if (!mr.ok) return sendJson(res, 502, { error: 'no se pudo leer metadata: HTTP ' + mr.status });
+    meta = await mr.json();
+  } catch (e) { return sendJson(res, 502, { error: 'no se pudo leer metadata: ' + (e.message || e) }); }
   const files = (meta && meta.files) || [];
-  // Preferir MP3 (original, no derivados de muestra), luego ogg/flac/otros.
-  const pick = files.find((f) => /mp3/i.test(f.format || '') && IA_AUDIO_RE.test(f.name || '')) ||
-               files.find((f) => IA_AUDIO_RE.test(f.name || ''));
-  if (!pick) return sendJson(res, 404, { error: 'el item no tiene un archivo de audio reproducible' });
+  const pick = pickArchiveAudioFile(files);
+  if (!pick) return sendJson(res, 404, { error: 'este item de Internet Archive no tiene un archivo de audio descargable; prueba con otro resultado' });
   const dl = `${IA.apiBase}/download/${encodeURIComponent(id)}/` +
     pick.name.split('/').map(encodeURIComponent).join('/');
   let target;
@@ -178,7 +209,7 @@ async function handleArchiveAudio(u, res) {
   res.end(buf);
 }
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   const u = new URL(req.url || '/', `http://localhost:${PORT}`);
   const pathname = decodeURIComponent(u.pathname);
   if (pathname === '/healthz') return send(res, 200, 'ok\n', 'text/plain');
@@ -215,4 +246,12 @@ http.createServer((req, res) => {
     }
     send(res, 200, buf, TYPES[path.extname(file)] || 'application/octet-stream');
   });
-}).listen(PORT, () => console.log(`AUDIT SOUND PRO en :${PORT} (root=${ROOT})`));
+});
+
+// Arranca solo cuando se ejecuta directamente (node server.js); al requerirlo desde
+// una prueba (p. ej. del selector de audio de Internet Archive) no abre el puerto.
+if (require.main === module) {
+  server.listen(PORT, () => console.log(`AUDIT SOUND PRO en :${PORT} (root=${ROOT})`));
+}
+
+module.exports = { server, pickArchiveAudioFile, iaIsAudioFile };
