@@ -70,3 +70,18 @@ Resultado esperado: `RESULTADO FASE 2: 10/10 OK`. Nota: las coordenadas de los c
 `console_mixer.js`) se midieron sobre la imagen con una rejilla y son **ajustables al píxel**; los
 controles núcleo (play/cue/importar/crossfader/master/buscador) llevan z-index superior para que
 nunca queden bloqueados por un overlay corrido. Verificado 2026-11-06.
+
+## `fase2b_feedback_e2e.mjs` — capa de feedback visual (Fase 2b)
+
+Comprueba lo que un DJ necesita VER, cableado al motor real sobre la imagen: canvas de onda
+por plato (`fbWaveA/B`) y barra de VU (`fbVu`); que la **forma de onda real** se recibe y el
+canvas se pinta; que el **BPM**, la **posición (cabezal/tiempo)** avanzan y el **VU** tiene nivel;
+y que el **estado** se refleja (hotcue fijado, loop activo, keylock → anillo verde). Misma
+preparación que `console_engine_e2e.mjs`.
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8198 node deploy/pro/server.js &
+node e2e/fase2b_feedback_e2e.mjs /tmp
+```
+
+Resultado esperado: `RESULTADO FASE 2b: 10/10 OK`. Verificado 2026-11-06.

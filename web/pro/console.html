@@ -51,6 +51,8 @@
      de los overlays de Fase 2, para que nada se bloquee aunque alguno quede corrido. */
   #importar,#playA,#cueA,#playB,#cueB,#xfader,#master,#hotUser{z-index:4}
   #buscar,#resultados{z-index:6}
+  /* Estado activo de un control (loop armado, hotcue fijado, keylock/sync): anillo verde */
+  .hot.on{box-shadow:inset 0 0 0 2px #36e26a,0 0 10px rgba(54,226,106,.45);background:rgba(54,226,106,.14)!important}
 </style>
 </head>
 <body>
@@ -99,6 +101,7 @@
   import * as LIB from './library.js';
   import { setupSearch } from './console_search.js';
   import { setupMixer } from './console_mixer.js';
+  import { setupFeedback } from './console_feedback.js';
   if (!isAuthed()) location.replace('./login.html');
 
   const $ = (s) => document.getElementById(s);
@@ -112,21 +115,36 @@
   const bridge = new AudioBridge();
   const loaded = [false, false];
   const playing = [false, false];
-  const bpm = [0, 0];         // BPM real por plato (del análisis del motor)
-  const posn = [0, 0];        // posición (s) por plato, del estado periódico del motor
+  // Estado vivo por plato para la capa de feedback (ondas, cabezal, tiempo, BPM).
+  const st = { pos: [0, 0], dur: [0, 0], bpm: [0, 0], playing: [false, false], waves: [null, null] };
+
   let started = false;
 
   bridge.onLoaded = (m) => {
     if (m.ok) {
       loaded[m.deck] = true;
-      if (m.bpm) bpm[m.deck] = m.bpm;
+      if (m.bpm) st.bpm[m.deck] = m.bpm;
+      if (typeof m.dur === 'number') st.dur[m.deck] = m.dur;
+      st.waves[m.deck] = null;
+      bridge.requestWaveform(m.deck);   // pide la forma de onda real para dibujarla
       const lbl = m.deck ? 'B' : 'A';
       say(`Cargado en ${lbl}: <b>${m.name || 'pista'}</b>${m.bpm ? ` · ${Math.round(m.bpm)} BPM` : ''}${(m.key != null && m.key >= 0) ? ` · tono ${m.key}` : ''}. Usa ▶❚❚ para reproducir.`);
     } else {
       say(`No se pudo cargar en el plato ${m.deck ? 'B' : 'A'}: ${m.err || 'error'}`, true);
     }
   };
-  bridge.onStatus = (m) => { if (m && m.decks) m.decks.forEach((d, i) => { if (d && typeof d.pos === 'number') posn[i] = d.pos; }); };
+  bridge.onStatus = (m) => {
+    if (!m || !m.decks) return;
+    m.decks.forEach((d, i) => {
+      if (!d) return;
+      if (typeof d.pos === 'number') st.pos[i] = d.pos;
+      if (typeof d.dur === 'number') st.dur[i] = d.dur;
+      if (typeof d.bpm === 'number' && d.bpm > 0) st.bpm[i] = d.bpm;
+      st.playing[i] = !!d.playing;
+      if (d.loaded && !st.waves[i]) bridge.requestWaveform(i);   // reintenta si falta la onda
+    });
+  };
+  bridge.onWaveform = (m) => { if (m && m.wave) st.waves[m.deck] = m.wave; };
   bridge.onError = (msg) => say('Motor de audio: ' + msg, true);
 
   // Arranca el motor en el primer gesto del usuario (política de autoplay).
@@ -188,8 +206,11 @@
   // Controles de plato (Fase 2): EQ, keylock, SYNC, loop, hotcues, beatjump sobre la imagen.
   setupMixer({
     frame: $('frame'), bridge, ensureStarted, onStatus: say,
-    getBpm: (d) => bpm[d] || 0, getPos: (d) => posn[d] || 0,
+    getBpm: (d) => st.bpm[d] || 0, getPos: (d) => st.pos[d] || 0,
   });
+
+  // Capa de feedback (Fase 2b): ondas reales, cabezal, tiempo, BPM y VU sobre la imagen.
+  const fb = setupFeedback({ frame: $('frame'), bridge, state: st });
 
   // Enganche mínimo para pruebas automatizadas (no afecta la UI).
   window.__audit = {
@@ -197,12 +218,13 @@
     get started() { return started; },
     get loaded() { return loaded.slice(); },
     get playing() { return playing.slice(); },
-    get bpm() { return bpm.slice(); },
-    get posn() { return posn.slice(); },
+    get bpm() { return st.bpm.slice(); },
+    get posn() { return st.pos.slice(); },
+    get waves() { return st.waves.map((w) => (w ? w.bins : 0)); },
     refreshLocal: () => (search ? search.refreshLocal() : Promise.resolve()),
-    // Pico del PCM que consume el worklet: se lee Y SE RESETEA (como mixer.html), para
-    // que mida el nivel de la ventana reciente y no un máximo histórico monotónico.
-    peak() { try { const c = new Int32Array(bridge._buffers.ctrl); const v = (Atomics.load(c, 3) || 0) / 1e6; Atomics.store(c, 3, 0); return v; } catch (e) { return -1; } },
+    // Nivel en vivo (VU) que mantiene la capa de feedback leyendo CTRL.PEAK; sirve para
+    // comprobar en pruebas si hay audio real saliendo del motor.
+    peak() { return fb ? fb.vu() : 0; },
   };
 </script>
 </body>

@@ -60,19 +60,24 @@ export function setupMixer({ frame, bridge, ensureStarted, onStatus, getBpm, get
   [0, 1].forEach((deck) => {
     const P = deck ? 'B' : 'A';
 
-    // Keylock
+    // Keylock (anillo verde mientras está ON)
     let lockOn = false;
-    addBtn('lock' + P, 'Keylock ' + P).addEventListener('click', async () => {
+    const lockBtn = addBtn('lock' + P, 'Keylock ' + P);
+    lockBtn.addEventListener('click', async () => {
       if (!(await ensureStarted())) return; lockOn = !lockOn; bridge.keylock(deck, lockOn);
+      lockBtn.classList.toggle('on', lockOn);
       say('Keylock ' + P + ': ' + (lockOn ? 'ON' : 'off'));
     });
 
-    // SYNC: igualar el tempo al otro plato
-    addBtn('sync' + P, 'SYNC ' + P).addEventListener('click', async () => {
+    // SYNC: igualar el tempo al otro plato (destello del anillo al aplicar)
+    const syncBtn = addBtn('sync' + P, 'SYNC ' + P);
+    syncBtn.addEventListener('click', async () => {
       if (!(await ensureStarted())) return;
       const me = getBpm(deck), other = getBpm(deck ? 0 : 1);
-      if (me > 0 && other > 0) { bridge.rate(deck, other / me); say('SYNC ' + P + ' → ' + Math.round(other) + ' BPM'); }
-      else say('SYNC ' + P + ': falta BPM en algún plato.', true);
+      if (me > 0 && other > 0) {
+        bridge.rate(deck, other / me); say('SYNC ' + P + ' → ' + Math.round(other) + ' BPM');
+        syncBtn.classList.add('on'); setTimeout(() => syncBtn.classList.remove('on'), 1200);
+      } else say('SYNC ' + P + ': falta BPM en algún plato.', true);
     });
 
     // Beatjump
@@ -85,21 +90,23 @@ export function setupMixer({ frame, bridge, ensureStarted, onStatus, getBpm, get
     const beatsBtn = addBtn('loopBeats' + P, 'Compases del loop ' + P);
     const updBeats = () => beatsBtn.setAttribute('aria-label', bars + ' beats ' + P);
     updBeats();
+    const inBtn = addBtn('loopIn' + P, 'Activar loop ' + P);
+    const setLoopVisual = () => inBtn.classList.toggle('on', loopOn);
     beatsBtn.addEventListener('click', () => { bars = BARS[(BARS.indexOf(bars) + 1) % BARS.length]; updBeats(); say('Loop ' + P + ': ' + bars + ' beats'); if (loopOn) bridge.loop(deck, true, bars); });
-    addBtn('loopIn' + P, 'Activar loop ' + P).addEventListener('click', async () => { if (!(await ensureStarted())) return; loopOn = true; bridge.loop(deck, true, bars); say('Loop ' + P + ' ON (' + bars + ' beats)'); });
-    addBtn('loopOut' + P, 'Salir del loop ' + P).addEventListener('click', async () => { if (!(await ensureStarted())) return; loopOn = false; bridge.loop(deck, false, bars); say('Loop ' + P + ' off'); });
-    addBtn('reloop' + P, 'Reloop ' + P).addEventListener('click', async () => { if (!(await ensureStarted())) return; loopOn = !loopOn; bridge.loop(deck, loopOn, bars); say('Loop ' + P + ' ' + (loopOn ? 'ON' : 'off')); });
+    inBtn.addEventListener('click', async () => { if (!(await ensureStarted())) return; loopOn = true; bridge.loop(deck, true, bars); setLoopVisual(); say('Loop ' + P + ' ON (' + bars + ' beats)'); });
+    addBtn('loopOut' + P, 'Salir del loop ' + P).addEventListener('click', async () => { if (!(await ensureStarted())) return; loopOn = false; bridge.loop(deck, false, bars); setLoopVisual(); say('Loop ' + P + ' off'); });
+    addBtn('reloop' + P, 'Reloop ' + P).addEventListener('click', async () => { if (!(await ensureStarted())) return; loopOn = !loopOn; bridge.loop(deck, loopOn, bars); setLoopVisual(); say('Loop ' + P + ' ' + (loopOn ? 'ON' : 'off')); });
 
-    // Hotcues 1-4
+    // Hotcues 1-4 (anillo verde = fijado)
     const hcSet = {};
     for (let i = 0; i < 4; i++) {
       const el = addBtn('hc' + (i + 1) + P, 'Hotcue ' + (i + 1) + ' ' + P);
       el.addEventListener('click', async () => {
         if (!(await ensureStarted())) return;
         if (hcSet[i]) { bridge.hotcueJump(deck, i); say('Hotcue ' + (i + 1) + ' ' + P + ' → salto'); }
-        else { bridge.hotcueSet(deck, i, getPos(deck)); hcSet[i] = true; el.setAttribute('aria-pressed', 'true'); say('Hotcue ' + (i + 1) + ' ' + P + ' fijado'); }
+        else { bridge.hotcueSet(deck, i, getPos(deck)); hcSet[i] = true; el.classList.add('on'); el.setAttribute('aria-pressed', 'true'); say('Hotcue ' + (i + 1) + ' ' + P + ' fijado'); }
       });
-      el.addEventListener('dblclick', async () => { if (!(await ensureStarted())) return; bridge.hotcueClear(deck, i); hcSet[i] = false; el.setAttribute('aria-pressed', 'false'); say('Hotcue ' + (i + 1) + ' ' + P + ' borrado'); });
+      el.addEventListener('dblclick', async () => { if (!(await ensureStarted())) return; bridge.hotcueClear(deck, i); hcSet[i] = false; el.classList.remove('on'); el.setAttribute('aria-pressed', 'false'); say('Hotcue ' + (i + 1) + ' ' + P + ' borrado'); });
     }
   });
 }
