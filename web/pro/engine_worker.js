@@ -76,6 +76,7 @@ function statusTick() {
     pos: M.ccall('dj_position', 'number', ['number', 'number'], [eng, d]),
     dur: M.ccall('dj_duration', 'number', ['number', 'number'], [eng, d]),
     bpm: M.ccall('dj_get_bpm', 'number', ['number', 'number'], [eng, d]),
+    beatOffset: M.ccall('dj_get_beat_offset', 'number', ['number', 'number'], [eng, d]),
   }));
   const autoState = autoCtl ? M.ccall('dj_auto_state', 'number', ['number'], [autoCtl]) : 0;
   postMessage({ type: 'status', decks, under: Atomics.load(ctrl, CTRL.UNDER), autoState });

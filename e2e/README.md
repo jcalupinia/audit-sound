@@ -85,3 +85,19 @@ node e2e/fase2b_feedback_e2e.mjs /tmp
 ```
 
 Resultado esperado: `RESULTADO FASE 2b: 10/10 OK`. Verificado 2026-11-06.
+
+## `fase2c_pro_e2e.mjs` — beatgrid, pitch, jog y cue profesional (Fase 2c)
+
+Comprueba: **beatgrid** dibujado sobre la onda (líneas de compás, con BPM y beatOffset del
+motor), **pitch ±8%** (a +8% el cabezal avanza ~8% más rápido), **jog (scrub)** (arrastrar sobre
+el plato mueve el cabezal) y **CUE profesional** (tap mientras suena → vuelve al punto de cue y
+pausa). Misma preparación que `console_engine_e2e.mjs`.
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8199 node deploy/pro/server.js &
+node e2e/fase2c_pro_e2e.mjs /tmp
+```
+
+Resultado esperado: `RESULTADO FASE 2c: 6/6 OK`. Nota: la pre‑escucha por auriculares (bus de cue
+separado) necesita un segundo bus en el motor C++ (no hay salida aparte en WASM); esto es el CUE de
+punto, estándar con una sola salida. Verificado 2026-11-06.

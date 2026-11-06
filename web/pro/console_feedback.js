@@ -40,6 +40,21 @@ export function setupFeedback({ frame, bridge, state }) {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(6,16,30,.82)'; ctx.fillRect(0, 0, w, h);  // cubre la onda decorativa
     const wv = state.waves[d]; const mid = h / 2; const col = d ? '#ff7ac2' : '#2ec5ff';
+    // Beatgrid: una línea por beat (marcada cada 4 = inicio de compás). Salta líneas muy
+    // juntas para que no se vea una pared sólida en pistas largas.
+    const bpm = state.bpm[d], dur = state.dur[d];
+    if (bpm > 0 && dur > 0) {
+      const beat = 60 / bpm, off = (((state.beatOffset[d] || 0) % beat) + beat) % beat;
+      let lastX = -5;
+      for (let t = off, k = 0; t < dur; t += beat, k++) {
+        const x = (t / dur) * w, down = (k % 4 === 0);
+        if (!down && x - lastX < 2 * dpr) continue;
+        lastX = x;
+        ctx.strokeStyle = down ? 'rgba(199,168,60,.5)' : 'rgba(255,255,255,.09)';
+        ctx.lineWidth = down ? 1.3 : 1;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+    }
     if (wv && wv.bins) {
       ctx.strokeStyle = col; ctx.globalAlpha = .95; ctx.lineWidth = 1; ctx.beginPath();
       const n = wv.bins;
