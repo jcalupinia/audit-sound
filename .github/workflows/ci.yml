@@ -89,3 +89,5 @@ jobs:
         run: node web/pro/search_test.mjs
       - name: Prueba de integración del proxy de música (Jamendo/Archive, upstream simulado)
         run: node deploy/pro/proxy_test.mjs
+      - name: Prueba del Generador de sets por IA (intérprete + orden, Fase 3C)
+        run: node web/pro/setai_test.mjs

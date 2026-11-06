@@ -132,3 +132,19 @@ node e2e/fase3b_autodj_e2e.mjs "$tmp"   # usa cancionA/B/C.wav de <dir>
 
 Resultado esperado: `RESULTADO FASE 3B: 7/7 OK`. Las posiciones de los overlays de modo
 (`MODES` en `console_autodj.js`) son ajustables al píxel sin tocar la lógica. Verificado 2026-11-06.
+
+## `fase3c_setai_e2e.mjs` — «Pídele un set a la IA» (Fase 3C)
+
+Comprueba el generador de sets conversacional sobre la imagen: el lanzador «Generador IA»
+existe y abre el **recuadro** (modal); una petición en texto se interpreta (género/artista,
+nº de pistas, energía), arma el set desde la biblioteca y el **AutoMix reproduce y mezcla
+solo** (PEAK del worklet > 0). El intérprete/ordenador se prueba aparte, sin navegador, en
+`web/pro/setai_test.mjs` (en CI).
+
+```bash
+ARCHIVE_ENABLED=false WEB_ROOT="$tmp" PORT=8203 node deploy/pro/server.js &
+node e2e/fase3c_setai_e2e.mjs "$tmp"   # usa cancionA/B/C.wav de <dir>
+```
+
+Resultado esperado: `RESULTADO FASE 3C: 7/7 OK`. La posición del lanzador (`LAUNCH` en
+`console_setai.js`, sobre «Generador IA») es ajustable al píxel sin tocar la lógica. Verificado 2026-11-06.
