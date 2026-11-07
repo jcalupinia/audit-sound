@@ -39,6 +39,73 @@ function iaHostOk(host) {
   try { return host === new URL(IA.apiBase).host.toLowerCase(); } catch (e) { return false; }
 }
 
+// --- Proxy del agente DJ (Fase 5) ---
+// El navegador habla con /api/v1/dj-agent/* en ESTE origen y aquí se reenvía al servicio
+// dj-agent (DJ_AGENT_URL, p. ej. http://dj-agent:8790 en la red interna). Así no hay CORS,
+// el agente no se expone a internet y el WebSocket de eventos pasa por el mismo camino.
+// Sin DJ_AGENT_URL el proxy responde 503 y la interfaz sigue en modo demostración.
+const AGENT = {
+  url: (process.env.DJ_AGENT_URL || '').replace(/\/+$/, ''),
+  maxBody: parseInt(process.env.DJ_AGENT_MAX_BODY || String(64 * 1024), 10),
+  timeoutMs: parseInt(process.env.DJ_AGENT_TIMEOUT_MS || '30000', 10),
+};
+const AGENT_PREFIX = '/api/v1/dj-agent/';
+// Solo se reenvían estas cabeceras (nada de cookies del sitio ni cabeceras de salto).
+const AGENT_FWD = ['authorization', 'content-type', 'accept', 'idempotency-key', 'x-correlation-id'];
+
+function agentTarget() {
+  try { return AGENT.url ? new URL(AGENT.url) : null; } catch (e) { return null; }
+}
+
+function proxyAgent(req, res, pathWithQuery) {
+  const target = agentTarget();
+  if (!target) return sendJson(res, 503, { error: { code: 'agent_not_configured',
+    message: 'El agente DJ no está configurado en este servidor (falta DJ_AGENT_URL).' } });
+  const hdrs = {};
+  for (const h of AGENT_FWD) if (req.headers[h]) hdrs[h] = req.headers[h];
+  let size = 0;
+  const up = http.request({ protocol: target.protocol, hostname: target.hostname, port: target.port,
+    method: req.method, path: pathWithQuery, headers: hdrs, timeout: AGENT.timeoutMs }, (r) => {
+    const out = headers(r.headers['content-type'] || 'application/json');
+    if (r.headers['x-correlation-id']) out['X-Correlation-Id'] = r.headers['x-correlation-id'];
+    res.writeHead(r.statusCode || 502, out);
+    r.pipe(res);
+  });
+  up.on('timeout', () => up.destroy(new Error('timeout')));
+  up.on('error', () => { if (!res.headersSent) sendJson(res, 502, { error: { code: 'agent_unreachable',
+    message: 'El agente DJ no responde. El audio no depende de él: AutoMix sigue sonando.' } }); });
+  req.on('data', (c) => {
+    size += c.length;
+    if (size > AGENT.maxBody) { up.destroy(); if (!res.headersSent) sendJson(res, 413, { error: { code: 'body_too_large', message: 'Petición demasiado grande' } }); req.destroy(); }
+  });
+  req.pipe(up);
+}
+
+function proxyAgentUpgrade(req, socket, head, pathWithQuery) {
+  const target = agentTarget();
+  if (!target) { socket.end('HTTP/1.1 503 Service Unavailable\r\n\r\n'); return; }
+  const up = http.request({ protocol: target.protocol, hostname: target.hostname, port: target.port,
+    method: 'GET', path: pathWithQuery, headers: {
+      connection: 'Upgrade', upgrade: 'websocket',
+      'sec-websocket-key': req.headers['sec-websocket-key'] || '',
+      'sec-websocket-version': req.headers['sec-websocket-version'] || '13',
+      ...(req.headers['sec-websocket-protocol'] ? { 'sec-websocket-protocol': req.headers['sec-websocket-protocol'] } : {}),
+    } });
+  up.on('upgrade', (r, upSocket, upHead) => {
+    let line = `HTTP/1.1 101 Switching Protocols\r\n`;
+    for (const [k, v] of Object.entries(r.headers)) line += `${k}: ${v}\r\n`;
+    socket.write(line + '\r\n');
+    if (upHead && upHead.length) socket.write(upHead);
+    if (head && head.length) upSocket.write(head);
+    upSocket.pipe(socket); socket.pipe(upSocket);
+    const close = () => { upSocket.destroy(); socket.destroy(); };
+    upSocket.on('error', close); socket.on('error', close); upSocket.on('close', close); socket.on('close', close);
+  });
+  up.on('response', (r) => { socket.end(`HTTP/1.1 ${r.statusCode} Upstream\r\n\r\n`); });
+  up.on('error', () => socket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n'));
+  up.end();
+}
+
 // config.js para la landing/mezclador: URL de streaming y banderas de fuentes libres.
 try {
   const listen = process.env.LISTEN_URL || '';
@@ -60,10 +127,13 @@ try {
     if (process.env.AUDIT_SOUND_CC_ME_PATH) body += `window.AUDIT_SOUND_CC_ME_PATH=${JSON.stringify(process.env.AUDIT_SOUND_CC_ME_PATH)};\n`;
   }
   if (allowDemo) body += `window.AUDIT_SOUND_ALLOW_DEMO=true;\n`;
+  // Solo se publica SI hay agente (nunca su URL interna ni credenciales).
+  body += `window.AUDIT_SOUND_AGENT=${AGENT.url ? 'true' : 'false'};\n`;
   fs.writeFileSync(path.join(ROOT, 'config.js'), body);
   if (listen) console.log('config.js: LISTEN_URL=' + listen);
   console.log('config.js: música libre ' + (OM.clientId ? 'ACTIVADA (Jamendo)' : 'desactivada (sin JAMENDO_CLIENT_ID)'));
   console.log('config.js: Internet Archive ' + (IA.enabled ? 'ACTIVADO' : 'desactivado'));
+  console.log('config.js: agente DJ ' + (AGENT.url ? 'CONECTADO por proxy' : 'sin configurar (modo demostración)'));
   console.log('config.js: Command Center ' + (ccApi
     ? ('LIGADO (' + ccApi + ')')
     : (allowDemo ? 'sin ligar — MODO DEMO habilitado (AUDIT_SOUND_ALLOW_DEMO)'
@@ -214,6 +284,7 @@ const server = http.createServer((req, res) => {
   const u = new URL(req.url || '/', `http://localhost:${PORT}`);
   const pathname = decodeURIComponent(u.pathname);
   if (pathname === '/healthz') return send(res, 200, 'ok\n', 'text/plain');
+  if (pathname.startsWith(AGENT_PREFIX) || pathname === AGENT_PREFIX.slice(0, -1)) return proxyAgent(req, res, u.pathname + u.search);
   if (pathname === '/api/openmusic/search') { handleSearch(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
   if (pathname === '/api/openmusic/audio') { handleAudio(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
   if (pathname === '/api/archive/search') { handleArchiveSearch(u, res).catch((e) => sendJson(res, 500, { error: String(e && e.message || e) })); return; }
@@ -248,6 +319,12 @@ const server = http.createServer((req, res) => {
     }
     send(res, 200, buf, TYPES[path.extname(file)] || 'application/octet-stream');
   });
+});
+
+server.on('upgrade', (req, socket, head) => {
+  const u = new URL(req.url || '/', `http://localhost:${PORT}`);
+  if (u.pathname.startsWith(AGENT_PREFIX)) return proxyAgentUpgrade(req, socket, head, u.pathname + u.search);
+  socket.destroy();
 });
 
 // Arranca solo cuando se ejecuta directamente (node server.js); al requerirlo desde

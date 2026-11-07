@@ -92,3 +92,11 @@ Requiere Python 3.10+, Chromium y Playwright Python para ejecutar las pruebas. L
 No implementa autenticación real, control remoto, streaming Icecast, mezcla real de señales de micrófono, preescucha de audífonos separada, DSP FX, mezcla de video codificada para emisión, planificación Qwen/DeepSeek, licenciamiento SaaS ni facturación. Las operaciones `api/*` son **contratos propuestos**, no endpoints confirmados del repositorio. No se validó hardware real MIDI, iPhone/Android ni reproducción 24/7.
 
 Consultar `docs/QA_REPORT.md` y `docs/PENDIENTES_Y_RIESGOS.md` antes de integrar el backend.
+
+## Agente DJ en vivo (Fase 5)
+
+Si el servidor publica `window.AUDIT_SOUND_AGENT=true` (ver `deploy/pro/README.md`, `DJ_AGENT_URL`), la pantalla
+«Agente DJ inteligente» muestra «Conectar agente»: con un token de acceso, los modos, el chat, las reglas, la
+autonomía, la ruta de modelo y las aprobaciones pasan a operar el servicio `dj-agent` real
+(`src/modules/05-agent-live.js`). Sin agente, todo sigue en modo demostración. Prueba:
+`node web/pro/v06/tests/agent_live_e2e.mjs` (requiere Python con las dependencias de `services/dj-agent`).
