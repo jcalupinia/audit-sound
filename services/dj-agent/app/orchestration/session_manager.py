@@ -822,7 +822,10 @@ class SessionManager:
             # El motor real informa el título del plato, no su índice: se resuelve con el catálogo.
             cur = (on_air.track_id if on_air.track_id is not None else self._title_to_id(on_air.title)) if on_air else None
             idx = ids.index(cur) if cur in ids else -1
-            if len(ids) - (idx + 1) > 1:
+            # Plan desfasado: la pista al aire no es del plan y el motor ya no tiene cola del agente
+            # (p. ej. el agente estuvo caído y el Selector tomó el aire). Se replanifica enseguida.
+            stale = idx < 0 and cur is not None and not snap.queue
+            if not stale and len(ids) - (idx + 1) > 1:
                 return
             constraints = {k: v for k, v in plan["constraints_json"].items() if k != "warnings"}
         else:

@@ -114,3 +114,31 @@ def test_recuperacion_tras_reinicio_sin_reenviar_comandos(settings, clock):
         assert again["id"] == sid and again["mode"] == "HIBRIDO" and again["version"] == s["version"]
         r = c2.post(f"{BASE}/sessions/{sid}/mode", json={"mode": "AUTOMATICO"}, headers=H("op1", K()))
         assert r.status_code == 200
+
+
+def test_tras_caida_del_agente_el_plan_desfasado_se_replanifica(settings, clock):
+    """Regresión del soak de 2 h: durante la caída el motor agota la cola y el Selector toma el aire.
+
+    Al volver, el plan viejo sigue ACTIVO pero la pista al aire no está en él: el agente debe
+    replanificar enseguida, no esperar a que por azar suene una pista del plan viejo.
+    """
+    engine = FakeEngine()
+    with TestClient(create_app(settings, engine=engine, clock=clock)) as c:
+        sid = new_session(c, mode="AUTOMATICO")["id"]
+        clock.advance(60)
+        c.app.state.manager.tick(sid)
+        old = c.get(f"{BASE}/sessions/{sid}/plans/current", headers=H("op1")).json()
+        planned = [i["track_id"] for i in old["items"]]
+    # agente caído: el motor consume la cola y sigue con el Selector
+    engine.advance(180 * 10)
+    assert not engine.queue
+    on_air = next(d.track_id for d in engine.status().decks if d.playing)
+    if on_air in planned:                                   # forzar el caso del soak: al aire, pista ajena al plan
+        engine.queue.clear()
+        engine.advance(180)
+    with TestClient(create_app(settings, engine=engine, clock=clock)) as c2:
+        clock.advance(60)
+        c2.app.state.manager.tick(sid)
+        new = c2.get(f"{BASE}/sessions/{sid}/plans/current", headers=H("op1")).json()
+        assert new["id"] != old["id"] and new["status"] == "ACTIVE"
+        assert engine.queue                                  # la cola del agente vuelve al motor de inmediato
