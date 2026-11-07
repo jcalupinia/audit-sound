@@ -105,3 +105,10 @@ aire (elegida por el Selector durante la caída) no estaba en él, así que el a
 por azar sonaba una pista del plan (≈5 min). Ahora detecta el plan desfasado (pista al aire fuera del plan y
 cola del motor vacía) y replanifica en el siguiente ciclo. Prueba de regresión:
 `tests/failover/test_continuity_recovery.py::test_tras_caida_del_agente_el_plan_desfasado_se_replanifica`.
+
+## 8. Fase 3 — IA para interpretar órdenes (actualización 2026-11-07)
+
+Detalle en `13_FASE3_INFORME.md`. `pytest` 212 pasan, 5 omitidas. Batería de 38 órdenes en español
+(`tests/fixtures/casos_es.json`) evaluada contra Qwen real en local (`scripts/eval_intents_llm.py`):
+Qwen3 1.7B 33/38 (86,8 %), 0 salidas inválidas, 0 fugas de inyección, p95 3,2 s. **NO VERIFICADO:** el gateway
+LiteLLM de la firma (sin acceso a `LOCAL_LLM_*` desde este entorno).
