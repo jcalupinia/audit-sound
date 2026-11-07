@@ -118,13 +118,15 @@ def parse_intent(text: str) -> Intent:
     if not t:
         return Intent(intent="UNKNOWN", confidence=0.0)
 
-    if re.search(r"\bque (esta )?(sonando|suena)\b|\bestado de la sesion\b|\bque cancion es\b", t):
+    if re.search(r"\bque (esta )?(sonando|suena)\b|\bestado de la sesion\b|\bque cancion es\b"
+                 r"|\bcomo se llama (este|esta|el|la) (tema|cancion|pista)\b|\bque (tema|pista) es\b", t):
         return Intent(intent="STATUS", confidence=0.9)
 
     mode = None
     if re.search(r"\bmodo (automatico|auto)\b|\bponte en (automatico|auto)\b|\btoma (tu )?el control\b|\b24/?7\b", t):
         mode = "AUTOMATICO"
-    elif re.search(r"\bmodo hibrido\b|\bmodo mixto\b|\bsolo (sugiere|propon)", t):
+    elif re.search(r"\bmodo hibrido\b|\bmodo mixto\b|\bsolo (sugiere|propon)"
+                   r"|\bpropon\w*\b.{0,30}\bno (las|lo|los) (hagas|ejecutes)\b|\bpideme (permiso|aprobacion)\b", t):
         mode = "HIBRIDO"
     elif re.search(r"\bmodo manual\b|\byo controlo\b|\bdejame (a mi|el control)\b|\bcontrol manual\b", t):
         mode = "MANUAL"

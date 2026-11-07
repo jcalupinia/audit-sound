@@ -36,6 +36,12 @@ Prueba de extremo a extremo (HTTP → agente → Qwen3 real → motor simulado):
 techno» → plan de Qwen (DeepSeek no configurado) lounge ×3 → techno ×2 ejecutado; `/usage` registró 2 llamadas,
 1.333 tokens de entrada, coste 0.
 
+## 2b. Planes con el gateway real de la firma (`auditia-rutina`)
+
+`scripts/eval_planes_llm.py` corrido por el dueño desde su tailnet: **8/8 planes correctos**, todas las pistas del
+catálogo, p50 2,5 s, máx. 3,1 s (`evidencias/eval_gateway_real_planes.json`). Mejor que Qwen3 1.7B local (7/8,
+p50 10,2 s). DeepSeek real sigue **NO VERIFICADO** (falta el secreto de red en el entorno de pruebas).
+
 ## 3. Pruebas ejecutadas
 
 - `pytest`: 228 pasan, 5 omitidas (requieren `DJ_AGENT_REAL_ENGINE_BIN`). `ruff`: limpio.

@@ -127,3 +127,9 @@ del v0.6 20 pantallas × 4 tamaños sin errores. 31 de 39 controles cableados.
 
 Detalle en `16_FASE6_INFORME.md`. Voz y móvil 30/30 ×3 (micrófono simulado; iPhone 13 y Pixel 7 emulados),
 Fase 5 24/24, `pytest` 229. **NO VERIFICADO:** dispositivos físicos.
+
+## 12. Gateway real de la firma (actualización 2026-11-07)
+
+Qwen `auditia-rutina` por Tailscale, evaluado por el dueño: órdenes 35/38 (92,1 %), 0 fugas, p95 1,4 s; planes 8/8,
+máx. 3,1 s (`evidencias/eval_gateway_real_*.json`). Tras el resultado se agregaron dos reglas («¿cómo se llama este
+tema?» → estado; «propónme … pero no las hagas» → HÍBRIDO). DeepSeek real: pendiente.
