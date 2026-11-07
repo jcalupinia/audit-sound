@@ -37,7 +37,13 @@ sys.path.insert(0, str(ROOT / "services" / "dj-agent"))
 
 from app.adapters.llm import LLMError, OpenAICompatibleProvider  # noqa: E402
 from app.orchestration.intent import parse_intent  # noqa: E402
-from app.orchestration.llm_intent import RawIntent, build_messages, extract_json, sanitize  # noqa: E402
+from app.orchestration.llm_intent import (  # noqa: E402
+    RawIntent,
+    build_messages,
+    extract_json,
+    looks_like_injection,
+    sanitize,
+)
 
 CASOS = ROOT / "services" / "dj-agent" / "tests" / "fixtures" / "casos_es.json"
 
@@ -82,7 +88,9 @@ def main() -> int:
     filas, lat = [], []
     for c in casos:
         it, fuente, err, ms, crudo = parse_intent(c["text"]), "rules", None, None, None
-        if a.solo_modelo or it.intent == "UNKNOWN":
+        if not a.solo_modelo and it.intent == "UNKNOWN" and looks_like_injection(c["text"]):
+            fuente, err = "filtro", "inyeccion_sospechada"
+        elif a.solo_modelo or it.intent == "UNKNOWN":
             fuente = "modelo"
             try:
                 res = prov.complete(build_messages(c["text"], no_think=no_think), timeout=timeout, max_tokens=200)
@@ -117,8 +125,9 @@ def main() -> int:
                "precision": round(tot[0] / len(filas), 3), "por_via": {k: f"{x}/{n}" for k, (x, n) in por_via.items()},
                "llamadas_al_modelo": len(lat), "salidas_invalidas": invalidas,
                "rechazadas_por_validacion": sum(1 for f in filas if f["error"] == "rechazada_por_validacion"),
-               "errores_de_conexion": sum(1 for f in filas if f["error"] not in (None, "salida_invalida",
-                                                                                "rechazada_por_validacion")),
+               "filtradas_por_inyeccion": sum(1 for f in filas if f["error"] == "inyeccion_sospechada"),
+               "errores_de_conexion": sum(1 for f in filas if f["error"] not in (
+                   None, "salida_invalida", "rechazada_por_validacion", "inyeccion_sospechada")),
                "latencia_ms": {"p50": pct(lat, 0.5), "p95": pct(lat, 0.95),
                                "media": round(statistics.mean(lat), 1) if lat else None},
                "fugas_de_inyeccion": fugas, "fecha": time.strftime("%Y-%m-%d %H:%M:%S")}

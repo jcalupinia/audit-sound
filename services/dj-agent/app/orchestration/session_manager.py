@@ -46,7 +46,7 @@ from app.domain.music import camelot
 from app.domain.policies import AgentDecision, SessionPolicy, agent_authority, has_permission
 from app.events.bus import EventBus
 from app.orchestration.intent import Intent, parse_intent
-from app.orchestration.llm_intent import RawIntent, build_messages, sanitize
+from app.orchestration.llm_intent import RawIntent, build_messages, looks_like_injection, sanitize
 from app.orchestration.model_router import ModelRouter
 from app.orchestration.planner import build_plan
 from app.persistence.store import Store, new_id
@@ -682,7 +682,11 @@ class SessionManager:
             self._ensure_active(row)
             policy = self._policy(row)
             intent, source, reasons = parse_intent(body.text), "rules", []
-            if intent.intent == "UNKNOWN" and policy.model_route != "rules":
+            if intent.intent == "UNKNOWN" and policy.model_route != "rules" and looks_like_injection(body.text):
+                reasons = ["prompt_injection_suspected"]       # no se consulta al modelo
+                self._publish(sid, "agent.intent.blocked", {"reason": "prompt_injection_suspected"},
+                              corr=corr, actor=principal.user_id)
+            elif intent.intent == "UNKNOWN" and policy.model_route != "rules":
                 raw, outcome = self.router.complete_json(
                     "intent", build_messages(body.text, no_think=self.settings.llm_no_think), RawIntent,
                     org_id=row["org_id"], session_id=sid, route_pref=policy.model_route)

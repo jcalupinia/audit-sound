@@ -90,6 +90,20 @@ def build_messages(text: str, *, no_think: bool = True) -> list[dict[str, str]]:
             {"role": "user", "content": f"<<ORDEN>>\n{clean}\n<<FIN>>"}]
 
 
+# ---------------------------------------------------------------------------- filtro previo
+_INJECTION = re.compile(
+    r"<<|>>|\{\s*\"|\bprompt\b|\bsystem\b|\bsistema\b.{0,20}\b(nuevo|instruccion|regla)|"
+    r"\b(ignora|ignorar|olvida|olvidar|omite|salta(te)?)\b.{0,30}\b(instruccion|instrucciones|reglas|anterior|todo)\b|"
+    r"\b(responde|contesta|devuelve)\b.{0,15}\b(siempre|solo|con)\b.{0,20}\b(intent|json|pause|confianza)|"
+    r"\beres un\b.{0,30}\b(asistente|modelo|sin reglas)|\bsin reglas\b|\brm\s+-rf\b|\bsudo\b|\bborra\b.{0,20}\b(biblioteca|base|todo)",
+)
+
+
+def looks_like_injection(text: str) -> bool:
+    """Orden que intenta reprogramar al modelo: no se le envía (respaldo determinista → UNKNOWN)."""
+    return bool(_INJECTION.search(normalize(text)))
+
+
 # ---------------------------------------------------------------------------- extracción
 def extract_json(content: str) -> str:
     """Primer objeto JSON equilibrado del texto, sin bloques de razonamiento ni vallas de código."""

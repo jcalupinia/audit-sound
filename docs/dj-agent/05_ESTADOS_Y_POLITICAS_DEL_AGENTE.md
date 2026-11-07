@@ -140,7 +140,7 @@ Esquema de evento: `{event_id, sequence, session_id, timestamp, type, payload, c
 
 Tipos emitidos: `session.created`, `session.state.changed`, `session.closed`, `session.recovered`, `mode.changed`,
 `track.changed`, `control.taken|released|requested|transferred|denied|forced`, `command.accepted`,
-`agent.command.ack`, `command.rejected`, `command.failed`, `agent.intent.parsed`, `agent.proposal.created|decided|expired`,
+`agent.command.ack`, `command.rejected`, `command.failed`, `agent.intent.parsed`, `agent.intent.blocked` (orden con aspecto de inyección: no se consulta al modelo), `agent.proposal.created|decided|expired`,
 `agent.action.blocked`, `plan.created`, `queue.updated`, `preferences.updated`, `agent.autonomous.replan|error`,
 `agent.degraded|available`, `engine.mode.error`.
 
