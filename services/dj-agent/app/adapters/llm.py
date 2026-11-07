@@ -52,6 +52,7 @@ class OpenAICompatibleProvider:
         self._key = api_key or ""
         self._price = (usd_per_mtok_in, usd_per_mtok_out)
         self._transport = transport
+        self._json_mode = True   # se apaga solo si el gateway rechaza response_format (HTTP 400)
 
     def configured(self) -> bool:
         return bool(self._base and self.model)
@@ -63,12 +64,19 @@ class OpenAICompatibleProvider:
         if not self.configured():
             raise LLMError("not_configured", f"Proveedor {self.name} sin configurar")
         headers = {"Authorization": f"Bearer {self._key or 'no-key'}", "Content-Type": "application/json"}
-        body: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": 0,
-                                "max_tokens": max_tokens, "response_format": {"type": "json_object"}}
+        body: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": 0, "max_tokens": max_tokens}
+        if self._json_mode:
+            body["response_format"] = {"type": "json_object"}
         t0 = time.perf_counter()
         try:
             with httpx.Client(timeout=timeout, transport=self._transport) as client:
                 r = client.post(f"{self._base}/chat/completions", json=body, headers=headers)
+                if r.status_code == 400 and "response_format" in body:
+                    # Algunos backends detrás de LiteLLM no admiten el modo JSON: se reintenta una vez
+                    # sin él; la salida igual se extrae y valida del lado del agente.
+                    self._json_mode = False
+                    body.pop("response_format")
+                    r = client.post(f"{self._base}/chat/completions", json=body, headers=headers)
         except httpx.TimeoutException as exc:
             raise LLMError("timeout", f"{self.name}: tiempo agotado") from exc
         except httpx.TransportError as exc:

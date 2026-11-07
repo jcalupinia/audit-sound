@@ -20,6 +20,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.adapters.llm import LLMError, LLMProvider, OpenAICompatibleProvider
 from app.core.settings import Settings
+from app.orchestration.llm_intent import extract_json
 from app.persistence.store import Store
 
 T = TypeVar("T", bound=BaseModel)
@@ -132,7 +133,7 @@ class ModelRouter:
                 continue
             cost = provider.estimate_cost(res.tokens_in, res.tokens_out)
             try:
-                parsed = schema.model_validate(json.loads(res.content))
+                parsed = schema.model_validate(json.loads(extract_json(res.content)))
                 outcome = "ok"
             except (ValueError, ValidationError):
                 parsed, outcome = None, "invalid_output"

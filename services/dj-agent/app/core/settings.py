@@ -52,6 +52,7 @@ class Settings:
     deepseek_api_key: str = field(default="", repr=False)
     deepseek_model: str = "deepseek-flash"
     llm_timeout_seconds: float = 8.0
+    llm_no_think: bool = True        # Qwen3: «/no_think» desactiva el razonamiento largo (latencia)
     llm_budget_usd_day: float = 1.0
     llm_budget_usd_session: float = 0.25
     llm_breaker_failures: int = 3
@@ -78,6 +79,7 @@ class Settings:
             deepseek_api_key=_env("DEEPSEEK_API_KEY"),
             deepseek_model=_env("DEEPSEEK_MODEL", "deepseek-flash"),
             llm_timeout_seconds=_float("DJ_AGENT_LLM_TIMEOUT_SECONDS", 8.0),
+            llm_no_think=_env("DJ_AGENT_LLM_NO_THINK", "true").lower() not in ("0", "false", "no"),
             llm_budget_usd_day=_float("DJ_AGENT_LLM_BUDGET_USD_DAY", 1.0),
             llm_budget_usd_session=_float("DJ_AGENT_LLM_BUDGET_USD_SESSION", 0.25),
         )

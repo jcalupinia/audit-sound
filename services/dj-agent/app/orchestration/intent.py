@@ -29,7 +29,7 @@ GENRES: dict[str, list[str]] = {
     "techno": ["techno", "tecno"],
     "salsa": ["salsa"],
     "reggaeton": ["reggaeton", "regueton", "reguetón", "reggaetón", "perreo", "urbano"],
-    "lounge": ["lounge", "chill", "chillout", "relajada", "ambiente"],
+    "lounge": ["lounge", "chill", "chillout", "relajada", "ambiental"],   # «ambiente» no: «el ambiente está muerto»
     "pop": ["pop"],
     "cumbia": ["cumbia"],
     "bachata": ["bachata"],
@@ -41,6 +41,37 @@ def normalize(text: str) -> str:
     t = unicodedata.normalize("NFD", text.lower())
     t = "".join(c for c in t if unicodedata.category(c) != "Mn")
     return re.sub(r"\s+", " ", t).strip()
+
+
+def _genre_spans(t: str) -> list[tuple[int, int, str]]:
+    """(inicio, fin, género) de la primera mención de cada género, en orden de aparición."""
+    spans: list[tuple[int, int, str]] = []
+    taken: list[tuple[int, int]] = []
+    for genre, words in GENRES.items():
+        for w in sorted(words, key=len, reverse=True):
+            for m in re.finditer(rf"\b{re.escape(normalize(w))}\b", t):
+                if any(a <= m.start() < b for a, b in taken):
+                    continue
+                taken.append((m.start(), m.end()))
+                spans.append((m.start(), m.end(), genre))
+    first: dict[str, tuple[int, int, str]] = {}
+    for s in sorted(spans):
+        first.setdefault(s[2], s)
+    return sorted(first.values())
+
+
+def _segment_minutes(t: str, spans: list[tuple[int, int, str]], i: int) -> int | None:
+    """Minutos del segmento i: «salsa 30 minutos» (después, hasta el siguiente género) o
+    «30 minutos de salsa» (justo antes)."""
+    start, end, _ = spans[i]
+    nxt = spans[i + 1][0] if i + 1 < len(spans) else len(t)
+    m = re.search(r"(\d{1,3})\s*(min|minuto|minutos|h|hora|horas)\b", t[end:nxt])
+    if m is None:
+        m = re.search(r"(\d{1,3})\s*(min|minuto|minutos|h|hora|horas)\s+de\s+(musica\s+)?$", t[:start])
+    if m is None:
+        return 30 if re.search(r"\bmedia hora\b", t[end:nxt]) else None
+    n = int(m.group(1))
+    return n * 60 if m.group(2).startswith("h") else n
 
 
 def _find_genres(t: str) -> list[tuple[int, str]]:
@@ -75,9 +106,9 @@ def _minutes_after(t: str, start: int = 0) -> int | None:
 
 
 def _energy_trend(t: str) -> str | None:
-    if re.search(r"\b(sube|subir|aumenta|aumentar|mas)\b.{0,12}\benergia\b|\bque suba\b|\bmas movid|\bprend", t):
+    if re.search(r"\b(sube|subir|subiendo|aumenta|aumentar|aumentando|mas)\b.{0,12}\benergia\b|\bque suba\b|\bmas movid|\bprend", t):
         return "up"
-    if re.search(r"\b(baja|bajar|menos|reduce)\b.{0,12}\benergia\b|\bmas tranquil|\brelaj|\bmas suave", t):
+    if re.search(r"\b(baja|bajar|bajando|menos|reduce|reduciendo)\b.{0,12}\benergia\b|\bmas tranquil|\brelaj|\bmas suave", t):
         return "down"
     return None
 
@@ -124,11 +155,8 @@ def parse_intent(text: str) -> Intent:
     plan_words = re.search(r"\b(planifica|plan de|arma(me)? (un )?set|programa(me)?|sesion de|durante|luego|despues|primero)\b", t)
 
     if len(genres) >= 2 or (genres and plan_words and re.search(r"\b(luego|despues|primero)\b", t)):
-        segments = []
-        for i, g in enumerate(genres):
-            pos = t.find(normalize(GENRES[g][0])) if normalize(GENRES[g][0]) in t else 0
-            minutes = _minutes_after(t, pos)
-            segments.append({"genre": g, "minutes": minutes if i == 0 or minutes else None})
+        spans = _genre_spans(t)
+        segments = [{"genre": g, "minutes": _segment_minutes(t, spans, i)} for i, (_, _, g) in enumerate(spans)]
         return Intent(intent="REQUEST_PLAN", parameters={"segments": segments, "energy_trend": trend or "steady"},
                       confidence=0.8)
 
