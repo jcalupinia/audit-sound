@@ -145,3 +145,17 @@ Tipos emitidos: `session.created`, `session.state.changed`, `session.closed`, `s
 `agent.degraded|available`, `engine.mode.error`.
 
 Los mismos eventos se consultan por REST (`GET …/events?after=N`) para auditoría.
+
+## 8. Control del motor real por el agente (Fase 2)
+
+- El agente entra a la Control API C++ como **cuenta de servicio** (`DJ_AGENT_ENGINE_USER/PASS`) y, tras el login,
+  intenta `control/take`. El motor solo lo concede si el control está **libre**; nunca se arrebata a otro dispositivo vivo.
+- El **token** de esa sesión se guarda en la base del agente (tabla `kv`): si el agente se cae y vuelve, reanuda la
+  **misma** sesión y conserva el control. En un apagado ordenado hace `logout` y libera el control. El audio no se
+  detiene en ningún caso.
+- Si un comando recibe `409 control_held`, el agente reintenta `control/take` **una vez** (prospera solo si el control
+  quedó libre) y, si no, informa el comando como `FAILED control_held`.
+- Capacidades **detectadas** en el motor: `metadata` (BPM/tono/energía/duración en `/api/tracks`) y `queue` (cola del
+  agente). Frente a un motor antiguo el agente se degrada solo: planes sin filtro de compatibilidad y sin cola.
+- La cola del agente entra en la siguiente carga libre del AutoMix (como mucho una pista después de la precargada);
+  vacía, decide el Selector del motor exactamente como antes.

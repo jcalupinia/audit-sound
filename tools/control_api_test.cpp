@@ -151,6 +151,58 @@ int main() {
   check(req(B4 + "/api/command?action=skip", "POST", A.c_str()).code == 409, "S-03 A dejó de controlar → 409");
   control_api_stop(api4);
 
+  // ---- Instancia 5: Fase 2 — metadatos (B1) y cola del agente (B2) ----
+  const std::string f0 = "/tmp/as_f2_t0.wav", f1 = "/tmp/as_f2_t1.wav";
+  for (const auto& f : {f0, f1}) { FILE* fp = std::fopen(f.c_str(), "wb"); if (fp) { std::fputs("x", fp); std::fclose(fp); } }
+  DjEngine e5 = dj_create(); AutoMix a5 = automix_create(e5);
+  const int P5 = 18795;
+  ControlApi api5 = control_api_start(P5, "dj", "secreto", e5, a5);
+  const std::string B5 = "http://127.0.0.1:" + std::to_string(P5);
+  control_api_add_track_meta(api5, "Tema Cero", f0.c_str(), 124.0f, 7, 0.62f, 183.4);
+  control_api_add_track_meta(api5, "Tema Uno", f1.c_str(), 126.0f, 8, 0.70f, 200.0);
+  control_api_add_track_meta(api5, "Fantasma", "/tmp/as_f2_no_existe.wav", 120.0f, 19, 0.40f, 150.0);
+  const std::string T5 = field(req(B5 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=secreto&name=agente").body, "token");
+  Resp tr = req(B5 + "/api/tracks", "GET", T5.c_str());
+  check(tr.code == 200 && tr.body.find("\"metadata\":true") != std::string::npos,
+        "B1 /api/tracks anuncia metadata=true cuando todas las pistas están analizadas");
+  check(tr.body.find("\"bpm\":124.00,\"key\":7,\"energy\":0.6200,\"duration\":183.40") != std::string::npos,
+        "B1 /api/tracks expone BPM, tonalidad, energía y duración");
+  check(tr.body.find("{\"i\":0,\"title\":\"Tema Cero\"") != std::string::npos,
+        "B1 cambio aditivo: se conservan i y title");
+  auto cmd = [&](const std::string& q, const std::string& tok) { return req(B5 + "/api/command?" + q, "POST", tok.c_str()); };
+  Resp qs = cmd("action=queue_set&tracks=2,1,0", T5);
+  check(qs.code == 200 && qs.body.find("\"queue\":[2,1,0]") != std::string::npos, "B2 queue_set → 200 y cola resultante");
+  Resp st = req(B5 + "/api/status", "GET", T5.c_str());
+  check(st.body.find("\"queue\":[2,1,0]") != std::string::npos && st.body.find("\"next_source\":\"agent\"") != std::string::npos,
+        "B2 /api/status muestra la cola y next_source=agent");
+  check(req(B5 + "/api/queue", "GET", T5.c_str()).body.find("{\"i\":2,\"title\":\"Fantasma\"}") != std::string::npos,
+        "B2 GET /api/queue lista las pistas con su título");
+  check(cmd("action=queue_set&tracks=99", T5).code == 400, "B2 pista inexistente → 400 unknown_track");
+  check(cmd("action=queue_set&tracks=1,abc", T5).code == 400, "B2 lista mal formada → 400");
+  std::string many = "action=queue_set&tracks=0";
+  for (int i = 0; i < 50; ++i) many += ",1";
+  check(cmd(many, T5).code == 400, "B2 más de 50 pistas → 400 too_many_tracks");
+  check(req(B5 + "/api/status", "GET", T5.c_str()).body.find("\"queue\":[2,1,0]") != std::string::npos,
+        "B2 una petición rechazada no altera la cola");
+  Resp rm = cmd("action=queue_remove&track=0", T5);
+  check(rm.code == 200 && rm.body.find("\"queue\":[2,1]") != std::string::npos, "B2 queue_remove cancela una pista pendiente");
+  check(cmd("action=queue_remove&track=0", T5).code == 400, "B2 quitar algo que no está → 400 not_in_queue");
+  char path[512];
+  check(control_api_next_queued(api5, path, sizeof(path)) == 1 && f1 == path,
+        "B2 next_queued descarta la pista sin archivo y entrega la siguiente válida");
+  check(control_api_next_queued(api5, path, sizeof(path)) == 0, "B2 cola vacía → 0 (decide el Selector)");
+  check(req(B5 + "/api/status", "GET", T5.c_str()).body.find("\"next_source\":\"selector\"") != std::string::npos,
+        "B2 sin cola, next_source=selector");
+  check(cmd("action=queue_append&tracks=0,1", T5).body.find("\"queue\":[0,1]") != std::string::npos, "B2 queue_append");
+  check(cmd("action=queue_clear", T5).body.find("\"queue\":[]") != std::string::npos, "B2 queue_clear vacía la cola");
+  const std::string O5 = field(req(B5 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=secreto&name=otro").body, "token");
+  check(cmd("action=queue_set&tracks=0", O5).code == 409, "B2 la cola solo la controla el controlador (409)");
+  control_api_add_track(api5, "Sin analizar", f0.c_str());
+  check(req(B5 + "/api/tracks", "GET", T5.c_str()).body.find("\"metadata\":false") != std::string::npos,
+        "B1 con una pista sin análisis → metadata=false");
+  control_api_stop(api5);
+  std::remove(f0.c_str()); std::remove(f1.c_str());
+
   curl_global_cleanup();
   std::printf("\nRESULTADO: %d OK, %d FAIL\n", g_pass, g_fail);
   return g_fail ? 1 : 0;

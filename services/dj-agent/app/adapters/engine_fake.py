@@ -127,7 +127,10 @@ class FakeEngine:
             return EngineSnapshot(reachable=True, engine_mode=self.engine_mode, xfader=round(self.xfader, 3),
                                   automix_state=(2 if self._fade else 1) if self.automix else 0,
                                   transition_seconds=self.transition_seconds, decks=decks,
-                                  capabilities=sorted(self.capabilities()))
+                                  capabilities=sorted(self.capabilities()),
+                                  queue=list(self.queue) if "queue" in self.capabilities() else [],
+                                  next_source=("agent" if self.queue else "selector")
+                                  if "queue" in self.capabilities() else None)
 
     def set_engine_mode(self, mode: str) -> dict[str, Any]:
         with self._lock:
@@ -138,12 +141,14 @@ class FakeEngine:
             self.engine_mode = mode
             self.automix = mode == "auto"
             if mode == "manual":
-                # Emula el C++ real (control_api.cpp, set_mode_dj): carga platos VACÍOS y
-                # deja el crossfader en 0.5. Nunca recarga ni detiene el plato que suena.
+                # Emula el C++ CORREGIDO en la Fase 2 (control_api.cpp, set_mode_dj): carga solo
+                # platos realmente vacíos y centra el crossfader solo si no suena nada.
+                # Nunca recarga ni detiene el plato que suena.
                 for i, d in enumerate(self.decks):
                     if d.track_id is None and len(self.catalog) > i:
                         self._load(i, self.catalog[i].id)
-                self.xfader = 0.5
+                if not any(d.playing for d in self.decks):
+                    self.xfader = 0.5
                 self._fade = None
             return {"ok": True}
 

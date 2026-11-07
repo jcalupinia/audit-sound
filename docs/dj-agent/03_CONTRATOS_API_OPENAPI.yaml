@@ -1001,6 +1001,16 @@ components:
             type: string
           type: array
           title: Capabilities
+        queue:
+          items:
+            type: integer
+          type: array
+          title: Queue
+        next_source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Source
         error:
           anyOf:
           - type: string

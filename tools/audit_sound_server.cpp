@@ -86,6 +86,26 @@ static int nextSubsonic(void* user, char* out, int cap) {
   return 1;
 }
 
+// Fase 2 · B2: la cola del agente tiene prioridad; si está vacía, el Selector decide
+// exactamente como antes (su algoritmo no se modifica). 'api' se fija cuando arranca la
+// Control API: hasta entonces solo decide el Selector.
+struct NextTrackChain {
+  std::atomic<void*> api{nullptr};
+  Selector* sel = nullptr;
+};
+static int nextChained(void* user, char* out, int cap) {
+  auto* c = static_cast<NextTrackChain*>(user);
+  ControlApi a = c->api.load();
+  if (a && control_api_next_queued(a, out, cap)) return 1;
+  return Selector::nextTrackCb(c->sel, out, cap);
+}
+
+struct TrackMeta {
+  float bpm = 0, energy = -1;
+  int key = -1;
+  double duration = 0;
+};
+
 int main(int argc, char** argv) {
   DjEngine e = dj_create();
   if (!dj_start(e)) {
@@ -105,6 +125,9 @@ int main(int argc, char** argv) {
   Selector selector;
   SubsonicClient* subClient = nullptr;
   SubsonicProvider sub;
+  NextTrackChain chain;
+  chain.sel = &selector;
+  std::vector<TrackMeta> metas;
 
   const char* subUrl = std::getenv("AUDIT_SOUND_SUBSONIC_URL");
   if (subUrl && subUrl[0]) {
@@ -155,8 +178,9 @@ int main(int argc, char** argv) {
       double first = 0, last = -1;
       dj_analyze_silence(f.c_str(), &first, &last, &energy);
       selector.addTrack(f, bpm, key, energy);
+      metas.push_back({bpm, energy, key, dj_file_duration(f.c_str())});  // B1: se publican en /api/tracks
     }
-    automix_set_next_track(am, Selector::nextTrackCb, &selector);
+    automix_set_next_track(am, nextChained, &chain);
     std::printf("audit_sound_server: %zu pistas, selección inteligente (DJ autónomo)\n",
                 selector.size());
   }
@@ -173,10 +197,16 @@ int main(int argc, char** argv) {
     api = control_api_start(apiPort, apiUser, apiPass ? apiPass : "", e, am);
     if (api) {
       // Catálogo para el modo manual (pistas locales).
-      for (const auto& f : local.files) {
+      for (size_t i = 0; i < local.files.size(); ++i) {
+        const std::string& f = local.files[i];
         const std::string title = fs::path(f).stem().string();
-        control_api_add_track(api, title.c_str(), f.c_str());
+        if (i < metas.size())
+          control_api_add_track_meta(api, title.c_str(), f.c_str(), metas[i].bpm, metas[i].key, metas[i].energy,
+                                     metas[i].duration);
+        else
+          control_api_add_track(api, title.c_str(), f.c_str());
       }
+      chain.api.store(api);  // desde aquí la cola del agente participa en la selección
       std::printf("Control API en el puerto %d (usuario '%s', %zu pistas)\n", apiPort, apiUser,
                   local.files.size());
     }

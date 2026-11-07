@@ -74,7 +74,7 @@ def test_modo_manual_del_motor_no_detiene_el_plato_al_aire():
     eng.set_engine_mode("manual")
     eng.advance(5)
     assert eng.decks[0].playing and eng.decks[0].pos > pos and eng.decks[0].track_id == 0
-    assert eng.xfader == 0.5   # efecto real del C++ (set_mode_dj) documentado como riesgo
+    assert eng.xfader == 0.0   # Fase 2: con un plato sonando, set_mode_dj ya no mueve el crossfader
 
 
 def test_motor_inalcanzable_lanza_error_tipado():
@@ -83,3 +83,9 @@ def test_motor_inalcanzable_lanza_error_tipado():
     with pytest.raises(EngineError) as exc:
         eng.status()
     assert exc.value.code == "engine_unreachable"
+
+
+def test_no_repetir_no_deja_sin_candidatas_en_un_catalogo_pequeno():
+    cat = demo_catalog()[:6]
+    items, _ = build_plan(cat, count=3, history_ids=[0, 1, 2, 3, 4, 5, 0, 1])  # todo el catálogo ya sonó
+    assert len(items) == 3 and not {0, 1, 5} & {i.track_id for i in items}   # evita las 3 más recientes

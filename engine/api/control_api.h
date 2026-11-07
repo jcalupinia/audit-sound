@@ -30,6 +30,18 @@ void control_api_stop(ControlApi api);
 // por pista antes/después de start.
 void control_api_add_track(ControlApi api, const char* title, const char* path);
 
+// Fase 2 · B1 — igual que control_api_add_track pero con los metadatos del análisis
+// (BPM, tonalidad 0..11 mayor / 12..23 menor / -1, energía 0..1, duración en segundos).
+// GET /api/tracks los expone; los clientes antiguos los ignoran (cambio aditivo).
+void control_api_add_track_meta(ControlApi api, const char* title, const char* path, float bpm, int key,
+                                float energy, double duration);
+
+// Fase 2 · B2 — cola del agente. La llama el callback de "siguiente pista" del AutoMix
+// ANTES que el Selector: si hay pistas encoladas devuelve 1 y la ruta de la primera
+// (descarta las que ya no existen en disco); si la cola está vacía devuelve 0 y el
+// llamador usa el Selector sin cambios. Usa un cerrojo propio (no el de la API HTTP).
+int control_api_next_queued(ControlApi api, char* path_out, int cap);
+
 #ifdef __cplusplus
 }
 #endif

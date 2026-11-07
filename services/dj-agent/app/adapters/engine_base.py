@@ -77,4 +77,12 @@ def verify_effect(action: str, params: dict[str, Any], after: EngineSnapshot, tr
         if d is None or title is None:
             return "mismatch"
         return "state_verified" if d.loaded and d.title == title else "mismatch"
+    if action == "queue_set":
+        # El AutoMix pudo consumir ya la primera pista: basta con que lo que queda sea el final pedido.
+        want = list(params["track_ids"])
+        if not after.queue:
+            return "engine_ok" if len(want) == 1 else "mismatch"  # la única pista ya entró al plato
+        return "state_verified" if want[-len(after.queue):] == after.queue else "mismatch"
+    if action == "queue_clear":
+        return "state_verified" if not after.queue else "mismatch"
     return "engine_ok"

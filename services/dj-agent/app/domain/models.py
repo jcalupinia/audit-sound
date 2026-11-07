@@ -158,6 +158,8 @@ class EngineSnapshot(BaseModel):
     transition_seconds: float = 8.0
     decks: list[DeckOut] = Field(default_factory=list)
     capabilities: list[str] = Field(default_factory=list)
+    queue: list[int] = Field(default_factory=list)       # Fase 2: cola del agente en el motor
+    next_source: str | None = None                       # "agent" | "selector"
     error: str | None = None
 
 

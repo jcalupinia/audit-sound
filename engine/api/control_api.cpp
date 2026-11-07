@@ -24,6 +24,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <deque>
+#include <unistd.h>
 #include <chrono>
 #include <ctime>
 #include <map>
@@ -48,7 +50,14 @@ bool g_trust_proxy = true;                // AUDIT_SOUND_API_TRUST_PROXY=false �
 struct Catalog {
   std::vector<std::string> titles;
   std::vector<std::string> paths;
+  // Fase 2 · B1: metadatos del análisis (meta[i]=0 → desconocidos para esa pista).
+  std::vector<float> bpm, energy;
+  std::vector<int> key;
+  std::vector<double> dur;
+  std::vector<char> meta;
 };
+
+constexpr size_t AGENT_QUEUE_MAX = 50;
 
 struct Session {
   std::string name;
@@ -71,6 +80,15 @@ struct Api {
   std::map<std::string, std::vector<time_t>> loginAttempts;  // IP -> timestamps
   Catalog cat;
   std::mutex mu;
+  // Fase 2 · B2: cola del agente. Cerrojo PROPIO: lo toma el hilo del AutoMix (callback de
+  // siguiente pista) sin depender del cerrojo de la API HTTP. Protege también 'cat'.
+  std::deque<int> agentQueue;
+  std::mutex queueMu;
+  std::string queueJsonLocked() const {
+    std::string o = "[";
+    for (size_t i = 0; i < agentQueue.size(); ++i) o += (i ? "," : "") + std::to_string(agentQueue[i]);
+    return o + "]";
+  }
   bool manual = false;
   float xfader = 0.5f;
   std::string deckTitle[2];
@@ -390,12 +408,37 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
   }
 
   if (path == "/api/tracks" && 0 == std::strcmp(method, "GET")) {
+    std::lock_guard<std::mutex> lq(api->queueMu);
+    const Catalog& k = api->cat;
+    bool all = !k.titles.empty();
     std::string out = "{\"tracks\":[";
-    for (size_t i = 0; i < api->cat.titles.size(); ++i) {
+    for (size_t i = 0; i < k.titles.size(); ++i) {
       if (i) out += ",";
-      out += "{\"i\":" + std::to_string(i) + ",\"title\":\"" + jsonEsc(api->cat.titles[i]) + "\"}";
+      out += "{\"i\":" + std::to_string(i) + ",\"title\":\"" + jsonEsc(k.titles[i]) + "\"";
+      if (k.meta[i]) {
+        char m[160];
+        std::snprintf(m, sizeof(m), ",\"bpm\":%.2f,\"key\":%d,\"energy\":%.4f,\"duration\":%.2f", k.bpm[i],
+                      k.key[i], k.energy[i], k.dur[i]);
+        out += m;
+      } else {
+        all = false;
+      }
+      out += "}";
     }
-    out += "]}";
+    out += std::string("],\"metadata\":") + (all ? "true" : "false") + "}";
+    return reply(c, 200, out);
+  }
+
+  // Fase 2 · B2: estado de la cola del agente.
+  if (path == "/api/queue" && 0 == std::strcmp(method, "GET")) {
+    std::lock_guard<std::mutex> lq(api->queueMu);
+    std::string out = "{\"queue\":[";
+    for (size_t n = 0; n < api->agentQueue.size(); ++n) {
+      const int i = api->agentQueue[n];
+      out += (n ? "," : "") + std::string("{\"i\":") + std::to_string(i) + ",\"title\":\"" +
+             jsonEsc(api->cat.titles[(size_t)i]) + "\"}";
+    }
+    out += std::string("],\"next_source\":\"") + (api->agentQueue.empty() ? "selector" : "agent") + "\"}";
     return reply(c, 200, out);
   }
 
@@ -413,7 +456,13 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
                   automix_get_transition_time(api->automix), automix_get_mode(api->automix),
                   cn.c_str(), youCtl ? "true" : "false", pend.c_str());
     std::string out = head;
-    out += deckJson(api, 0) + "," + deckJson(api, 1) + "]}";
+    out += deckJson(api, 0) + "," + deckJson(api, 1) + "]";
+    {
+      std::lock_guard<std::mutex> lq(api->queueMu);
+      out += ",\"queue\":" + api->queueJsonLocked() + ",\"next_source\":\"" +
+             (api->agentQueue.empty() ? "selector" : "agent") + "\"";
+    }
+    out += "}";
     return reply(c, 200, out);
   }
 
@@ -432,16 +481,28 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
       api->manual = manual;
       automix_enable(api->automix, manual ? 0 : 1);
       if (manual) {
-        if (api->cat.paths.size() >= 1 && !api->deckTitle[0].size()) {
+        // Fase 2 (bug corregido): antes se miraba deckTitle, que el AutoMix nunca rellena, y se
+        // recargaba la pista 0 ENCIMA del plato que estaba sonando (cortaba el audio). Ahora solo se
+        // cargan platos realmente vacíos y se conserva el título de lo que dejó sonando el AutoMix.
+        const int from = automix_from_deck(api->automix);
+        char cur[4096];
+        cur[0] = 0;
+        if (from >= 0 && from <= 1 && dj_loaded(e, from) && automix_current_path(api->automix, cur, (int)sizeof(cur)))
+          api->deckTitle[from] = basenameNoExt(cur);
+        if (api->cat.paths.size() >= 1 && !dj_loaded(e, 0)) {
           dj_load(e, 0, api->cat.paths[0].c_str());
           api->deckTitle[0] = api->cat.titles[0];
         }
-        if (api->cat.paths.size() >= 2 && !api->deckTitle[1].size()) {
+        if (api->cat.paths.size() >= 2 && !dj_loaded(e, 1)) {
           dj_load(e, 1, api->cat.paths[1].c_str());
           api->deckTitle[1] = api->cat.titles[1];
         }
-        api->xfader = 0.5f;
-        dj_set_xfader(e, 0.5f);
+        // Fase 2: antes fijaba el crossfader en 0.5 siempre; si un plato está sonando eso
+        // podía hacer audible de golpe el otro. Solo se centra si no suena nada.
+        if (!dj_playing(e, 0) && !dj_playing(e, 1)) {
+          api->xfader = 0.5f;
+          dj_set_xfader(e, 0.5f);
+        }
       }
     } else if (0 == std::strcmp(action, "deck_load")) {
       const int t = argi(c, "track", -1);
@@ -476,6 +537,49 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
       automix_set_transition_time(api->automix, argf(c, "value", 8));
     } else if (0 == std::strcmp(action, "set_mode")) {
       automix_set_mode(api->automix, argi(c, "value", 0));
+    } else if (0 == std::strncmp(action, "queue_", 6)) {
+      // Fase 2 · B2: cola del agente (prioridad sobre el Selector; vacía → Selector).
+      std::lock_guard<std::mutex> lq(api->queueMu);
+      const size_t n = api->cat.paths.size();
+      std::vector<int> ids;
+      const bool needsList = !std::strcmp(action, "queue_set") || !std::strcmp(action, "queue_append");
+      if (needsList) {
+        const char* csv = arg(c, "tracks");
+        if (!csv || !*csv) return reply(c, 400, "{\"error\":\"faltan tracks\"}");
+        std::string cur;
+        for (const char* q = csv;; ++q) {
+          if (*q == ',' || *q == 0) {
+            if (cur.empty() || cur.find_first_not_of("0123456789") != std::string::npos)
+              return reply(c, 400, "{\"error\":\"tracks inválidos\"}");
+            const long t = std::strtol(cur.c_str(), nullptr, 10);
+            if (t < 0 || (size_t)t >= n) return reply(c, 400, "{\"error\":\"unknown_track\"}");
+            ids.push_back((int)t);
+            cur.clear();
+            if (*q == 0) break;
+          } else {
+            cur += *q;
+          }
+        }
+      }
+      if (!std::strcmp(action, "queue_set")) {
+        if (ids.size() > AGENT_QUEUE_MAX) return reply(c, 400, "{\"error\":\"too_many_tracks\"}");
+        api->agentQueue.assign(ids.begin(), ids.end());
+      } else if (!std::strcmp(action, "queue_append")) {
+        if (api->agentQueue.size() + ids.size() > AGENT_QUEUE_MAX)
+          return reply(c, 400, "{\"error\":\"too_many_tracks\"}");
+        api->agentQueue.insert(api->agentQueue.end(), ids.begin(), ids.end());
+      } else if (!std::strcmp(action, "queue_remove")) {
+        const int t = argi(c, "track", -1);
+        auto it = std::find(api->agentQueue.begin(), api->agentQueue.end(), t);
+        if (it == api->agentQueue.end()) return reply(c, 400, "{\"error\":\"not_in_queue\"}");
+        api->agentQueue.erase(it);  // cancelación: nunca toca la transición en curso
+      } else if (!std::strcmp(action, "queue_clear")) {
+        api->agentQueue.clear();
+      } else {
+        return reply(c, 400, "{\"error\":\"acción desconocida\"}");
+      }
+      api->logEvent(std::string(action) + " → " + std::to_string(api->agentQueue.size()) + " en cola");
+      return reply(c, 200, "{\"ok\":true,\"queue\":" + api->queueJsonLocked() + "}");
     } else {
       return reply(c, 400, "{\"error\":\"acción desconocida\"}");
     }
@@ -562,9 +666,45 @@ ControlApi control_api_start(int port, const char* user, const char* pass, DjEng
 void control_api_add_track(ControlApi h, const char* title, const char* path) {
   auto* api = static_cast<Api*>(h);
   if (!api || !title || !path) return;
+  control_api_add_track_meta(h, title, path, 0.0f, -1, -1.0f, 0.0);
+}
+
+void control_api_add_track_meta(ControlApi h, const char* title, const char* path, float bpm, int key,
+                                float energy, double duration) {
+  auto* api = static_cast<Api*>(h);
+  if (!api || !title || !path) return;
   std::lock_guard<std::mutex> lk(api->mu);
-  api->cat.titles.push_back(title);
-  api->cat.paths.push_back(path);
+  std::lock_guard<std::mutex> lq(api->queueMu);
+  Catalog& k = api->cat;
+  k.titles.push_back(title);
+  k.paths.push_back(path);
+  const bool known = bpm > 1.0f && energy >= 0.0f;
+  k.bpm.push_back(known ? bpm : 0.0f);
+  k.key.push_back(known ? key : -1);
+  k.energy.push_back(known ? energy : 0.0f);
+  k.dur.push_back(duration > 0 ? duration : 0.0);
+  k.meta.push_back(known ? 1 : 0);
+}
+
+int control_api_next_queued(ControlApi h, char* path_out, int cap) {
+  auto* api = static_cast<Api*>(h);
+  if (!api || !path_out || cap <= 1) return 0;
+  std::lock_guard<std::mutex> lq(api->queueMu);
+  while (!api->agentQueue.empty()) {
+    const int i = api->agentQueue.front();
+    api->agentQueue.pop_front();
+    if (i < 0 || (size_t)i >= api->cat.paths.size()) continue;
+    const std::string& f = api->cat.paths[(size_t)i];
+    if (::access(f.c_str(), R_OK) != 0) {
+      api->logEvent("cola del agente: se descarta (no existe) " + api->cat.titles[(size_t)i]);
+      continue;
+    }
+    if ((int)f.size() + 1 > cap) continue;
+    std::memcpy(path_out, f.c_str(), f.size() + 1);
+    api->logEvent("cola del agente → " + api->cat.titles[(size_t)i]);
+    return 1;
+  }
+  return 0;
 }
 
 void control_api_stop(ControlApi h) {

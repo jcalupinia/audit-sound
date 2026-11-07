@@ -123,6 +123,13 @@ class SessionManager:
         self._catalog = (now, tracks)
         return tracks
 
+    def _title_to_id(self, title: str) -> int | None:
+        """El motor real informa el título del plato, no su índice: se resuelve con el catálogo."""
+        try:
+            return next((t.id for t in self._tracks() if t.title == title), None)
+        except AppError:
+            return None
+
     def _lease_alive(self, row: dict[str, Any]) -> bool:
         return bool(row["controller_id"]) and (row["controller_expires_at"] or 0) > self.clock()
 
@@ -199,8 +206,9 @@ class SessionManager:
             on_air = _on_air(snap)
             key = (on_air.track_id if on_air.track_id is not None else on_air.title) if on_air else None
             if sid in self._last_on_air and self._last_on_air[sid] != key and on_air is not None:
+                tid = on_air.track_id if on_air.track_id is not None else self._title_to_id(on_air.title)
                 self._publish(sid, "track.changed", {"deck": on_air.deck, "title": on_air.title,
-                                                     "track_id": on_air.track_id}, source="engine")
+                                                     "track_id": tid}, source="engine")
             self._last_on_air[sid] = key
         return row
 
@@ -727,7 +735,8 @@ class SessionManager:
                 if p.get("duration_minutes") and not cons["segments"]:
                     cons["count"] = max(1, round(p["duration_minutes"] / 3))
             r = self._plan_and_queue(row, cons, corr, principal.user_id)
-            return {**r, "message": r.get("message") or _msg(r, "el plan")}
+            return {**r, "message": r.get("message") or _msg(r, "el plan"),
+                    "commands": [r["command"]] if r.get("command") else []}
         if mode == Mode.MANUAL:
             return {"outcome": "informational", "message": "Modo MANUAL: el agente solo observa; ejecuta la acción tú "
                                                            "desde la consola o cambia a HÍBRIDO."}
@@ -810,7 +819,9 @@ class SessionManager:
         on_air = _on_air(snap)
         if plan is not None and plan["status"] == "ACTIVE":
             ids = [i["track_id"] for i in plan["items_json"]]
-            idx = ids.index(on_air.track_id) if on_air and on_air.track_id in ids else -1
+            # El motor real informa el título del plato, no su índice: se resuelve con el catálogo.
+            cur = (on_air.track_id if on_air.track_id is not None else self._title_to_id(on_air.title)) if on_air else None
+            idx = ids.index(cur) if cur in ids else -1
             if len(ids) - (idx + 1) > 1:
                 return
             constraints = {k: v for k, v in plan["constraints_json"].items() if k != "warnings"}
