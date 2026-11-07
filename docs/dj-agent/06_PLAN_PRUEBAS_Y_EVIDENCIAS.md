@@ -133,3 +133,8 @@ Fase 5 24/24, `pytest` 229. **NO VERIFICADO:** dispositivos físicos.
 Qwen `auditia-rutina` por Tailscale, evaluado por el dueño: órdenes 35/38 (92,1 %), 0 fugas, p95 1,4 s; planes 8/8,
 máx. 3,1 s (`evidencias/eval_gateway_real_*.json`). Tras el resultado se agregaron dos reglas («¿cómo se llama este
 tema?» → estado; «propónme … pero no las hagas» → HÍBRIDO). DeepSeek real: pendiente.
+
+## 13. DeepSeek real (actualización 2026-11-07)
+
+`deepseek-flash`: órdenes 38/38, planes 7/8, 0 salidas inválidas, 0 fugas (`evidencias/eval_deepseek_real_*.json`).
+Corregido: los topes de tokens (600 órdenes / 1500 planes) porque el razonamiento del modelo cuenta en `max_tokens`.

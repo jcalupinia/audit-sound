@@ -36,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "services" / "dj-agent"))
 
 from app.adapters.llm import LLMError, OpenAICompatibleProvider  # noqa: E402
+from app.core.settings import Settings  # noqa: E402
 from app.orchestration.intent import parse_intent  # noqa: E402
 from app.orchestration.llm_intent import (  # noqa: E402
     RawIntent,
@@ -93,7 +94,7 @@ def main() -> int:
         elif a.solo_modelo or it.intent == "UNKNOWN":
             fuente = "modelo"
             try:
-                res = prov.complete(build_messages(c["text"], no_think=no_think), timeout=timeout, max_tokens=200)
+                res = prov.complete(build_messages(c["text"], no_think=no_think), timeout=timeout, max_tokens=Settings.from_env().llm_max_tokens_intent)
                 ms, crudo = res.latency_ms, res.content[:300]
                 lat.append(ms)
                 raw = RawIntent.model_validate(json.loads(extract_json(res.content)))

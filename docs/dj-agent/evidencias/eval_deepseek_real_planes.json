@@ -1,0 +1,186 @@
+{
+  "resumen": {
+    "modelo": "deepseek-flash",
+    "casos": 8,
+    "aciertos": 7,
+    "precision": 0.875,
+    "latencia_ms_p50": 2253.7,
+    "latencia_ms_max": 3144.8
+  },
+  "casos": [
+    {
+      "orden": "30 minutos de salsa y luego reguetón subiendo la energía",
+      "esperado": [
+        "salsa",
+        "reggaeton"
+      ],
+      "obtenido": [
+        "salsa",
+        "reggaeton"
+      ],
+      "tendencias": [
+        "steady",
+        "up"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 8,
+      "latencia_ms": 2104.6,
+      "nota": "Salsa para abrir y reguetón para subir la energía; el reguetón va sin duración indicada, así que le doy 20 minutos."
+    },
+    {
+      "orden": "arranca suave con lounge para la cena y termina con techno a tope",
+      "esperado": [
+        "lounge",
+        "techno"
+      ],
+      "obtenido": [
+        "lounge",
+        "deep house",
+        "techno"
+      ],
+      "tendencias": [
+        "steady",
+        "up",
+        "up"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 7,
+      "latencia_ms": 2930.9,
+      "nota": "Arranque suave con lounge para la cena, transición con deep house y cierre con techno a tope."
+    },
+    {
+      "orden": "una hora: primero pop, después cumbia y cerramos con salsa",
+      "esperado": [
+        "pop",
+        "cumbia",
+        "salsa"
+      ],
+      "obtenido": [
+        "pop",
+        "cumbia",
+        "salsa"
+      ],
+      "tendencias": [
+        "steady",
+        "up",
+        "up"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 9,
+      "latencia_ms": 2046.3,
+      "nota": "Una hora en tres bloques de 20 minutos: apertura pop, subida con cumbia y cierre con salsa, en progresión ascendente."
+    },
+    {
+      "orden": "algo tranquilo de deep house que vaya bajando para cerrar la noche",
+      "esperado": [
+        "deep house"
+      ],
+      "obtenido": [
+        "deep house",
+        "lounge"
+      ],
+      "tendencias": [
+        "down",
+        "down"
+      ],
+      "ok": false,
+      "error": null,
+      "pistas": 5,
+      "latencia_ms": 1924.6,
+      "nota": "Deep house pedido está en catálogo; cierro con lounge, el más cercano a un final suave y descendente."
+    },
+    {
+      "orden": "set de 40 minutos de house que vaya subiendo",
+      "esperado": [
+        "house"
+      ],
+      "obtenido": [
+        "deep house",
+        "house",
+        "techno",
+        "house"
+      ],
+      "tendencias": [
+        "up",
+        "up",
+        "up",
+        "up"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 8,
+      "latencia_ms": 3144.8,
+      "nota": "Set de 40 min con house como base, arrancando en deep house y subiendo con techno; el catálogo de house es corto, así que se refuerza con géneros afines."
+    },
+    {
+      "orden": "empieza con reguetón y luego baja a lounge",
+      "esperado": [
+        "reggaeton",
+        "lounge"
+      ],
+      "obtenido": [
+        "reggaeton",
+        "lounge"
+      ],
+      "tendencias": [
+        "down",
+        "steady"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 7,
+      "latencia_ms": 2253.7,
+      "nota": "Arranque con reguetón y descenso progresivo hasta lounge."
+    },
+    {
+      "orden": "quiero bachata 20 minutos y luego salsa",
+      "esperado": [
+        "salsa"
+      ],
+      "obtenido": [
+        "salsa",
+        "salsa"
+      ],
+      "tendencias": [
+        "steady",
+        "steady"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 4,
+      "latencia_ms": 2991.4,
+      "nota": "La bachata no está en el catálogo: la sustituyo por salsa, el género más parecido, y mantengo tus 20 minutos de salsa después."
+    },
+    {
+      "orden": "media hora de electrónica y media hora de latino",
+      "esperado": [
+        "house",
+        "salsa"
+      ],
+      "obtenido": [
+        "deep house",
+        "house",
+        "techno",
+        "reggaeton",
+        "salsa",
+        "cumbia"
+      ],
+      "tendencias": [
+        "up",
+        "steady",
+        "up",
+        "up",
+        "steady",
+        "down"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 16,
+      "latencia_ms": 2146.9,
+      "nota": "Media hora electrónica (deep house, house, techno) y media hora latina (reggaeton, salsa, cumbia), subiendo energía y cerrando suave."
+    }
+  ]
+}
