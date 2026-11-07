@@ -30,7 +30,7 @@ garantizan la continuidad aunque el agente, el LLM o el móvil caigan.
 | ADR | Decisión | Motivo / alternativa descartada |
 |---|---|---|
 | ADR‑001 | Servicio nuevo `services/dj-agent/` en **Python 3.12 + FastAPI + Pydantic v2**, `pytest`, `ruff`, `mypy` | Disponible y probado en el ecosistema (Audi Brain Runner); el repo no tiene backend Python que reutilizar. Descartado: extender la Control API C++ con lógica de IA (riesgo para el hilo de audio). |
-| ADR‑002 | Persistencia con **SQLAlchemy 2 + SQLite** (archivo en volumen) por defecto; Postgres opcional por `DATABASE_URL` | No exige contratar infraestructura (P‑07/§8.10). Postgres solo con aprobación. |
+| ADR‑002 | Persistencia **SQLite con la librería estándar** (`sqlite3`, WAL) detrás de la clase `Store`; Postgres en el futuro sustituyendo `Store` | No exige contratar infraestructura (P‑07/§8.10). *Revisado en F1:* se descartó SQLAlchemy para no añadir dependencias; la interfaz `Store` aísla el cambio. Postgres solo con aprobación. |
 | ADR‑003 | **Sin Redis ni cola externa** en v1: scheduler `asyncio` en proceso + persistencia del plan | Una instancia; menor superficie. Se reevalúa si se escala. |
 | ADR‑004 | **Autoridad única por sesión**: una sesión del agente gobierna el **motor del servidor**; mientras exista, el v0.6 manda sus controles por la API del agente y el motor WASM del navegador queda desactivado para esa sesión | Evita dos fuentes de audio (P‑03). El modo WASM queda para práctica/preparación local. **Requiere tu confirmación.** |
 | ADR‑005 | El agente usa una **cuenta de servicio** de la Control API. Propiedad del control por modo: MANUAL → humano; HÍBRIDO → humano con propuestas; AUTOMÁTICO → agente | Resuelve B4 sin cambiar el modelo de handoff del motor. |
@@ -39,18 +39,20 @@ garantizan la continuidad aunque el agente, el LLM o el móvil caigan.
 | ADR‑008 | `intent_parser` **determinista primero**; el LLM solo cuando la regla no alcanza; salida JSON validada con Pydantic | Coste ~0 y latencia baja para órdenes frecuentes; el LLM no es requisito para operar. |
 | ADR‑009 | El modelo **solo devuelve intenciones/planes con IDs de pistas del catálogo**; toda pista se verifica contra el catálogo antes de proponerse | Cero títulos inventados (§4.3). |
 
-## 3. Módulos (estructura prevista)
+## 3. Módulos (implementados en la Fase 1)
+
+La estructura real está descrita en `services/dj-agent/README.md`. Resumen:
 
 ```
 services/dj-agent/
-  app/main.py
-  app/api/v1/{sessions,commands,plans,agent,health,events}.py
+  app/main.py                     fábrica + lifespan (recuperación, scheduler)
+  app/api/{deps.py, v1/routes.py, v1/ws.py}
   app/core/{settings,security,logging,errors}.py
-  app/domain/{models,commands,events,policies}.py
-  app/orchestration/{session_manager,planner,model_router}.py
-  app/adapters/{engine_api,engine_fake,catalog,llm_local,llm_deepseek,persistence}.py
-  app/workers/{scheduler,recovery}.py
-  tests/{unit,integration,contract,failover,e2e}/
+  app/domain/{models,policies,commands,music}.py
+  app/orchestration/{session_manager,intent,planner,model_router}.py
+  app/adapters/{engine_base,engine_fake,engine_control_api,llm}.py
+  app/persistence/store.py · app/events/bus.py · app/workers/scheduler.py
+  tests/{unit,integration,contract,failover}/ · scripts/export_openapi.py
   pyproject.toml · Dockerfile · .env.example (solo nombres) · README.md
 ```
 
@@ -64,7 +66,8 @@ services/dj-agent/
 | `proposals` | `id`, `session_id`, `kind`, `payload_json`, `requires_approval`, `status`, `decided_by`, `decided_at` |
 | `commands` | `id`, `idempotency_key` (único), `session_id`, `actor_id`, `action`, `params_json`, `expected_version`, `status` (PROPOSED/ACCEPTED/SENT/ACKNOWLEDGED/REJECTED/FAILED), `error_code`, `engine_response` |
 | `events` | `session_id`, `sequence`, `type`, `payload_json`, `correlation_id`, `source` (replay acotado para reconexión) |
-| `preferences` | `scope` (user/org/event), `scope_id`, `key`, `value_json`, `version`, `consent` |
+| `preferences` | *F1:* la política vive en `sessions.policy_json` (por sesión/evento). Preferencias de usuario/organización con consentimiento: deuda para F4 |
+| `idempotency` | `scope`, `key`, `request_hash`, `status_code`, `response_json` (tabla propia, sirve a comandos, modo, cierre y decisiones) |
 | `llm_usage` | `session_id`, `org_id`, `provider`, `model`, `tokens_in/out`, `cost_estimated`, `latency_ms`, `outcome` |
 
 ## 5. Riesgos principales

@@ -1,0 +1,28 @@
+[project]
+name = "audit-sound-dj-agent"
+version = "0.1.0"
+description = "AUDIT SOUND · Agente DJ autónomo, conversacional y supervisado (servicio aislado del motor)"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.115.6",
+  "pydantic==2.10.4",
+  "uvicorn==0.34.0",
+  "httpx==0.28.1",
+  "websockets==14.1",  # necesario para que uvicorn sirva el WebSocket de eventos
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.4", "ruff==0.8.6", "pyyaml==6.0.2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008"]
