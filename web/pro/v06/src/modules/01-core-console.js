@@ -32,17 +32,51 @@ let libHydrated=false;
 // Analiza una pista por el MOTOR (BPM/tonalidad/energía), la persiste en IndexedDB y la
 // registra en el copiloto. Se dispara al importar (gesto del usuario). Si no hay motor
 // (sin aislamiento de origen) conserva el valor por defecto sin romper la demo.
-async function analyzeAndStore(item,file){
+async function analyzeAndStore(item,src){
   try{
+    const isFile=(typeof File!=='undefined'&&src instanceof File);
     if(self.crossOriginIsolated&&window.__ASLive){
-      try{await liveStart();const a=await LIVE.bridge.analyzeAwait(file,item.name);if(a){item.bpm=Math.round(a.bpm||item.bpm)||item.bpm;item.key=(a.key??-1)|0;item.energy=+a.energy||0;item.keyName=camelot(item.key);}}catch(e){}
+      try{await liveStart();const a=await LIVE.bridge.analyzeAwait(src,item.name);if(a){item.bpm=Math.round(a.bpm||item.bpm)||item.bpm;item.key=(a.key??-1)|0;item.energy=+a.energy||0;item.keyName=camelot(item.key);}}catch(e){}
     }
     const lib=LIBX();
-    if(lib){try{const bytes=await file.arrayBuffer();await lib.putTrack({id:item.id,name:item.name,bpm:item.bpm,key:item.key??-1,energy:item.energy||0,size:file.size,type:file.type,bytes});item.persisted=true;}catch(e){}}
+    if(lib){try{const bytes=isFile?await src.arrayBuffer():src;await lib.putTrack({id:item.id,name:item.name,bpm:item.bpm,key:item.key??-1,energy:item.energy||0,size:(bytes&&bytes.byteLength)||0,type:item.type||(isFile?src.type:''),bytes});item.persisted=true;}catch(e){}}
     const co=CO();if(co)co.addTrack({id:item.id,name:item.name,bpm:item.bpm,key:item.key??-1,energy:item.energy||0});
     render();
   }catch(e){}
 }
+// --- P0.3: búsqueda de música de uso libre (openmusic / Internet Archive) ---
+let webResults=[],webMsg='',webBusy=false,webAbort=null;
+async function webSearch(q){
+  q=(q||'').trim();if(q.length<2){toast('Escribe al menos 2 caracteres para buscar.',true);return;}
+  if(!window.__ASLive||!window.__ASLive.searchAll){toast('Búsqueda no disponible: el motor aún no cargó.',true);return;}
+  if(webAbort){try{webAbort.abort();}catch(e){}}
+  const ac=(typeof AbortController!=='undefined')?new AbortController():null;webAbort=ac;
+  webBusy=true;webMsg='Buscando «'+q+'»…';render();
+  try{
+    const out=await window.__ASLive.searchAll(q,{providers:window.__ASLive.searchProviders(),perSource:25,timeoutMs:9000,signal:ac&&ac.signal});
+    webResults=out.results||[];
+    const ok=Object.entries(out.bySource||{}).filter(([k,v])=>v>=0).map(([k])=>k);
+    const fail=(out.errors||[]).map(e=>e.label||e.source);
+    if(!ok.length)webMsg='No hay fuentes de búsqueda habilitadas (se activan con las claves/flags del servidor).'+(fail.length?(' Sin: '+fail.join(', ')+'.'):'');
+    else webMsg=webResults.length+' resultado(s) · fuentes: '+ok.join(', ')+(fail.length?(' · sin: '+fail.join(', ')):'');
+  }catch(e){if(e&&e.name==='AbortError')return;webMsg='Error de búsqueda: '+((e&&e.message)||e);}
+  webBusy=false;render();
+}
+async function loadWebResult(src,rid,deck){
+  const r=webResults.find(x=>String(x.source)===String(src)&&String(x.id)===String(rid));
+  if(!r){toast('Resultado no encontrado.',true);return;}
+  if(!window.__ASLive||!window.__ASLive.searchBytesOf){toast('Motor no disponible.',true);return;}
+  toast('Trayendo «'+(r.title||r.filename)+'»…');
+  let bytes;try{bytes=await window.__ASLive.searchBytesOf(r);}catch(e){toast('No se pudo traer el audio: '+((e&&e.message)||e),true);return;}
+  if(!bytes){toast('Esta fuente es de solo consulta: no permite traer el audio para mezclar.',true);return;}
+  const id='web-'+r.source+'-'+r.id;
+  if(!state.tracks.some(t=>t.id===id))state.tracks.push({id,name:r.filename||((r.artist?r.artist+' - ':'')+(r.title||'pista')),artist:r.artist||r.sourceLabel,kind:'audio',genre:r.sourceLabel,bpm:120,key:-1,energy:0,duration:r.duration||0,src:null,demo:false});
+  const item=trackFor(id);
+  await analyzeAndStore(item,bytes);
+  if(deck)await loadToDeck(id,deck);
+  render();toast('«'+item.name+'» en la biblioteca'+(deck?(' y en Deck '+deck):'')+'.');
+}
+function websearchPanel(){return `<section class="panel"><div class="panel-head"><h2>Buscar música (uso libre)</h2>${tag(webBusy?'BUSCANDO…':'LISTO',webBusy?'demo':'ok')}</div><form data-form="websearch"><div class="formrow">${field('q','Artista o título','','text','required placeholder="Ej.: jazz piano, Kevin MacLeod"')}<button class="primary" type="submit">Buscar</button></div></form><div class="small spaced">${esc(webMsg||'Música de uso libre (Jamendo / Internet Archive). Requiere conexión y fuentes habilitadas en el servidor.')}</div><div class="cardlist">${webResults.map(r=>`<article class="asset"><div class="art">♫</div><h3>${esc(r.title||r.filename||'')}</h3><small>${esc(r.artist||'')} · ${esc(r.sourceLabel||'')}${r.duration?' · '+fmt(r.duration):''}</small>${tag(r.availability||'',r.availability==='mezclar'?'ok':'pending')}<div class="pillbar spaced">${button('A','web-load',{src:r.source,rid:r.id,deck:'A'})}${button('B','web-load',{src:r.source,rid:r.id,deck:'B'})}${button('+ Biblioteca','web-load',{src:r.source,rid:r.id})}</div></article>`).join('')}</div></section>`}
 // Carga la biblioteca persistente (IndexedDB) a la vista y al copiloto, una vez por sesión.
 async function hydrateLibrary(){
   if(libHydrated)return;libHydrated=true;
