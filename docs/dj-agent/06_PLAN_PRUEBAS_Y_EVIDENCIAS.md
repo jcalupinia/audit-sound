@@ -112,3 +112,8 @@ Detalle en `13_FASE3_INFORME.md`. `pytest` 212 pasan, 5 omitidas. Batería de 38
 (`tests/fixtures/casos_es.json`) evaluada contra Qwen real en local (`scripts/eval_intents_llm.py`):
 Qwen3 1.7B 33/38 (86,8 %), 0 salidas inválidas, 0 fugas de inyección, p95 3,2 s. **NO VERIFICADO:** el gateway
 LiteLLM de la firma (sin acceso a `LOCAL_LLM_*` desde este entorno).
+
+## 9. Fase 4 — planificación con IA, cuotas y costes (actualización 2026-11-07)
+
+Detalle en `14_FASE4_INFORME.md`. `pytest` 228 pasan, 5 omitidas. Planes con Qwen3 1.7B real: 7/8 correctos,
+todas las pistas del catálogo (`evidencias/eval_fase4_planes_qwen3_1.7b.json`). **NO VERIFICADO:** DeepSeek real.

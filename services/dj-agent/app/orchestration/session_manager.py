@@ -47,6 +47,7 @@ from app.domain.policies import AgentDecision, SessionPolicy, agent_authority, h
 from app.events.bus import EventBus
 from app.orchestration.intent import Intent, parse_intent
 from app.orchestration.llm_intent import RawIntent, build_messages, looks_like_injection, sanitize
+from app.orchestration.llm_plan import RawPlanSpec, build_plan_messages, catalog_summary, sanitize_plan
 from app.orchestration.model_router import ModelRouter
 from app.orchestration.planner import build_plan
 from app.persistence.store import Store, new_id
@@ -617,7 +618,7 @@ class SessionManager:
                                      energy_trend=constraints.get("energy_trend", "steady"),
                                      history_ids=history, no_repeat=policy.rules.get("noRepeat", True))
         plan = {"id": new_id(), "session_id": sid, "version": self.store.next_plan_version(sid), "status": "PROPOSED",
-                "source": "rules", "constraints": {**constraints, "warnings": warnings},
+                "source": constraints.get("plan_source") or "rules", "constraints": {**constraints, "warnings": warnings},
                 "items": [i.to_dict() for i in items], "created_by": created_by, "created_at": self.clock()}
         self.store.insert_plan(plan)
         self._publish(sid, "plan.created", {"plan_id": plan["id"], "version": plan["version"], "items": len(items),
@@ -689,7 +690,8 @@ class SessionManager:
             elif intent.intent == "UNKNOWN" and policy.model_route != "rules":
                 raw, outcome = self.router.complete_json(
                     "intent", build_messages(body.text, no_think=self.settings.llm_no_think), RawIntent,
-                    org_id=row["org_id"], session_id=sid, route_pref=policy.model_route)
+                    org_id=row["org_id"], session_id=sid, route_pref=policy.model_route,
+                    max_tokens=self.settings.llm_max_tokens_intent)
                 reasons = list(outcome.fallback_reasons)
                 if raw is not None:
                     llm = sanitize(raw)
@@ -697,6 +699,9 @@ class SessionManager:
                         # El modelo propuso algo fuera de lo permitido: se descarta, no se ejecuta.
                         reasons.append(f"{outcome.source}:rejected_by_validation")
                     intent, source = llm, outcome.source
+            if intent.intent == "REQUEST_PLAN" and policy.model_route != "rules" and not looks_like_injection(body.text):
+                intent, plan_reasons = self._plan_with_llm(row, body.text, intent, policy.model_route)
+                reasons += plan_reasons
             self._publish(sid, "agent.intent.parsed", {"intent": intent.intent, "parameters": intent.parameters,
                                                        "confidence": intent.confidence, "source": source},
                           corr=corr, actor=principal.user_id)
@@ -707,6 +712,25 @@ class SessionManager:
                             proposal=result.get("proposal"), commands=result.get("commands", []),
                             plan=result.get("plan"))
             return out.model_dump(mode="json")
+
+    def _plan_with_llm(self, row: dict[str, Any], text: str, it: Intent, route: str) -> tuple[Intent, list[str]]:
+        """Fase 4: el modelo propone la estructura del set; las pistas las elige el planificador determinista."""
+        catalog = self._tracks()
+        summary = catalog_summary(catalog)
+        if not summary["genres"]:
+            return it, ["plan:catalog_without_genres"]
+        raw, outcome = self.router.complete_json(
+            "plan", build_plan_messages(text, summary, it.parameters, no_think=self.settings.llm_no_think),
+            RawPlanSpec, org_id=row["org_id"], session_id=row["id"], route_pref=route,
+            max_tokens=self.settings.llm_max_tokens_plan)
+        reasons = [f"plan:{r}" for r in outcome.fallback_reasons]
+        spec = sanitize_plan(raw, catalog) if raw is not None else None
+        if spec is None:
+            if raw is not None:
+                reasons.append(f"plan:{outcome.source}:rejected_by_validation")
+            return it, reasons
+        params = {**spec, "plan_source": outcome.source}
+        return Intent(intent="REQUEST_PLAN", parameters=params, confidence=it.confidence), reasons
 
     def _act(self, row: dict[str, Any], principal: Principal, it: Intent, corr: str) -> dict[str, Any]:
         name, p, mode = it.intent, it.parameters, Mode(row["mode"])
@@ -741,6 +765,8 @@ class SessionManager:
                     cons["segments"] = [{"genre": p["genre"], "minutes": p["duration_minutes"]}]
             elif name == "REQUEST_PLAN":
                 cons["segments"] = p.get("segments") or None
+                if p.get("plan_source"):
+                    cons["plan_source"], cons["note"] = p["plan_source"], p.get("note", "")
                 if p.get("duration_minutes") and not cons["segments"]:
                     cons["count"] = max(1, round(p["duration_minutes"] / 3))
             r = self._plan_and_queue(row, cons, corr, principal.user_id)
@@ -893,9 +919,18 @@ class SessionManager:
 
     def usage(self, principal: Principal) -> dict[str, Any]:
         self.require(principal, "usage:read")
+        day = self.store.usage_cost(org_id=principal.org_id, since=self.clock() - 86400)
+        calls_h = self.store.usage_calls(org_id=principal.org_id, since=self.clock() - 3600)
         return {"org_id": principal.org_id,
-                "cost_estimated_usd_24h": round(self.store.usage_cost(org_id=principal.org_id,
-                                                                      since=self.clock() - 86400), 6),
+                "cost_estimated_usd_24h": round(day, 6),
+                "budget_remaining_usd_day": round(max(0.0, self.settings.llm_budget_usd_day - day), 6),
+                "calls_last_hour": calls_h,
+                "calls_remaining_hour": max(0, self.settings.llm_max_calls_hour_org - calls_h),
+                "max_calls_hour_session": self.settings.llm_max_calls_hour_session,
+                "by_provider_24h": self.store.usage_by_provider(org_id=principal.org_id,
+                                                                since=self.clock() - 86400),
+                "tariffs_usd_per_mtok": {"deepseek": [self.settings.deepseek_usd_per_mtok_in,
+                                                      self.settings.deepseek_usd_per_mtok_out], "qwen": [0.0, 0.0]},
                 "budget_usd_day": self.settings.llm_budget_usd_day,
                 "budget_usd_session": self.settings.llm_budget_usd_session,
                 "label": "ESTIMACIÓN con tarifas configuradas; no es facturación real",

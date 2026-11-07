@@ -92,11 +92,30 @@ def test_circuit_breaker_abre_tras_fallos_y_deja_de_llamar(store):
 
 def test_presupuesto_agotado_no_llama_al_modelo(store):
     ds = FakeProvider("deepseek", [GOOD, GOOD], cost=0.30)
-    router = ModelRouter(Settings(llm_budget_usd_day=0.25, llm_budget_usd_session=10), store, {"deepseek": ds})
-    out1, _ = router.complete_json("plan", MSG, Intent, org_id="o")
-    out2, meta = router.complete_json("plan", MSG, Intent, org_id="o")
+    # Fase 4: el presupuesto cuenta el coste estimado de la llamada ANTES de hacerla.
+    router = ModelRouter(Settings(llm_budget_usd_day=0.50, llm_budget_usd_session=10), store, {"deepseek": ds})
+    out1, _ = router.complete_json("plan", MSG, Intent, org_id="o")          # 0 + 0,30 ≤ 0,50
+    out2, meta = router.complete_json("plan", MSG, Intent, org_id="o")       # 0,30 + 0,30 > 0,50
     assert out1 is not None and out2 is None and "deepseek:budget_exceeded" in meta.fallback_reasons
     assert ds.calls == 1
+
+
+def test_una_llamada_que_superaria_el_presupuesto_no_se_hace(store):
+    ds = FakeProvider("deepseek", [GOOD], cost=0.30)
+    router = ModelRouter(Settings(llm_budget_usd_day=0.25, llm_budget_usd_session=10), store, {"deepseek": ds})
+    out, meta = router.complete_json("plan", MSG, Intent, org_id="o")
+    assert out is None and ds.calls == 0 and meta.fallback_reasons == ["deepseek:budget_exceeded"]
+
+
+def test_cuota_de_llamadas_por_hora_por_sesion_y_por_organizacion(store):
+    clk = Clk()
+    q = FakeProvider("qwen", [GOOD] * 10)
+    router = ModelRouter(Settings(llm_max_calls_hour_session=2, llm_max_calls_hour_org=3), store, {"qwen": q}, clock=clk)
+    r = [router.complete_json("intent", MSG, Intent, org_id="o", session_id="s1")[1] for _ in range(3)]
+    assert [x.source for x in r] == ["qwen", "qwen", "rules"] and "qwen:rate_limited_quota" in r[2].fallback_reasons
+    assert router.complete_json("intent", MSG, Intent, org_id="o", session_id="s2")[1].source == "qwen"   # 3.ª de la org
+    assert router.complete_json("intent", MSG, Intent, org_id="o", session_id="s3")[1].source == "rules"  # cuota org
+    assert q.calls == 3
 
 
 def test_ruta_rules_no_consulta_modelos(store):
@@ -127,3 +146,18 @@ def test_proveedor_openai_compatible_forma_de_peticion_y_errores():
             bad.complete(MSG, timeout=1, max_tokens=10)
         assert exc.value.code == code
     assert not OpenAICompatibleProvider("q", "", "", "").configured()
+
+
+def test_los_planes_tienen_su_propio_tiempo_limite(store):
+    seen = []
+
+    class P(FakeProvider):
+        def complete(self, messages, *, timeout, max_tokens):
+            seen.append(timeout)
+            return super().complete(messages, timeout=timeout, max_tokens=max_tokens)
+
+    router = ModelRouter(Settings(llm_timeout_seconds=8, llm_timeout_plan_seconds=20), store,
+                         {"qwen": P("qwen", [GOOD, GOOD])})
+    router.complete_json("intent", MSG, Intent, org_id="o")
+    router.complete_json("plan", MSG, Intent, org_id="o")
+    assert seen == [8, 20]

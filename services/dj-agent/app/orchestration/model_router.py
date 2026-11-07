@@ -77,7 +77,8 @@ class ModelRouter:
                 # Precio = ESTIMACIÓN rotulada; confirmar en la cuenta DeepSeek (no verificado).
                 "deepseek": OpenAICompatibleProvider("deepseek", settings.deepseek_base_url if settings.deepseek_api_key else "",
                                                      settings.deepseek_api_key, settings.deepseek_model,
-                                                     usd_per_mtok_in=0.27, usd_per_mtok_out=1.10),
+                                                     usd_per_mtok_in=settings.deepseek_usd_per_mtok_in,
+                                                     usd_per_mtok_out=settings.deepseek_usd_per_mtok_out),
             }
         self.providers = providers
         self.breakers = {n: CircuitBreaker(settings.llm_breaker_failures, settings.llm_breaker_cooldown_seconds, clock=clock)
@@ -99,11 +100,21 @@ class ModelRouter:
             return [route_pref]
         return [n for n in TASK_ORDER.get(task, []) if n in self.providers]
 
-    def _within_budget(self, org_id: str, session_id: str | None) -> bool:
+    def _within_budget(self, org_id: str, session_id: str | None, next_cost: float = 0.0) -> bool:
+        """Presupuesto en USD (día/org y sesión) contando el coste ESTIMADO de la llamada que se va a hacer."""
         day_ago = self.clock() - 86400
-        if self.store.usage_cost(org_id=org_id, since=day_ago) >= self.settings.llm_budget_usd_day:
+        if self.store.usage_cost(org_id=org_id, since=day_ago) + next_cost > self.settings.llm_budget_usd_day:
             return False
-        if session_id and self.store.usage_cost(session_id=session_id) >= self.settings.llm_budget_usd_session:
+        if session_id and self.store.usage_cost(session_id=session_id) + next_cost > self.settings.llm_budget_usd_session:
+            return False
+        return True
+
+    def _within_rate(self, org_id: str, session_id: str | None) -> bool:
+        hour_ago = self.clock() - 3600
+        if self.store.usage_calls(org_id=org_id, since=hour_ago) >= self.settings.llm_max_calls_hour_org:
+            return False
+        if session_id and self.store.usage_calls(session_id=session_id, since=hour_ago) >= \
+                self.settings.llm_max_calls_hour_session:
             return False
         return True
 
@@ -119,16 +130,22 @@ class ModelRouter:
             if not self.breakers[name].allow():
                 reasons.append(f"{name}:circuit_open")
                 continue
-            if not self._within_budget(org_id, session_id):
+            if not self._within_rate(org_id, session_id):
+                reasons.append(f"{name}:rate_limited_quota")
+                continue
+            # Estimación previa: ~4 caracteres por token de entrada + el máximo de salida.
+            worst = provider.estimate_cost(sum(len(m["content"]) for m in messages) // 4 + 1, max_tokens)
+            if not self._within_budget(org_id, session_id, worst):
                 reasons.append(f"{name}:budget_exceeded")
                 continue
             try:
-                res = provider.complete(messages, timeout=self.settings.llm_timeout_seconds, max_tokens=max_tokens)
+                timeout = self.settings.llm_timeout_plan_seconds if task == "plan" else self.settings.llm_timeout_seconds
+                res = provider.complete(messages, timeout=timeout, max_tokens=max_tokens)
             except LLMError as exc:
                 self.breakers[name].failure()
                 self.last[name] = {"outcome": exc.code}
                 self.store.insert_usage({"session_id": session_id, "org_id": org_id, "provider": name,
-                                         "model": provider.model, "outcome": exc.code})
+                                         "model": provider.model, "outcome": exc.code, "ts": self.clock()})
                 reasons.append(f"{name}:{exc.code}")
                 continue
             cost = provider.estimate_cost(res.tokens_in, res.tokens_out)
@@ -139,7 +156,8 @@ class ModelRouter:
                 parsed, outcome = None, "invalid_output"
             self.store.insert_usage({"session_id": session_id, "org_id": org_id, "provider": name,
                                      "model": res.model, "tokens_in": res.tokens_in, "tokens_out": res.tokens_out,
-                                     "cost_estimated": cost, "latency_ms": res.latency_ms, "outcome": outcome})
+                                     "cost_estimated": cost, "latency_ms": res.latency_ms, "outcome": outcome,
+                                     "ts": self.clock()})
             self.last[name] = {"outcome": outcome, "latency_ms": round(res.latency_ms, 1)}
             if parsed is None:
                 self.breakers[name].failure()
