@@ -1,8 +1,8 @@
 # 14 · Fase 4 — Informe de entrega (DeepSeek + planificador asistido + cuotas y costes)
 
 > **Estado:** en revisión. Rama `claude/dj-agent-fase4`. Sin despliegue ni cambios en producción.
-> **DeepSeek real: NO VERIFICADO.** El dueño rechazó el formulario de la clave en esta sesión; DeepSeek se probó
-> con transporte simulado. La planificación con un modelo real se probó con Qwen3 1.7B local (el respaldo previsto).
+> **DeepSeek real: VERIFICADO (2026-11-07)** con `deepseek-flash` (clave inyectada por el proxy del entorno de
+> pruebas, nunca en el código): órdenes 38/38, planes 7/8, 0 salidas inválidas (ver §2c).
 
 ## 1. Alcance entregado
 
@@ -20,7 +20,8 @@
 | `/usage`: restante del día, llamadas en la hora, totales por proveedor | **REAL** | `test_consumo_informa_restante_y_por_proveedor` |
 | DeepSeek sin saldo (HTTP 402) → error del proveedor, circuit breaker y respaldo | **REAL** (simulado) | `test_deepseek_sin_saldo_402_…` |
 | Tiempo límite propio para planes (20 s; órdenes 8 s) | **REAL** | `test_los_planes_tienen_su_propio_tiempo_limite` |
-| Llamada real a la API de DeepSeek, ID de modelo vigente y tarifas reales | **NO VERIFICADO** | sin clave de desarrollo |
+| Llamada real a la API de DeepSeek e ID de modelo vigente (`deepseek-flash`, `deepseek-v4-pro`) | **REAL** | `evidencias/eval_deepseek_real_*.json` |
+| Tarifas reales de la cuenta DeepSeek | **NO VERIFICADO** | las de `/usage` siguen siendo estimación configurada |
 
 ## 2. Resultados con un modelo real (Qwen3 1.7B local, CPU de 4 núcleos)
 
@@ -41,6 +42,21 @@ techno» → plan de Qwen (DeepSeek no configurado) lounge ×3 → techno ×2 ej
 `scripts/eval_planes_llm.py` corrido por el dueño desde su tailnet: **8/8 planes correctos**, todas las pistas del
 catálogo, p50 2,5 s, máx. 3,1 s (`evidencias/eval_gateway_real_planes.json`). Mejor que Qwen3 1.7B local (7/8,
 p50 10,2 s). DeepSeek real sigue **NO VERIFICADO** (falta el secreto de red en el entorno de pruebas).
+
+## 2c. DeepSeek real (`deepseek-flash`)
+
+| Batería | Resultado |
+|---|---|
+| Órdenes (camino completo) | **38/38 (100 %)**, 0 inválidas, 0 fugas, p50 1,3 s / p95 1,5 s |
+| Órdenes (solo el modelo, sin reglas ni filtro) | 33/38 (86,8 %), 0 fugas |
+| Planes multietapa | **7/8**, 0 inválidas, p50 2,3 s, máx. 3,1 s (dos corridas iguales) |
+
+**Hallazgo corregido:** `deepseek-flash` razona antes de responder y esos tokens cuentan dentro de `max_tokens`.
+Con el tope de 500 tokens para planes, 2 de 8 respuestas llegaban cortadas (JSON inválido). Topes nuevos:
+órdenes 600 y planes 1500 (`DJ_AGENT_LLM_MAX_TOKENS_INTENT/PLAN`); los evaluadores usan los mismos valores.
+El evaluador de planes compara ahora la secuencia de familias de géneros (subdividir «electrónica» en
+deep house → house → techno es correcto). El fallo restante («deep house bajando para cerrar» → deep house y
+luego lounge) es una elección musical razonable que el evaluador cuenta como error.
 
 ## 3. Pruebas ejecutadas
 

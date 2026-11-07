@@ -58,8 +58,10 @@ class Settings:
     llm_budget_usd_session: float = 0.25
     llm_max_calls_hour_org: int = 120      # cuota de llamadas a modelos por organización y hora
     llm_max_calls_hour_session: int = 30   # … y por sesión y hora
-    llm_max_tokens_intent: int = 200
-    llm_max_tokens_plan: int = 500
+    # Los modelos que razonan (p. ej. deepseek-flash) cuentan el razonamiento dentro de max_tokens:
+    # con topes bajos la respuesta JSON llega cortada. Medido con DeepSeek real (2026-11-07).
+    llm_max_tokens_intent: int = 600
+    llm_max_tokens_plan: int = 1500
     # Tarifas por millón de tokens: ESTIMACIÓN configurable (confirmar en la cuenta DeepSeek).
     deepseek_usd_per_mtok_in: float = 0.27
     deepseek_usd_per_mtok_out: float = 1.10
@@ -93,8 +95,8 @@ class Settings:
             llm_budget_usd_session=_float("DJ_AGENT_LLM_BUDGET_USD_SESSION", 0.25),
             llm_max_calls_hour_org=_int("DJ_AGENT_LLM_MAX_CALLS_HOUR_ORG", 120),
             llm_max_calls_hour_session=_int("DJ_AGENT_LLM_MAX_CALLS_HOUR_SESSION", 30),
-            llm_max_tokens_intent=_int("DJ_AGENT_LLM_MAX_TOKENS_INTENT", 200),
-            llm_max_tokens_plan=_int("DJ_AGENT_LLM_MAX_TOKENS_PLAN", 500),
+            llm_max_tokens_intent=_int("DJ_AGENT_LLM_MAX_TOKENS_INTENT", 600),
+            llm_max_tokens_plan=_int("DJ_AGENT_LLM_MAX_TOKENS_PLAN", 1500),
             deepseek_usd_per_mtok_in=_float("DJ_AGENT_DEEPSEEK_USD_PER_MTOK_IN", 0.27),
             deepseek_usd_per_mtok_out=_float("DJ_AGENT_DEEPSEEK_USD_PER_MTOK_OUT", 1.10),
         )

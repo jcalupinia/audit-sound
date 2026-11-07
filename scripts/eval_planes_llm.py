@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "services" / "dj-agent"))
 
 from app.adapters.engine_fake import demo_catalog  # noqa: E402
 from app.adapters.llm import LLMError, OpenAICompatibleProvider  # noqa: E402
+from app.core.settings import Settings  # noqa: E402
 from app.orchestration.intent import parse_intent  # noqa: E402
 from app.orchestration.llm_intent import extract_json  # noqa: E402
 from app.orchestration.llm_plan import (  # noqa: E402
@@ -61,7 +62,7 @@ def main() -> int:
         hint = parse_intent(text).parameters
         spec, err, ms = None, None, None
         try:
-            res = prov.complete(build_plan_messages(text, summary, hint), timeout=timeout, max_tokens=500)
+            res = prov.complete(build_plan_messages(text, summary, hint), timeout=timeout, max_tokens=Settings.from_env().llm_max_tokens_plan)
             ms = res.latency_ms
             lat.append(ms)
             spec = sanitize_plan(RawPlanSpec.model_validate(json.loads(extract_json(res.content))), cat)
@@ -74,8 +75,16 @@ def main() -> int:
         # Las familias equivalentes cuentan (electrónica = house/deep house/techno; latino = salsa/cumbia/reggaeton).
         fam = {"house": "elec", "deep house": "elec", "techno": "elec", "salsa": "lat", "cumbia": "lat",
                "reggaeton": "lat", "lounge": "lounge", "pop": "pop"}
-        genres_ok = [fam.get(g, g) for g in got[:len(exp_genres)]] == [fam.get(g, g) for g in exp_genres] or \
-            (exp_genres == ["salsa"] and "salsa" in got)
+        # Se compara la SECUENCIA DE FAMILIAS, uniendo bloques seguidos de la misma familia: subdividir
+        # «electrónica» en deep house → house → techno es un plan correcto, no un error.
+        def fams(gs):
+            out = []
+            for g in gs:
+                f = fam.get(g, g)
+                if not out or out[-1] != f:
+                    out.append(f)
+            return out
+        genres_ok = fams(got) == fams(exp_genres) or (exp_genres == ["salsa"] and "salsa" in got)
         trends = [s["energy_trend"] for s in spec["segments"]] if spec else []
         trend_ok = exp_trend is None or exp_trend in trends or (spec and spec["energy_trend"] == exp_trend)
         items, _ = build_plan(cat, segments=spec["segments"] if spec else None) if spec else ([], [])
