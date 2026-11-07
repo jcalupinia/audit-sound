@@ -67,11 +67,26 @@ function startServer(env) {
   ok(cfg.includes('window.AUDIT_SOUND_AGENT=true') && !cfg.includes(AGENT_URL), 'config.js anuncia el agente sin revelar su URL');
 
   // WebSocket a través del proxy
+  // Cliente WebSocket mínimo con http (Node 20 no trae WebSocket global): saludo + primer frame.
   const got = await new Promise((resolve) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/api/v1/dj-agent/sessions/s1/events`);
     const t = setTimeout(() => resolve(null), 3000);
-    ws.onmessage = (e) => { clearTimeout(t); resolve(JSON.parse(e.data)); ws.close(); };
-    ws.onerror = () => { clearTimeout(t); resolve(null); };
+    const req = http.request({ host: '127.0.0.1', port, path: '/api/v1/dj-agent/sessions/s1/events', headers: {
+      connection: 'Upgrade', upgrade: 'websocket', 'sec-websocket-version': '13',
+      'sec-websocket-key': crypto.randomBytes(16).toString('base64') } });
+    req.on('upgrade', (res, sock, head) => {
+      let buf = head || Buffer.alloc(0);
+      const tryParse = () => {
+        if (buf.length < 2) return;
+        const len = buf[1] & 0x7f;
+        if (buf.length < 2 + len) return;
+        clearTimeout(t); sock.destroy();
+        resolve(res.statusCode === 101 ? JSON.parse(buf.subarray(2, 2 + len).toString()) : null);
+      };
+      sock.on('data', (d) => { buf = Buffer.concat([buf, d]); tryParse(); });
+      tryParse();
+    });
+    req.on('error', () => { clearTimeout(t); resolve(null); });
+    req.end();
   });
   ok(got && got.type === 'session.snapshot' && got.path === '/api/v1/dj-agent/sessions/s1/events', 'WebSocket tunelizado al agente');
   p.kill();
