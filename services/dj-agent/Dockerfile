@@ -1,5 +1,5 @@
-# AUDIT SOUND · Agente DJ (Fase 1) — imagen de DESARROLLO/PRUEBAS.
-# NO desplegar en producción sin autorización expresa. Sin secretos en la imagen:
+# AUDIT SOUND · Agente DJ. Despliegue autorizado por el dueño (2026-11-07): ver deploy/DESPLEGAR_AGENTE_DJ.md.
+# Sin secretos en la imagen:
 # todo se configura por variables de entorno en tiempo de ejecución (ver .env.example).
 FROM python:3.12-slim
 
