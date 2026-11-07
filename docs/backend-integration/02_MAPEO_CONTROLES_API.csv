@@ -1,0 +1,39 @@
+contrato_v06,metodo_propuesto_v06,ruta_propuesta_v06,servicio_real_existente,estado,prioridad,nota
+transport.play,POST,/api/v1/decks/{deck}/play,AudioBridge.play(deck,on) [web/pro/audio_bridge.js:71],EXISTE Y PROBADO,P0,Ruta navegador. Adaptar name->metodo directo. No hay REST /api/v1.
+transport.pause,POST,/api/v1/decks/{deck}/pause,AudioBridge.play(deck,false),EXISTE Y PROBADO,P0,Pausa = play(on=false).
+transport.cue,POST,/api/v1/decks/{deck}/cue,AudioBridge.cue(deck)/jumpCue(deck),EXISTE Y PROBADO,P0,
+transport.sync,POST,/api/v1/decks/{deck}/sync,console (calcula rate para igualar BPM) + AudioBridge.rate,REQUIERE ADAPTADOR,P0,Sync se computa en consola a partir de BPM; no es un metodo unico del bridge.
+transport.hotcue,PUT,/api/v1/decks/{deck}/hotcues/{slot},AudioBridge.hotcueSet/Jump/Clear [audio_bridge.js:83-85],EXISTE Y PROBADO,P0,
+transport.loop,PUT,/api/v1/decks/{deck}/loop,AudioBridge.loop(deck,on,bars) [audio_bridge.js:86],EXISTE Y PROBADO,P0,
+transport.beatjump,POST,/api/v1/decks/{deck}/beatjump,AudioBridge.beatjump(deck,beats) [audio_bridge.js:87],EXISTE Y PROBADO,P0,
+transport.pitch,PUT,/api/v1/decks/{deck}/pitch,AudioBridge.rate(deck,v) [audio_bridge.js:79],EXISTE Y PROBADO,P0,Tempo/pitch.
+transport.keylock,PUT,/api/v1/decks/{deck}/keylock,AudioBridge.keylock(deck,on) [audio_bridge.js:80],EXISTE Y PROBADO,P0,
+mixer.control,PUT,/api/v1/mixer/channels/{channel},AudioBridge.eq(low,mid,high)+gain+fader+filter,EXISTE Y PROBADO,P0,EQ/gain/fader/filter por deck.
+mixer.crossfade,PUT,/api/v1/mixer/crossfader,AudioBridge.xfader(x) [audio_bridge.js:82],EXISTE Y PROBADO,P0,
+mixer.master,PUT,/api/v1/mixer/master,AudioBridge.master(v) [audio_bridge.js:81],EXISTE Y PROBADO,P0,
+fx.control,PUT,/api/v1/fx/banks/{id},AudioBridge.fxEcho/fxReverb/fxFilter (Web Audio basico),EXISTE INCOMPLETO,P1,Hay echo/reverb/filtro. Bancos/presets/targets completos y DSP profesional: pendiente.
+fx.preset,POST,/api/v1/fx/presets,—,NO EXISTE,P1,Presets FX no implementados en motor.
+agent.command,POST,/api/v1/dj-agent/commands,console_copilot.js + copilot.js (Camelot/BPM, local),EXISTE INCOMPLETO,P1,Copiloto local real; NO es Qwen/DeepSeek.
+agent.plan,POST,/api/v1/dj-agent/plan,console_setai.js (generador de sets) + console_autodj.js,EXISTE INCOMPLETO,P1,Planificacion local; sin LLM remoto.
+agent.mode,PUT,/api/v1/dj-agent/mode,console (manual/hibrido/auto) + AudioBridge.autoEnable,REQUIERE ADAPTADOR,P1,Modo existe en consola; mapear a autoEnable/autoTransition.
+agent.policy,PUT,/api/v1/dj-agent/policy,—,NO EXISTE,P1,Politicas/limites/presupuesto de IA: pendiente.
+agent.approval,POST,/api/v1/dj-agent/actions/{id}/approve,—,NO EXISTE,P1,Flujo de aprobacion de acciones del agente: pendiente.
+catalog.import,POST,/api/v1/catalog/import,library.js (IndexedDB) + search.js/openmusic/archive/subsonic,EXISTE INCOMPLETO,P2,Import local + busqueda libre OK; Subsonic/Navidrome real persistente: pendiente.
+catalog.queue,PUT,/api/v1/catalog/queue,console cola + library.js,EXISTE INCOMPLETO,P2,Cola en cliente; persistencia servidor pendiente.
+stream.configure,PUT,/api/v1/stream/config,Control API nativa + icecast_byte_sink.hpp,REQUIERE ADAPTADOR,P1,Solo ruta servidor (Icecast). Esquema real = /api/command, no /api/v1/stream.
+stream.status,GET,/api/v1/stream/status,Control API nativa GET /api/status [control_api.cpp:402],REQUIERE ADAPTADOR,P1,Mapear a /api/status del binario.
+system.health,GET,/api/v1/health,Control API /api/status; server.js navegador sin /health,REQUIERE ADAPTADOR,P1,v0.6 ya sondea /health (probe-health).
+auth.login,POST,/api/v1/auth/login,Control API POST /api/login + commandcenter.js/login.html,REQUIERE ADAPTADOR,P0,Esquema distinto (cuerpo POST). Reusar portal existente.
+video.transport,POST,/api/v1/video/decks/{deck}/transport,—,NO EXISTE,P1,No hay motor de video/VJ en el repo.
+video.crossfade,PUT,/api/v1/video/crossfader,—,NO EXISTE,P1,
+video.program,POST,/api/v1/video/program/take,—,NO EXISTE,P1,
+video.transition,PUT,/api/v1/video/transition,—,NO EXISTE,P1,
+video.output,PUT,/api/v1/video/outputs,—,NO EXISTE,P1,Ruteo de pantallas/salida externa: pendiente.
+mic.channel,PUT,/api/v1/audio/mics/{id},—,NO EXISTE,P1,Captura de mic/aux al master no implementada en el motor.
+mic.talkover,PUT,/api/v1/audio/talkover,—,NO EXISTE,P1,
+event.cue,POST,/api/v1/events/cues,—,NO EXISTE,P2,Cues temporizados/escenas: pendiente.
+iam.users,POST,/api/v1/iam/users,commandcenter.js + seed_app_accounts.py (parcial),EXISTE INCOMPLETO,P3,Sin RBAC multi-empresa server-side real.
+iam.roles,POST,/api/v1/iam/roles,—,NO EXISTE,P3,
+saas.licenses,POST,/api/v1/billing/licenses,—,NO EXISTE,P3,
+saas.plans,POST,/api/v1/billing/plans,—,NO EXISTE,P3,
+saas.invoices,POST,/api/v1/billing/invoices,—,NO EXISTE,P3,Facturacion/pagos: fuera de alcance sin proveedor aprobado.

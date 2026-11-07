@@ -1,0 +1,15 @@
+{
+  "name":"audit-sound-frontend-pro",
+  "private":true,
+  "version":"0.6.0",
+  "description":"AUDIT SOUND · Interfaz DJ y audiovisual, sin dependencias npm y con contratos propuestos",
+  "scripts":{
+    "build":"python3 scripts/build.py",
+    "contracts":"python3 scripts/contracts.py",
+    "check:syntax":"node --check src/app.js",
+    "check:types":"tsc --project contracts/tsconfig.json --pretty false",
+    "test":"python3 tests/test_browser.py && python3 tests/test_media.py && python3 tests/test_quality.py",
+    "check":"npm run check:syntax && npm run check:types && npm run test"
+  },
+  "license":"UNLICENSED"
+}

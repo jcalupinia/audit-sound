@@ -1,0 +1,965 @@
+openapi: 3.0.3
+info:
+  title: AUDIT SOUND — Contratos PROPUESTOS (NO API REAL)
+  version: 0.6.0
+  description: Endpoints de referencia que requieren conciliación con el backend real.
+servers:
+  - url: https://your-audit-sound-backend.example
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/audio/mics/{id}:
+    put:
+      tags: [mic]
+      summary: "Propuesto — mic.channel"
+      operationId: mic_channel
+      x-audit-sound-commands: ["mic.channel"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/audio/talkover:
+    put:
+      tags: [mic]
+      summary: "Propuesto — mic.talkover"
+      operationId: mic_talkover
+      x-audit-sound-commands: ["mic.talkover"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: "Propuesto — auth.login"
+      operationId: auth_login
+      x-audit-sound-commands: ["auth.login"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/billing/invoices:
+    post:
+      tags: [saas]
+      summary: "Propuesto — saas.invoices"
+      operationId: saas_invoices
+      x-audit-sound-commands: ["saas.invoices"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/billing/licenses:
+    post:
+      tags: [saas]
+      summary: "Propuesto — saas.licenses"
+      operationId: saas_licenses
+      x-audit-sound-commands: ["saas.licenses"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/billing/plans:
+    post:
+      tags: [saas]
+      summary: "Propuesto — saas.plans"
+      operationId: saas_plans
+      x-audit-sound-commands: ["saas.plans"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/catalog/import:
+    post:
+      tags: [catalog]
+      summary: "Propuesto — catalog.import"
+      operationId: catalog_import
+      x-audit-sound-commands: ["catalog.import"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/catalog/queue:
+    put:
+      tags: [catalog]
+      summary: "Propuesto — catalog.queue"
+      operationId: catalog_queue
+      x-audit-sound-commands: ["catalog.queue"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/beatjump:
+    post:
+      tags: [transport]
+      summary: "Propuesto — transport.beatjump"
+      operationId: transport_beatjump
+      x-audit-sound-commands: ["transport.beatjump"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/cue:
+    post:
+      tags: [transport]
+      summary: "Propuesto — transport.cue"
+      operationId: transport_cue
+      x-audit-sound-commands: ["transport.cue"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/hotcues/{slot}:
+    put:
+      tags: [transport]
+      summary: "Propuesto — transport.hotcue"
+      operationId: transport_hotcue
+      x-audit-sound-commands: ["transport.hotcue"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: slot
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/keylock:
+    put:
+      tags: [transport]
+      summary: "Propuesto — transport.keylock"
+      operationId: transport_keylock
+      x-audit-sound-commands: ["transport.keylock"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/loop:
+    put:
+      tags: [transport]
+      summary: "Propuesto — transport.loop"
+      operationId: transport_loop
+      x-audit-sound-commands: ["transport.loop"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/pause:
+    post:
+      tags: [transport]
+      summary: "Propuesto — transport.pause"
+      operationId: transport_pause
+      x-audit-sound-commands: ["transport.pause"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/pitch:
+    put:
+      tags: [transport]
+      summary: "Propuesto — transport.pitch"
+      operationId: transport_pitch
+      x-audit-sound-commands: ["transport.pitch"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/play:
+    post:
+      tags: [transport]
+      summary: "Propuesto — transport.play"
+      operationId: transport_play
+      x-audit-sound-commands: ["transport.play"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/decks/{deck}/sync:
+    post:
+      tags: [transport]
+      summary: "Propuesto — transport.sync"
+      operationId: transport_sync
+      x-audit-sound-commands: ["transport.sync"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/dj-agent/actions/{id}/approve:
+    post:
+      tags: [agent]
+      summary: "Propuesto — agent.approval"
+      operationId: agent_approval
+      x-audit-sound-commands: ["agent.approval"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/dj-agent/commands:
+    post:
+      tags: [agent]
+      summary: "Propuesto — agent.command"
+      operationId: agent_command
+      x-audit-sound-commands: ["agent.command"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/dj-agent/mode:
+    put:
+      tags: [agent]
+      summary: "Propuesto — agent.mode"
+      operationId: agent_mode
+      x-audit-sound-commands: ["agent.mode"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/dj-agent/plan:
+    post:
+      tags: [agent]
+      summary: "Propuesto — agent.plan"
+      operationId: agent_plan
+      x-audit-sound-commands: ["agent.plan"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/dj-agent/policy:
+    put:
+      tags: [agent]
+      summary: "Propuesto — agent.policy"
+      operationId: agent_policy
+      x-audit-sound-commands: ["agent.policy"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/events/cues:
+    post:
+      tags: [event]
+      summary: "Propuesto — event.cue"
+      operationId: event_cue
+      x-audit-sound-commands: ["event.cue"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/fx/banks/{id}:
+    put:
+      tags: [fx]
+      summary: "Propuesto — fx.control"
+      operationId: fx_control
+      x-audit-sound-commands: ["fx.control"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/fx/presets:
+    post:
+      tags: [fx]
+      summary: "Propuesto — fx.preset"
+      operationId: fx_preset
+      x-audit-sound-commands: ["fx.preset"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/health:
+    get:
+      tags: [system]
+      summary: "Propuesto — system.health"
+      operationId: system_health
+      x-audit-sound-commands: ["system.health"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/iam/roles:
+    post:
+      tags: [iam]
+      summary: "Propuesto — iam.roles"
+      operationId: iam_roles
+      x-audit-sound-commands: ["iam.roles"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/iam/users:
+    post:
+      tags: [iam]
+      summary: "Propuesto — iam.users"
+      operationId: iam_users
+      x-audit-sound-commands: ["iam.users"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/mixer/channels/{channel}:
+    put:
+      tags: [mixer]
+      summary: "Propuesto — mixer.control"
+      operationId: mixer_control
+      x-audit-sound-commands: ["mixer.control"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: channel
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/mixer/crossfader:
+    put:
+      tags: [mixer]
+      summary: "Propuesto — mixer.crossfade"
+      operationId: mixer_crossfade
+      x-audit-sound-commands: ["mixer.crossfade"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/mixer/master:
+    put:
+      tags: [mixer]
+      summary: "Propuesto — mixer.master"
+      operationId: mixer_master
+      x-audit-sound-commands: ["mixer.master"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/stream/config:
+    put:
+      tags: [stream]
+      summary: "Propuesto — stream.configure"
+      operationId: stream_configure
+      x-audit-sound-commands: ["stream.configure"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/stream/status:
+    get:
+      tags: [stream]
+      summary: "Propuesto — stream.status"
+      operationId: stream_status
+      x-audit-sound-commands: ["stream.status"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/video/crossfader:
+    put:
+      tags: [video]
+      summary: "Propuesto — video.crossfade"
+      operationId: video_crossfade
+      x-audit-sound-commands: ["video.crossfade"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/video/decks/{deck}/transport:
+    post:
+      tags: [video]
+      summary: "Propuesto — video.transport"
+      operationId: video_transport
+      x-audit-sound-commands: ["video.transport"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      parameters:
+        - in: path
+          name: deck
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/video/outputs:
+    put:
+      tags: [video]
+      summary: "Propuesto — video.output"
+      operationId: video_output
+      x-audit-sound-commands: ["video.output"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/video/program/take:
+    post:
+      tags: [video]
+      summary: "Propuesto — video.program"
+      operationId: video_program
+      x-audit-sound-commands: ["video.program"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+  /api/v1/video/transition:
+    put:
+      tags: [video]
+      summary: "Propuesto — video.transition"
+      operationId: video_transition
+      x-audit-sound-commands: ["video.transition"]
+      x-implementation-status: PROPOSED_NOT_VERIFIED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Respuesta normalizada (por implementar)
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permisos
+        "500":
+          description: Error del motor
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

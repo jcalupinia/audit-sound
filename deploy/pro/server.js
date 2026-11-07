@@ -229,7 +229,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(301, { Location: dest }); return res.end();
   }
 
-  const rel = pathname.replace(/^\/+/, '') || 'index.html';
+  let rel = pathname.replace(/^\/+/, '') || 'index.html';
+  if (rel.endsWith('/')) rel += 'index.html';  // /v06/ -> /v06/index.html (índice de carpeta)
   const file = path.normalize(path.join(ROOT, rel));
   if (!file.startsWith(ROOT)) return send(res, 403, 'forbidden');  // evita traversal
   fs.readFile(file, (err, buf) => {

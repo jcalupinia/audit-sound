@@ -1,0 +1,230 @@
+{
+  "transport.play": {
+    "method": "POST",
+    "path": "/api/v1/decks/{deck}/play",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "transport.pause": {
+    "method": "POST",
+    "path": "/api/v1/decks/{deck}/pause",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "transport.cue": {
+    "method": "POST",
+    "path": "/api/v1/decks/{deck}/cue",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "transport.sync": {
+    "method": "POST",
+    "path": "/api/v1/decks/{deck}/sync",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "transport.hotcue": {
+    "method": "PUT",
+    "path": "/api/v1/decks/{deck}/hotcues/{slot}",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "transport.loop": {
+    "method": "PUT",
+    "path": "/api/v1/decks/{deck}/loop",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "transport.beatjump": {
+    "method": "POST",
+    "path": "/api/v1/decks/{deck}/beatjump",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "transport.pitch": {
+    "method": "PUT",
+    "path": "/api/v1/decks/{deck}/pitch",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "transport.keylock": {
+    "method": "PUT",
+    "path": "/api/v1/decks/{deck}/keylock",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "mixer.control": {
+    "method": "PUT",
+    "path": "/api/v1/mixer/channels/{channel}",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "mixer.crossfade": {
+    "method": "PUT",
+    "path": "/api/v1/mixer/crossfader",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "mixer.master": {
+    "method": "PUT",
+    "path": "/api/v1/mixer/master",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "video.transport": {
+    "method": "POST",
+    "path": "/api/v1/video/decks/{deck}/transport",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "video.crossfade": {
+    "method": "PUT",
+    "path": "/api/v1/video/crossfader",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "video.program": {
+    "method": "POST",
+    "path": "/api/v1/video/program/take",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "video.transition": {
+    "method": "PUT",
+    "path": "/api/v1/video/transition",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "video.output": {
+    "method": "PUT",
+    "path": "/api/v1/video/outputs",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "mic.channel": {
+    "method": "PUT",
+    "path": "/api/v1/audio/mics/{id}",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "mic.talkover": {
+    "method": "PUT",
+    "path": "/api/v1/audio/talkover",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "fx.control": {
+    "method": "PUT",
+    "path": "/api/v1/fx/banks/{id}",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "fx.preset": {
+    "method": "POST",
+    "path": "/api/v1/fx/presets",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "agent.plan": {
+    "method": "POST",
+    "path": "/api/v1/dj-agent/plan",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "agent.command": {
+    "method": "POST",
+    "path": "/api/v1/dj-agent/commands",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "agent.mode": {
+    "method": "PUT",
+    "path": "/api/v1/dj-agent/mode",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "agent.policy": {
+    "method": "PUT",
+    "path": "/api/v1/dj-agent/policy",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "agent.approval": {
+    "method": "POST",
+    "path": "/api/v1/dj-agent/actions/{id}/approve",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "catalog.import": {
+    "method": "POST",
+    "path": "/api/v1/catalog/import",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "catalog.queue": {
+    "method": "PUT",
+    "path": "/api/v1/catalog/queue",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "stream.configure": {
+    "method": "PUT",
+    "path": "/api/v1/stream/config",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "stream.status": {
+    "method": "GET",
+    "path": "/api/v1/stream/status",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "event.cue": {
+    "method": "POST",
+    "path": "/api/v1/events/cues",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "auth.login": {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "iam.users": {
+    "method": "POST",
+    "path": "/api/v1/iam/users",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "iam.roles": {
+    "method": "POST",
+    "path": "/api/v1/iam/roles",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "saas.licenses": {
+    "method": "POST",
+    "path": "/api/v1/billing/licenses",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "saas.plans": {
+    "method": "POST",
+    "path": "/api/v1/billing/plans",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "saas.invoices": {
+    "method": "POST",
+    "path": "/api/v1/billing/invoices",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  },
+  "system.health": {
+    "method": "GET",
+    "path": "/api/v1/health",
+    "status": "PROPUESTO — adaptar a API existente",
+    "mock": true
+  }
+}

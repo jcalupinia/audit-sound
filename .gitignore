@@ -34,3 +34,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Generado en runtime por deploy/pro/server.js (no versionar)
+web/pro/config.js
+config.js
