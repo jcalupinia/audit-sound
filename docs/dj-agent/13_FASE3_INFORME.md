@@ -1,8 +1,8 @@
 # 13 · Fase 3 — Informe de entrega (Qwen vía LiteLLM + router + batería en español)
 
 > **Estado:** en revisión. Rama `claude/dj-agent-fase3`. Sin despliegue ni cambios en producción.
-> **Gateway Qwen de la firma: NO VERIFICADO.** Este entorno no tiene acceso a `LOCAL_LLM_*`; se probó
-> con modelos Qwen reales servidos localmente en el contenedor (llama.cpp, mismo protocolo OpenAI).
+> **Gateway Qwen de la firma: VERIFICADO (2026-11-07)** desde un equipo de la tailnet: 35/38 (92,1 %), 0 fugas,
+> 0 salidas inválidas, p95 1,4 s (ver §2b). Antes se había probado con Qwen pequeños en el contenedor.
 
 ## 1. Alcance entregado
 
@@ -17,7 +17,7 @@
 | `/no_think` para Qwen3 (latencia), configurable con `DJ_AGENT_LLM_NO_THINK` | **REAL** | corrida con Qwen3 1.7B |
 | Batería de 38 órdenes en español (16 reglas, 17 modelo, 5 inyección) | **REAL** | `tests/fixtures/casos_es.json`, `test_casos_es.py` |
 | Evaluador contra un endpoint real | **REAL** | `scripts/eval_intents_llm.py` |
-| Gateway LiteLLM de la firma con su Qwen | **NO VERIFICADO** | falta `LOCAL_LLM_BASE_URL`/`LOCAL_LLM_MODEL` y autorización |
+| Gateway LiteLLM de la firma con su Qwen (`auditia-rutina`) | **REAL** | `evidencias/eval_gateway_real_ordenes.json` |
 | DeepSeek | **NO CONECTADO** (Fase 4) | — |
 
 Corregido en las reglas por la batería: los minutos de un plan se asignaban al género equivocado
@@ -42,6 +42,14 @@ Lectura:
   «propónme pero no las hagas» → híbrido, «el ambiente está muerto» → baja la energía. Se espera que el Qwen del
   gateway (más grande) mejore; **hay que medirlo con el evaluador**, no suponerlo.
 - La latencia de ~3 s en CPU cabe en el tiempo límite (8 s); el gateway real puede ser más rápido o más lento.
+
+## 2b. Gateway real de la firma (`auditia-rutina`, red privada Tailscale)
+
+El dueño corrió `scripts/eval_intents_llm.py` desde un equipo de su tailnet (el gateway no es alcanzable desde
+internet). Resultado: **35/38 (92,1 %)** — reglas 16/16, modelo 14/17, inyecciones 5/5 —, 0 salidas inválidas,
+0 rechazadas, 0 fugas, latencia p50 1,2 s / p95 1,4 s. **Cumple el criterio** (≥ 85 %, 0 fugas, p95 < 8 s).
+Fallos: «cruza los temas más rápido» → 4 s fijos (lectura razonable), «¿cómo se llama este tema?» y «propónme
+las acciones pero no las hagas» → UNKNOWN. Los dos últimos se resolvieron con reglas (no gastan llamada al modelo).
 
 ## 3. Pruebas ejecutadas
 

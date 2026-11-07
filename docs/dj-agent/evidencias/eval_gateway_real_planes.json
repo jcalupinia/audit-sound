@@ -1,0 +1,166 @@
+{
+  "resumen": {
+    "modelo": "auditia-rutina",
+    "casos": 8,
+    "aciertos": 8,
+    "precision": 1.0,
+    "latencia_ms_p50": 2513.4,
+    "latencia_ms_max": 3074.0
+  },
+  "casos": [
+    {
+      "orden": "30 minutos de salsa y luego reguetón subiendo la energía",
+      "esperado": [
+        "salsa",
+        "reggaeton"
+      ],
+      "obtenido": [
+        "salsa",
+        "reggaeton"
+      ],
+      "tendencias": [
+        "steady",
+        "up"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 8,
+      "latencia_ms": 2564.8,
+      "nota": "Aumento de energía desde salsa a reggaeton"
+    },
+    {
+      "orden": "arranca suave con lounge para la cena y termina con techno a tope",
+      "esperado": [
+        "lounge",
+        "techno"
+      ],
+      "obtenido": [
+        "lounge",
+        "techno"
+      ],
+      "tendencias": [
+        "steady",
+        "up"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 5,
+      "latencia_ms": 2513.4,
+      "nota": "Se ajustó el tiempo de cada segmento a 20 minutos"
+    },
+    {
+      "orden": "una hora: primero pop, después cumbia y cerramos con salsa",
+      "esperado": [
+        "pop",
+        "cumbia",
+        "salsa"
+      ],
+      "obtenido": [
+        "pop",
+        "cumbia",
+        "salsa"
+      ],
+      "tendencias": [
+        "steady",
+        "steady",
+        "steady"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 9,
+      "latencia_ms": 3074.0,
+      "nota": "Duración total de 60 minutos con tres segmentos de 20 minutos cada uno."
+    },
+    {
+      "orden": "algo tranquilo de deep house que vaya bajando para cerrar la noche",
+      "esperado": [
+        "deep house"
+      ],
+      "obtenido": [
+        "deep house"
+      ],
+      "tendencias": [
+        "down"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 2,
+      "latencia_ms": 1827.4,
+      "nota": "Cierre suave y progresivo con deep house"
+    },
+    {
+      "orden": "set de 40 minutos de house que vaya subiendo",
+      "esperado": [
+        "house"
+      ],
+      "obtenido": [
+        "house"
+      ],
+      "tendencias": [
+        "up"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 4,
+      "latencia_ms": 1869.5,
+      "nota": "Set de house con energía creciente durante 40 minutos."
+    },
+    {
+      "orden": "empieza con reguetón y luego baja a lounge",
+      "esperado": [
+        "reggaeton",
+        "lounge"
+      ],
+      "obtenido": [
+        "reggaeton",
+        "lounge"
+      ],
+      "tendencias": [
+        "down",
+        "steady"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 7,
+      "latencia_ms": 2416.0,
+      "nota": "Se ajustó la duración de cada segmento a 20 minutos."
+    },
+    {
+      "orden": "quiero bachata 20 minutos y luego salsa",
+      "esperado": [
+        "salsa"
+      ],
+      "obtenido": [
+        "salsa"
+      ],
+      "tendencias": [
+        "steady"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 4,
+      "latencia_ms": 2014.7,
+      "nota": "Se usó salsa en lugar de bachata, ya que no está en el catálogo"
+    },
+    {
+      "orden": "media hora de electrónica y media hora de latino",
+      "esperado": [
+        "house",
+        "salsa"
+      ],
+      "obtenido": [
+        "house",
+        "reggaeton"
+      ],
+      "tendencias": [
+        "steady",
+        "up"
+      ],
+      "ok": true,
+      "error": null,
+      "pistas": 8,
+      "latencia_ms": 2535.7,
+      "nota": "Electrónica con energía constante y luego ritmos latinos ascendentes"
+    }
+  ]
+}
