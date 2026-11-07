@@ -1,0 +1,292 @@
+ruta,control_id,elemento,tipo,nombre,accion,etiqueta,integracion,estado
+inicio,as-control-43,button,button,,navigate,Entrar a la consola profesional,navegación local real,interfaz operativa / backend no conectado
+inicio,as-control-44,button,button,,navigate,Abrir reproductor,navegación local real,interfaz operativa / backend no conectado
+inicio,as-control-45,button,button,,navigate,Abrir,navegación local real,interfaz operativa / backend no conectado
+inicio,as-control-46,button,button,,navigate,Abrir,navegación local real,interfaz operativa / backend no conectado
+inicio,as-control-47,button,button,,navigate,Abrir,navegación local real,interfaz operativa / backend no conectado
+consola,as-control-43,button,button,,content,♫ Música,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-44,button,button,,content,▷ Video,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-45,button,button,,content,▣ Presentaciones,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-46,button,button,,navigate,Sencilla,navegación local real,interfaz operativa / backend no conectado
+consola,as-control-47,button,button,,navigate,Profesional,navegación local real,interfaz operativa / backend no conectado
+consola,as-control-48,button,button,,set-mode,🎚 DJ Manual,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+consola,as-control-49,button,button,,set-mode,✧ DJ Híbrido IA,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+consola,as-control-50,button,button,,set-mode,▷ DJ Automático 24/7,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+consola,as-control-51,button,button,,navigate,Abrir mezcladora de video,navegación local real,interfaz operativa / backend no conectado
+consola,as-control-52,button,button,,video-take,Enviar a programa,comando propuesto: video.program,interfaz operativa / backend no conectado
+consola,as-control-53,button,button,,deck-play,▶ PLAY,comando propuesto: transport.play / transport.pause,interfaz operativa / backend no conectado
+consola,as-control-54,button,button,,deck-cue,CUE,comando propuesto: transport.cue,interfaz operativa / backend no conectado
+consola,as-control-55,button,button,,deck-sync,SYNC,comando propuesto: transport.sync,interfaz operativa / backend no conectado
+consola,as-control-56,button,button,,deck-keylock,🔓 KEY,comando propuesto: transport.keylock,interfaz operativa / backend no conectado
+consola,as-control-57,input,range,rate,deck-rate,rate,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-58,button,button,,deck-beatjump,◀ 4,comando propuesto: transport.beatjump,interfaz operativa / backend no conectado
+consola,as-control-59,button,button,,deck-beatjump,4 ▶,comando propuesto: transport.beatjump,interfaz operativa / backend no conectado
+consola,as-control-60,select,select-one,loop,deck-loop,Loop OFF4 beats8 beats16 beats,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-61,button,button,,deck-hotcue,HOT 1,comando propuesto: transport.hotcue,interfaz operativa / backend no conectado
+consola,as-control-62,button,button,,deck-hotcue,HOT 2,comando propuesto: transport.hotcue,interfaz operativa / backend no conectado
+consola,as-control-63,button,button,,deck-hotcue,HOT 3,comando propuesto: transport.hotcue,interfaz operativa / backend no conectado
+consola,as-control-64,button,button,,deck-hotcue,HOT 4,comando propuesto: transport.hotcue,interfaz operativa / backend no conectado
+consola,as-control-65,input,file,,audio-A,,importación local real + catalog.import / video.transport,interfaz operativa / backend no conectado
+consola,as-control-66,input,range,gain,eq,gain,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-67,input,range,hi,eq,hi,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-68,input,range,mid,eq,mid,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-69,input,range,low,eq,low,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-70,input,range,fader,eq,fader,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-71,button,button,,deck-monitor,🎧 CUE,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-72,input,range,gain,eq,gain,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-73,input,range,hi,eq,hi,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-74,input,range,mid,eq,mid,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-75,input,range,low,eq,low,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-76,input,range,fader,eq,fader,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-77,button,button,,deck-monitor,🎧 CUE,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+consola,as-control-78,input,range,cross,audio-cross,cross,comando propuesto: mixer.crossfade,interfaz operativa / backend no conectado
+consola,as-control-79,input,range,master,master,master,comando propuesto: mixer.master,interfaz operativa / backend no conectado
+consola,as-control-80,button,button,,deck-play,▶ PLAY,comando propuesto: transport.play / transport.pause,interfaz operativa / backend no conectado
+consola,as-control-81,button,button,,deck-cue,CUE,comando propuesto: transport.cue,interfaz operativa / backend no conectado
+consola,as-control-82,button,button,,deck-sync,SYNC,comando propuesto: transport.sync,interfaz operativa / backend no conectado
+consola,as-control-83,button,button,,deck-keylock,🔓 KEY,comando propuesto: transport.keylock,interfaz operativa / backend no conectado
+consola,as-control-84,input,range,rate,deck-rate,rate,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-85,button,button,,deck-beatjump,◀ 4,comando propuesto: transport.beatjump,interfaz operativa / backend no conectado
+consola,as-control-86,button,button,,deck-beatjump,4 ▶,comando propuesto: transport.beatjump,interfaz operativa / backend no conectado
+consola,as-control-87,select,select-one,loop,deck-loop,Loop OFF4 beats8 beats16 beats,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-88,button,button,,deck-hotcue,HOT 1,comando propuesto: transport.hotcue,interfaz operativa / backend no conectado
+consola,as-control-89,button,button,,deck-hotcue,HOT 2,comando propuesto: transport.hotcue,interfaz operativa / backend no conectado
+consola,as-control-90,button,button,,deck-hotcue,HOT 3,comando propuesto: transport.hotcue,interfaz operativa / backend no conectado
+consola,as-control-91,button,button,,deck-hotcue,HOT 4,comando propuesto: transport.hotcue,interfaz operativa / backend no conectado
+consola,as-control-92,input,file,,audio-B,,importación local real + catalog.import / video.transport,interfaz operativa / backend no conectado
+consola,as-control-93,button,button,,mic-mute,MUTE,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+consola,as-control-94,input,range,gain,mic-gain,gain,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+consola,as-control-95,button,button,,mic-mute,MUTE,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+consola,as-control-96,input,range,gain,mic-gain,gain,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+consola,as-control-97,button,button,,mic-mute,MUTE,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+consola,as-control-98,input,range,gain,mic-gain,gain,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+consola,as-control-99,button,button,,mic-mute,MUTE,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+consola,as-control-100,input,range,gain,mic-gain,gain,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+consola,as-control-101,button,button,,talkover,Talkover OFF,comando propuesto: mic.talkover,interfaz operativa / backend no conectado
+consola,as-control-102,button,button,,navigate,Más controles,navegación local real,interfaz operativa / backend no conectado
+consola,as-control-103,button,button,,fx-toggle,APAGADO,comando propuesto: fx.control,interfaz operativa / backend no conectado
+consola,as-control-104,input,range,wet,fx-wet,wet,comando propuesto: fx.control,interfaz operativa / backend no conectado
+consola,as-control-105,button,button,,fx-toggle,APAGADO,comando propuesto: fx.control,interfaz operativa / backend no conectado
+consola,as-control-106,input,range,wet,fx-wet,wet,comando propuesto: fx.control,interfaz operativa / backend no conectado
+consola,as-control-107,button,button,,navigate,Editor de efectos,navegación local real,interfaz operativa / backend no conectado
+consola,as-control-108,input,file,,library,,importación local real + catalog.import / video.transport,interfaz operativa / backend no conectado
+consola,as-control-109,button,button,,navigate,Abrir biblioteca,navegación local real,interfaz operativa / backend no conectado
+consola,as-control-110,textarea,textarea,message,form:agent,message,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+consola,as-control-111,button,button,,agent-voice,🎙 Dictar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-112,button,submit,,form:agent,Enviar orden,validación formulario + evento mock,interfaz operativa / backend no conectado
+consola,as-control-113,button,button,,agent-suggestion,Sesión 4 horas,comando propuesto: agent.command,interfaz operativa / backend no conectado
+consola,as-control-114,button,button,,agent-suggestion,Subir energía,comando propuesto: agent.command,interfaz operativa / backend no conectado
+consola,as-control-115,button,button,,agent-suggestion,Evitar repetidas,comando propuesto: agent.command,interfaz operativa / backend no conectado
+consola,as-control-116,input,checkbox,,rule,,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-117,input,checkbox,,rule,,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-118,input,checkbox,,rule,,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+consola,as-control-119,button,button,,navigate,Administrar agente,navegación local real,interfaz operativa / backend no conectado
+sencilla,as-control-43,button,button,,navigate,Vista profesional,navegación local real,interfaz operativa / backend no conectado
+sencilla,as-control-44,button,button,,set-mode,🎚 DJ Manual,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+sencilla,as-control-45,button,button,,set-mode,✧ DJ Híbrido IA,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+sencilla,as-control-46,button,button,,set-mode,▷ DJ Automático 24/7,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+sencilla,as-control-47,button,button,,deck-play,▶ PLAY,comando propuesto: transport.play / transport.pause,interfaz operativa / backend no conectado
+sencilla,as-control-48,button,button,,deck-cue,CUE,comando propuesto: transport.cue,interfaz operativa / backend no conectado
+sencilla,as-control-49,input,range,volume,eq,volume,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+sencilla,as-control-50,input,file,,audio-A,,importación local real + catalog.import / video.transport,interfaz operativa / backend no conectado
+sencilla,as-control-51,button,button,,deck-play,▶ PLAY,comando propuesto: transport.play / transport.pause,interfaz operativa / backend no conectado
+sencilla,as-control-52,button,button,,deck-cue,CUE,comando propuesto: transport.cue,interfaz operativa / backend no conectado
+sencilla,as-control-53,input,range,volume,eq,volume,comando propuesto: mixer.control,interfaz operativa / backend no conectado
+sencilla,as-control-54,input,file,,audio-B,,importación local real + catalog.import / video.transport,interfaz operativa / backend no conectado
+sencilla,as-control-55,input,range,cross,audio-cross,cross,comando propuesto: mixer.crossfade,interfaz operativa / backend no conectado
+sencilla,as-control-56,input,range,master,master,master,comando propuesto: mixer.master,interfaz operativa / backend no conectado
+video,as-control-43,button,button,,video-play,▶ Reproducir,comando propuesto: video.transport,interfaz operativa / backend no conectado
+video,as-control-44,button,button,,video-cue,CUE,comando propuesto: video.transport,interfaz operativa / backend no conectado
+video,as-control-45,button,button,,video-loop,LOOP,comando propuesto: video.transport,interfaz operativa / backend no conectado
+video,as-control-46,input,file,,video-A,,importación local real + catalog.import / video.transport,interfaz operativa / backend no conectado
+video,as-control-47,input,range,seek,video-seek,seek,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+video,as-control-48,button,button,,video-play,▶ Reproducir,comando propuesto: video.transport,interfaz operativa / backend no conectado
+video,as-control-49,button,button,,video-cue,CUE,comando propuesto: video.transport,interfaz operativa / backend no conectado
+video,as-control-50,button,button,,video-loop,LOOP,comando propuesto: video.transport,interfaz operativa / backend no conectado
+video,as-control-51,input,file,,video-B,,importación local real + catalog.import / video.transport,interfaz operativa / backend no conectado
+video,as-control-52,input,range,seek,video-seek,seek,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+video,as-control-53,input,range,video-cross,video-cross,video-cross,comando propuesto: video.crossfade,interfaz operativa / backend no conectado
+video,as-control-54,select,select-one,video-transition,video-transition,DesvanecerCorteBarrido (backend pendiente),comando propuesto: video.transition,interfaz operativa / backend no conectado
+video,as-control-55,select,select-one,video-output,video-output,Monitor localPantalla 2 (requiere motor)Streaming (requiere servidor),comando propuesto: video.output,interfaz operativa / backend no conectado
+video,as-control-56,button,button,,video-take,▶ Enviar a programa,comando propuesto: video.program,interfaz operativa / backend no conectado
+video,as-control-57,button,button,,video-stop,■ Detener programa local,comando propuesto: video.program,interfaz operativa / backend no conectado
+video,as-control-58,button,button,,video-fullscreen,⛶ Pantalla completa,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+video,as-control-59,button,button,,video-sync,Sincronizar reproductores,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+video,as-control-60,select,select-one,visual-fx,visual-fx,NingunoBrilloDesenfoqueGlitch (backend),local/demo; contrato pendiente,interfaz operativa / backend no conectado
+video,as-control-61,input,text,presentation-caption,caption,presentation-caption,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+video,as-control-62,button,button,,navigate,Abrir eventos / presentaciones,navegación local real,interfaz operativa / backend no conectado
+en-vivo,as-control-43,button,button,,stream-play,▶ Reproducir,comando propuesto: stream.status,interfaz operativa / backend no conectado
+en-vivo,as-control-44,button,button,,stream-stop,■ Detener,comando propuesto: stream.status,interfaz operativa / backend no conectado
+en-vivo,as-control-45,button,button,,stream-copy,Copiar enlace,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+en-vivo,as-control-46,input,url,streamUrl,form:stream,streamUrl,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+en-vivo,as-control-47,button,submit,,form:stream,Guardar fuente de audio,validación formulario + evento mock,interfaz operativa / backend no conectado
+biblioteca,as-control-43,input,file,,library,,importación local real + catalog.import / video.transport,interfaz operativa / backend no conectado
+biblioteca,as-control-44,input,text,library-query,form/display,library-query,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-45,select,select-one,library-kind,library-kind,allaudiovideoimage,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-46,button,button,,load-deck,A,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-47,button,button,,load-deck,B,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-48,button,button,,queue-add,Cola +,comando propuesto: catalog.queue,interfaz operativa / backend no conectado
+biblioteca,as-control-49,button,button,,favorite,♡,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-50,button,button,,track-delete,Quitar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-51,button,button,,load-deck,A,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-52,button,button,,load-deck,B,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-53,button,button,,queue-add,Cola +,comando propuesto: catalog.queue,interfaz operativa / backend no conectado
+biblioteca,as-control-54,button,button,,favorite,♡,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-55,button,button,,track-delete,Quitar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-56,button,button,,load-deck,A,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-57,button,button,,load-deck,B,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-58,button,button,,queue-add,Cola +,comando propuesto: catalog.queue,interfaz operativa / backend no conectado
+biblioteca,as-control-59,button,button,,favorite,♡,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+biblioteca,as-control-60,button,button,,track-delete,Quitar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+playlists,as-control-43,button,button,,playlist-new,+ Crear,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+playlists,as-control-44,button,button,,playlist-select,Abrir,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+playlists,as-control-45,button,button,,playlist-rename,Renombrar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+playlists,as-control-46,button,button,,playlist-delete,×,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+playlists,as-control-47,select,select-one,playlist-track,form/display,Aurora NocturnaPulse DistrictLuz del Estero,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+playlists,as-control-48,button,button,,playlist-add-selected,Agregar seleccionada,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+playlists,as-control-49,button,button,,playlist-to-queue,Cargar playlist a cola,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+playlists,as-control-50,button,button,,queue-clear,Vaciar cola,comando propuesto: catalog.queue,interfaz operativa / backend no conectado
+automatizacion,as-control-43,button,button,,set-mode,🎚 DJ Manual,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+automatizacion,as-control-44,button,button,,set-mode,✧ DJ Híbrido IA,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+automatizacion,as-control-45,button,button,,set-mode,▷ DJ Automático 24/7,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+automatizacion,as-control-46,input,time,start,form:segment,start,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+automatizacion,as-control-47,input,time,end,form:segment,end,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+automatizacion,as-control-48,input,text,genre,form:segment,genre,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+automatizacion,as-control-49,input,number,energy,form:segment,energy,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+automatizacion,as-control-50,button,submit,,form:segment,+ Añadir bloque,validación formulario + evento mock,interfaz operativa / backend no conectado
+automatizacion,as-control-51,button,button,,segment-delete,Eliminar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+automatizacion,as-control-52,input,checkbox,,rule,,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+automatizacion,as-control-53,input,checkbox,,rule,,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+automatizacion,as-control-54,input,checkbox,,rule,,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+automatizacion,as-control-55,input,checkbox,,rule,,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+automatizacion,as-control-56,input,range,autonomy,autonomy,autonomy,comando propuesto: agent.policy,interfaz operativa / backend no conectado
+automatizacion,as-control-57,button,button,,export-plan,Exportar plan JSON,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+agente,as-control-43,button,button,,set-mode,🎚 DJ Manual,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+agente,as-control-44,button,button,,set-mode,✧ DJ Híbrido IA,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+agente,as-control-45,button,button,,set-mode,▷ DJ Automático 24/7,comando propuesto: agent.mode,interfaz operativa / backend no conectado
+agente,as-control-46,textarea,textarea,message,form:agent,message,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+agente,as-control-47,button,submit,,form:agent,Enviar instrucción,validación formulario + evento mock,interfaz operativa / backend no conectado
+agente,as-control-48,button,button,,agent-voice,🎙 Dictar por voz,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+agente,as-control-49,button,button,,agent-clear,Borrar conversación,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+agente,as-control-50,select,select-one,agent-model,agent-model,AutomáticaQwen localDeepSeek externo,comando propuesto: agent.policy,interfaz operativa / backend no conectado
+agente,as-control-51,select,select-one,agent-approval,agent-approval,RequeridaBajo política,comando propuesto: agent.policy,interfaz operativa / backend no conectado
+agente,as-control-52,input,range,autonomy,autonomy,autonomy,comando propuesto: agent.policy,interfaz operativa / backend no conectado
+agente,as-control-53,button,button,,agent-test-approval,Crear acción de aprobación de prueba,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+microfonos,as-control-43,input,range,gain,mic-gain,gain,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-44,input,range,hi,mic-hi,hi,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-45,input,range,low,mic-low,low,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-46,button,button,,mic-enable,Habilitar,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-47,button,button,,mic-mute,MUTE ACTIVO,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-48,input,range,gain,mic-gain,gain,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-49,input,range,hi,mic-hi,hi,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-50,input,range,low,mic-low,low,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-51,button,button,,mic-enable,Habilitar,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-52,button,button,,mic-mute,MUTE ACTIVO,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-53,input,range,gain,mic-gain,gain,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-54,input,range,hi,mic-hi,hi,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-55,input,range,low,mic-low,low,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-56,button,button,,mic-enable,Habilitar,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-57,button,button,,mic-mute,MUTE ACTIVO,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-58,input,range,gain,mic-gain,gain,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-59,input,range,hi,mic-hi,hi,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-60,input,range,low,mic-low,low,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-61,button,button,,mic-enable,Habilitar,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-62,button,button,,mic-mute,MUTE ACTIVO,comando propuesto: mic.channel,interfaz operativa / backend no conectado
+microfonos,as-control-63,button,button,,mic-permission,Solicitar permiso de micrófono,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+microfonos,as-control-64,button,button,,devices-list,Enumerar dispositivos,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+microfonos,as-control-65,button,button,,talkover,Talkover OFF,comando propuesto: mic.talkover,interfaz operativa / backend no conectado
+efectos,as-control-43,button,button,,fx-toggle,DESACTIVADO,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-44,select,select-one,type,fx-type,EchoFilterFlangerReverbDelayBitcrusherPhaserCustom,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-45,select,select-one,channel,fx-channel,ABMasterMIC1MIC2MIC3MIC4Video,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-46,input,range,wet,fx-wet,wet,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-47,input,range,parameter,fx-param,parameter,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-48,input,checkbox,,fx-sync,,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-49,button,button,,fx-save-preset,Guardar preset,comando propuesto: fx.preset,interfaz operativa / backend no conectado
+efectos,as-control-50,button,button,,fx-toggle,DESACTIVADO,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-51,select,select-one,type,fx-type,EchoFilterFlangerReverbDelayBitcrusherPhaserCustom,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-52,select,select-one,channel,fx-channel,ABMasterMIC1MIC2MIC3MIC4Video,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-53,input,range,wet,fx-wet,wet,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-54,input,range,parameter,fx-param,parameter,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-55,input,checkbox,,fx-sync,,comando propuesto: fx.control,interfaz operativa / backend no conectado
+efectos,as-control-56,button,button,,fx-save-preset,Guardar preset,comando propuesto: fx.preset,interfaz operativa / backend no conectado
+efectos,as-control-57,input,text,name,form:fx-generator,name,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+efectos,as-control-58,select,select-one,type,form:fx-generator,FilterEchoReverbDelayCustom,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+efectos,as-control-59,button,submit,,form:fx-generator,Generar plantilla de código,validación formulario + evento mock,interfaz operativa / backend no conectado
+eventos,as-control-43,input,text,name,form:event,name,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+eventos,as-control-44,input,date,date,form:event,date,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+eventos,as-control-45,input,text,venue,form:event,venue,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+eventos,as-control-46,input,time,start,form:event,start,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+eventos,as-control-47,button,submit,,form:event,+ Crear evento,validación formulario + evento mock,interfaz operativa / backend no conectado
+eventos,as-control-48,input,time,time,form:cue,time,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+eventos,as-control-49,input,text,name,form:cue,name,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+eventos,as-control-50,select,select-one,kind,form:cue,VideoImagenPresentaciónAudioMicrófono,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+eventos,as-control-51,button,submit,,form:cue,+ Agregar cue,validación formulario + evento mock,interfaz operativa / backend no conectado
+eventos,as-control-52,button,button,,navigate,Mezcladora de video,navegación local real,interfaz operativa / backend no conectado
+eventos,as-control-53,button,button,,navigate,Biblioteca multimedia,navegación local real,interfaz operativa / backend no conectado
+eventos,as-control-54,button,button,,navigate,Configurar pantallas,navegación local real,interfaz operativa / backend no conectado
+analitica,as-control-43,button,button,,export-events,Exportar CSV,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+diagnostico,as-control-43,button,button,,export-events-json,Exportar eventos JSON,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+diagnostico,as-control-44,button,button,,log-clear,Limpiar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+diagnostico,as-control-45,button,button,,navigate,Configurar endpoint,navegación local real,interfaz operativa / backend no conectado
+diagnostico,as-control-46,button,button,,selftest,Ejecutar diagnóstico de UI,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+configuracion,as-control-43,input,url,apiUrl,form:config,apiUrl,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+configuracion,as-control-44,select,select-one,language,form:config,EspañolEnglish (futuro),entrada validada al enviar formulario,interfaz operativa / backend no conectado
+configuracion,as-control-45,select,select-one,audioDevice,form:config,Predeterminada,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+configuracion,as-control-46,input,checkbox,telemetry,form:config,telemetry,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+configuracion,as-control-47,button,submit,,form:config,Guardar configuración,validación formulario + evento mock,interfaz operativa / backend no conectado
+configuracion,as-control-48,button,button,,probe-health,Probar /health,comando propuesto: system.health,interfaz operativa / backend no conectado
+configuracion,as-control-49,button,button,,export-config,Exportar JSON,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+configuracion,as-control-50,button,button,,navigate,Ver contratos API,navegación local real,interfaz operativa / backend no conectado
+usuarios,as-control-43,input,text,organization,form:organization,organization,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+usuarios,as-control-44,button,submit,,form:organization,Guardar organización,validación formulario + evento mock,interfaz operativa / backend no conectado
+usuarios,as-control-45,input,text,name,form:user,name,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+usuarios,as-control-46,input,email,email,form:user,email,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+usuarios,as-control-47,select,select-one,role,form:user,AdministradorDJOperadorOyente,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+usuarios,as-control-48,button,submit,,form:user,+ Crear usuario demo,validación formulario + evento mock,interfaz operativa / backend no conectado
+usuarios,as-control-49,input,text,user-search,form/display,user-search,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+usuarios,as-control-50,button,button,,user-toggle,Desactivar,comando propuesto: iam.users,interfaz operativa / backend no conectado
+usuarios,as-control-51,button,button,,user-delete,×,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+roles,as-control-43,input,checkbox,,permission,Control de mezcladora · Administrador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-44,input,checkbox,,permission,Control de mezcladora · DJ,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-45,input,checkbox,,permission,Control de mezcladora · Operador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-46,input,checkbox,,permission,Control de mezcladora · Oyente,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-47,input,checkbox,,permission,Biblioteca y playlists · Administrador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-48,input,checkbox,,permission,Biblioteca y playlists · DJ,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-49,input,checkbox,,permission,Biblioteca y playlists · Operador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-50,input,checkbox,,permission,Biblioteca y playlists · Oyente,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-51,input,checkbox,,permission,Agente DJ · Administrador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-52,input,checkbox,,permission,Agente DJ · DJ,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-53,input,checkbox,,permission,Agente DJ · Operador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-54,input,checkbox,,permission,Agente DJ · Oyente,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-55,input,checkbox,,permission,Configuración · Administrador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-56,input,checkbox,,permission,Configuración · DJ,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-57,input,checkbox,,permission,Configuración · Operador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-58,input,checkbox,,permission,Configuración · Oyente,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-59,input,checkbox,,permission,Facturación · Administrador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-60,input,checkbox,,permission,Facturación · DJ,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-61,input,checkbox,,permission,Facturación · Operador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-62,input,checkbox,,permission,Facturación · Oyente,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-63,input,checkbox,,permission,Gestión de usuarios · Administrador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-64,input,checkbox,,permission,Gestión de usuarios · DJ,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-65,input,checkbox,,permission,Gestión de usuarios · Operador,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-66,input,checkbox,,permission,Gestión de usuarios · Oyente,comando propuesto: iam.roles,interfaz operativa / backend no conectado
+roles,as-control-67,button,button,,roles-reset,Restaurar valores predeterminados,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+licencias,as-control-43,button,button,,license-toggle,Suspender,comando propuesto: saas.licenses,interfaz operativa / backend no conectado
+licencias,as-control-44,button,button,,license-delete,Eliminar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+licencias,as-control-45,button,button,,license-new,+ Licencia de demostración,comando propuesto: saas.licenses,interfaz operativa / backend no conectado
+licencias,as-control-46,button,button,,navigate,Gestionar planes,navegación local real,interfaz operativa / backend no conectado
+planes,as-control-43,button,button,,plan-edit,Editar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+planes,as-control-44,button,button,,plan-toggle,Ocultar,comando propuesto: saas.plans,interfaz operativa / backend no conectado
+planes,as-control-45,button,button,,plan-edit,Editar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+planes,as-control-46,button,button,,plan-toggle,Ocultar,comando propuesto: saas.plans,interfaz operativa / backend no conectado
+planes,as-control-47,button,button,,plan-edit,Editar,local/demo; contrato pendiente,interfaz operativa / backend no conectado
+planes,as-control-48,button,button,,plan-toggle,Ocultar,comando propuesto: saas.plans,interfaz operativa / backend no conectado
+planes,as-control-49,input,text,name,form:plan,name,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+planes,as-control-50,input,number,price,form:plan,price,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+planes,as-control-51,input,number,seats,form:plan,seats,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+planes,as-control-52,input,text,limits,form:plan,limits,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+planes,as-control-53,button,submit,,form:plan,+ Crear plan,validación formulario + evento mock,interfaz operativa / backend no conectado
+facturacion,as-control-43,input,text,customer,form:invoice,customer,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+facturacion,as-control-44,select,select-one,plan,form:invoice,StarterProfesionalBusiness,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+facturacion,as-control-45,input,number,amount,form:invoice,amount,entrada validada al enviar formulario,interfaz operativa / backend no conectado
+facturacion,as-control-46,button,submit,,form:invoice,Crear borrador de factura,validación formulario + evento mock,interfaz operativa / backend no conectado
