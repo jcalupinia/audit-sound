@@ -31,6 +31,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'queue-move':updateArraysMove(state.queue,Number(a.index),Number(a.dir));command('catalog.queue',{op:'reorder',queue:state.queue});render();break;
  case 'queue-clear':state.queue=[];command('catalog.queue',{op:'clear'});render();break;
  case 'load-deck':await loadToDeck(id,deck);break;
+ case 'web-load':await loadWebResult(a.src,a.rid,a.deck);break;
  case 'favorite':state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];save();render();break;
  case 'track-delete':{let t=trackFor(id);if(!t)return;if(mediaUrls.has(id))URL.revokeObjectURL(mediaUrls.get(id));mediaUrls.delete(id);state.tracks=state.tracks.filter(t=>t.id!==id);state.queue=state.queue.filter(x=>x!==id);state.favorites=state.favorites.filter(x=>x!==id);for(const p of state.playlists)p.tracks=p.tracks.filter(x=>x!==id);render();break}
  case 'playlist-new':{let name=window.prompt('Nombre de la playlist');if(!name?.trim())return;let p={id:uid('pl'),name:name.trim().slice(0,80),tracks:[]};state.playlists.push(p);state.playlistSelected=p.id;save();render();break}

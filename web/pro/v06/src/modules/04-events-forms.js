@@ -21,6 +21,7 @@ function changeControl(el){const d=el.dataset,k=d.change;if(!k)return;let n=Numb
  default:console.warn('UNHANDLED_CHANGE',k)
  }save();render()}catch(e){toast(e.message,true)}}
 function onSubmit(form){const type=form.dataset.form;const o=Object.fromEntries(new FormData(form));try{switch(type){
+ case 'websearch':webSearch(String(o.q||''));return;
  case 'agent':{const text=String(o.message||'').trim();if(text.length<2||text.length>1500)throw Error('La instrucción debe tener entre 2 y 1500 caracteres');addChat(text);return}
  case 'segment':{if(String(o.end)<=String(o.start))throw Error('La hora final debe ser posterior a la inicial');let energy=Number(o.energy);if(!Number.isFinite(energy)||energy<0||energy>100)throw Error('Energía fuera de rango');state.segments.push({id:uid('segment'),start:o.start,end:o.end,genre:String(o.genre).slice(0,60),energy});command('agent.plan',{op:'append-segment',start:o.start,end:o.end});break}
  case 'event':state.events.push({id:uid('event'),name:String(o.name).slice(0,100),date:o.date,venue:String(o.venue).slice(0,100),start:o.start});command('event.cue',{op:'create-event',name:o.name});break;
