@@ -126,15 +126,15 @@ function button(label,action,payload={},cls=''){return `<button class="${cls}" t
 function field(name,label,value='',type='text',extra=''){return `<label class="field">${esc(label)}<input name="${esc(name)}" type="${esc(type)}" value="${esc(value)}" ${extra}></label>`}
 function sel(name,options,value,extra=''){return `<select name="${esc(name)}" ${extra}>${options.map(a=>{const [v,l]=Array.isArray(a)?a:[a,a];return `<option value="${esc(v)}" ${String(v)===String(value)?'selected':''}>${esc(l)}</option>`}).join('')}</select>`}
 function slider(name,label,value,min=0,max=100,attrs=''){return `<label class="deckfield" title="${esc(label)}"><span>${esc(label)}</span><input type="range" name="${esc(name)}" min="${min}" max="${max}" value="${value}" ${attrs}><output class="rangeout">${esc(value)}</output></label>`}
-function pageTitle(title,desc,extra=''){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div><div class="flex wrap">${extra}${tag('DEMO / BACKEND PENDIENTE')}</div></div>`}
+function pageTitle(title,desc,extra='',live=false){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div><div class="flex wrap">${extra}${live?tag('SERVIDOR REAL','ok'):tag('DEMO / BACKEND PENDIENTE')}</div></div>`}
 function wave(color=''){const heights=Array.from({length:76},(_,i)=>Math.round(11+27*Math.abs(Math.sin(i*1.85)*Math.cos(i*.58))));return `<div class="wave ${color}" aria-hidden="true">${heights.map(h=>`<i style="height:${h}px"></i>`).join('')}</div>`}
 function card(title,body,cls=''){return `<section class="panel ${cls}"><div class="panel-head"><h2>${title}</h2></div>${body}</section>`}
 function statusBar(){return `<div class="status-strip"><span>● <b>DEMO LOCAL</b> · ${esc(state.mode.toUpperCase())}</span><span>Audio: <b>${state.deck.A.playing?'A ▶':'A ■'} / ${state.deck.B.playing?'B ▶':'B ■'}</b></span><span>Motor WASM: ${LIVE.on?tag('EN VIVO','ok'):tag('DEMO','pending')} ${button(LIVE.on?'● Motor PRO ON':'○ Activar motor PRO','engine-live',{},LIVE.on?'active':'')}</span><span>Qwen: ${tag('OFFLINE','pending')}</span><span>DeepSeek: ${tag('OFFLINE','pending')}</span></div>`}
 function navHtml(){return NAV.map(([label,items])=>`<div class="navgroup"><div class="navlabel">${label}</div>${items.map(([id,ic,name])=>`<button class="navbtn ${state.page===id?'active':''}" data-action="navigate" data-page="${id}"><span class="sym">${ic}</span>${esc(name)}</button>`).join('')}</div>`).join('')}
 function loginView(){return `<section class="login"><div class="login-visual" role="img" aria-label="Imagen corporativa Audit Sound"></div><form class="login-form" id="login-form"><div class="brand">AUDIT <em>SOUND</em><small>DJ INTELIGENTE CON IA · COMMAND CENTER</small></div><h1>Acceso a la plataforma</h1><p class="muted">La consola, el agente DJ y los módulos comerciales comparten la misma sesión de usuario.</p><div class="demo-note">⚠ Entorno demostrativo: no hay autenticación real. No introduzcas contraseñas personales.</div>${field('username','Usuario de demostración','demo@audit-sound.local','email','required autocomplete="off"')}${field('password','Contraseña de prueba','','password','required minlength="4" autocomplete="off"')}<label class="toggle"><input type="checkbox" name="remember"> Recordar configuración de la demo (sin guardar contraseña)</label><button class="primary" type="submit">Ingresar a AUDIT SOUND</button><button type="button" data-action="guest">Abrir demostración sin credenciales</button><p class="micro muted" style="margin-top:15px">AUDIT CONSULTING GROUP · Grupo empresarial con innovación y compromiso</p></form></section>`}
-function appView(){let title=pages.find(p=>p[0]===state.page)?.[2]||'Consola';return `<div class="shell"><aside class="sidebar"><div class="logo"><div class="brand">AUDIT <em>SOUND</em><small>DJ · VIDEO · EVENTOS · IA</small></div></div>${navHtml()}<div class="sidebar-footer">Command Center PRO v${V}<p>Interfaz real · modo demostración</p></div></aside><div class="content"><header class="topbar"><div class="left">${button('☰','mobile-nav',{},'hamburger')}<div><b>${esc(title)}</b><div class="now">Sesión <b>DEMO</b> · Sin conexión al servidor</div></div></div><div class="flex wrap">${tag('CONTROL LOCAL','ok')}${tag('BACKEND DESCONECTADO','pending')}${button('◉ MODO '+state.mode.toUpperCase(),'go-agent')}${button('Salir','logout',{},'ghost')}</div></header><nav class="mobile-nav ${state.mobileNav?'show':''}">${navHtml()}</nav><main class="main">${renderPage()}</main><footer class="foot"><span>AUDIT SOUND v${V} · FRONTEND INTERACTIVO · NO PRODUCCIÓN</span><span>${esc(state.organization)} · API no conectada</span></footer></div></div>`}
+function appView(){let title=pages.find(p=>p[0]===state.page)?.[2]||'Consola';return `<div class="shell"><aside class="sidebar"><div class="logo"><div class="brand">AUDIT <em>SOUND</em><small>DJ · VIDEO · EVENTOS · IA</small></div></div>${navHtml()}<div class="sidebar-footer">Command Center PRO v${V}<p>Interfaz real · modo demostración</p></div></aside><div class="content"><header class="topbar"><div class="left">${button('☰','mobile-nav',{},'hamburger')}<div><b>${esc(title)}</b><div class="now">${agentLive()?'Agente DJ <b>CONECTADO</b> · resto de módulos en demostración':'Sesión <b>DEMO</b> · Sin conexión al servidor'}</div></div></div><div class="flex wrap">${tag('CONTROL LOCAL','ok')}${agentLive()?tag('AGENTE DJ CONECTADO','ok'):tag('BACKEND DESCONECTADO','pending')}${button('◉ MODO '+state.mode.toUpperCase(),'go-agent')}${button('Salir','logout',{},'ghost')}</div></header><nav class="mobile-nav ${state.mobileNav?'show':''}">${navHtml()}</nav><main class="main">${renderPage()}</main><footer class="foot"><span>AUDIT SOUND v${V} · FRONTEND INTERACTIVO · NO PRODUCCIÓN</span><span>${esc(state.organization)} · ${agentLive()?'API del agente conectada':'API no conectada'}</span></footer></div></div>`}
 function screenHero(){return `<div class="hero"><div class="dj-photo" role="img" aria-label="DJ IA Copiloto"></div><div><div class="micro">AUDIT SOUND · DJ & PRODUCCIÓN AUDIOVISUAL CON IA</div><h1>IA <em>Copiloto</em></h1><p>Tu asistente de mezcla inteligente para música, video y eventos</p></div><div class="hero-controls"><div><div class="micro muted">Tipo de contenido</div><div class="pillbar">${['musica','video','presentaciones'].map(x=>button(({musica:'♫ Música',video:'▷ Video',presentaciones:'▣ Presentaciones'})[x],'content',{kind:x},state.content===x?'active':'')).join('')}</div></div><div><div class="micro muted">Vista de consola</div><div class="pillbar">${button('Sencilla','navigate',{page:'sencilla'})}${button('Profesional','navigate',{page:'consola'},'active')}</div></div></div></div>`}
-function modes(){return `<div class="modebar panel"><div><h3>Modo de operación <span class="muted micro">(cambio en vivo)</span></h3><small>La interfaz conserva la sesión al cambiar de modo. Ejecución autónoma pendiente de backend.</small></div><div class="pillbar">${button('🎚 DJ Manual','set-mode',{mode:'manual'},state.mode==='manual'?'active':'')}${button('✧ DJ Híbrido IA','set-mode',{mode:'hibrido'},state.mode==='hibrido'?'active':'')}${button('▷ DJ Automático 24/7','set-mode',{mode:'automatico'},state.mode==='automatico'?'active':'')}</div>${tag(state.mode.toUpperCase()+' · DEMO','demo')}</div>`}
+function modes(){return `<div class="modebar panel"><div><h3>Modo de operación <span class="muted micro">(cambio en vivo)</span></h3><small>${agentLive()?'El modo se aplica en el agente del servidor sin reiniciar el audio.':'La interfaz conserva la sesión al cambiar de modo. Ejecución autónoma pendiente de backend.'}</small></div><div class="pillbar">${button('🎚 DJ Manual','set-mode',{mode:'manual'},state.mode==='manual'?'active':'')}${button('✧ DJ Híbrido IA','set-mode',{mode:'hibrido'},state.mode==='hibrido'?'active':'')}${button('▷ DJ Automático 24/7','set-mode',{mode:'automatico'},state.mode==='automatico'?'active':'')}</div>${agentLive()?tag(state.mode.toUpperCase()+' · SERVIDOR','ok'):tag(state.mode.toUpperCase()+' · DEMO','demo')}</div>`}
 function deckCard(side){let d=state.deck[side],track=state.tracks.find(t=>t.id===d.track),ae=audioEls[side];return `<article class="panel deck"><div class="trackhead"><div class="decks-title"><span class="deckletter ${side==='B'?'b':''}">${side}</span>DECK ${side}<small> · ${esc(track?.genre||'Archivo local')}</small></div><div class="right"><div class="micro">${esc(track?.name||'Sin pista cargada')}</div><small>${fmt(LIVE.on?LIVE.pos[side]:ae.currentTime)} / ${fmt(LIVE.on?LIVE.dur[side]:ae.duration)} · ${d.bpm} BPM</small></div></div>${wave(side==='B'?'b':'')}<div class="deckbody"><div class="jog ${side==='B'?'b':''}">◉</div><div><div class="deckbtns">${button(d.playing?'❚❚ PAUSA':'▶ PLAY','deck-play',{deck:side},'primary')}${button('CUE','deck-cue',{deck:side})}${button(d.sync?'SYNC ✓':'SYNC','deck-sync',{deck:side},d.sync?'active':'')}${button(d.keylock?'🔒 KEY':'🔓 KEY','deck-keylock',{deck:side})}</div>${slider('rate','Pitch',d.rate,80,120,`data-change="deck-rate" data-deck="${side}"`)}<div class="deckbtns">${button('◀ 4','deck-beatjump',{deck:side,beats:-4})}${button('4 ▶','deck-beatjump',{deck:side,beats:4})}${sel('loop',[['0','Loop OFF'],['4','4 beats'],['8','8 beats'],['16','16 beats']],d.loop,`data-change="deck-loop" data-deck="${side}"`)}</div></div></div><div class="deckbtns">${[1,2,3,4].map(i=>button('HOT '+i,'deck-hotcue',{deck:side,slot:i},d.cues[i]!==undefined?'active':'')).join('')}</div><div class="flex between wrap"><label class="btn compact">+ Cargar audio ${side}<input type="file" accept="audio/*" data-file="audio-${side}" hidden></label>${tag(track?.demo?'PISTA DEMO SIN AUDIO':track?'ARCHIVO LOCAL':'SIN PISTA',track?.demo?'demo':'pending')}</div></article>`}
 function mixerCard(){return `<article class="panel mixer"><h2>MEZCLADORA</h2><div class="mixercols">${['A','B'].map(side=>{let eq=state.deck[side].eq;return `<div class="mixercol"><strong style="font-size:11px;color:${side==='A'?'#8cf873':'#69c9ff'}">CH ${side}</strong>${[['gain','GAIN',0,200],['hi','HI',-12,12],['mid','MID',-12,12],['low','LOW',-12,12],['fader','VOL',0,100]].map(([k,l,min,max])=>`<label>${l}<input type="range" name="${k}" min="${min}" max="${max}" value="${eq[k]}" data-change="eq" data-deck="${side}"></label>`).join('')}${button(state.deck[side].cue?'🎧 ON':'🎧 CUE','deck-monitor',{deck:side},state.deck[side].cue?'active':'')}</div>`}).join('')}</div><div class="vu" aria-label="Medidor decorativo, pendiente de señal real">${Array.from({length:12},(_,i)=>`<i style="height:${16+(i*17%52)}%"></i>`).join('')}</div>${slider('cross','A / B',state.audioCross,0,100,'data-change="audio-cross"')}${slider('master','MASTER',state.master,0,100,'data-change="master"')}<small>EQ/Fader local mediante Web Audio. Medidor VU real y salida CUE separada requieren integración.</small></article>`}
 function programPreview(){const posters={A:'video-poster-a.jpg',B:'video-poster-b.jpg'};return `<div class="video-trio"><article class="panel"><div class="panel-head"><h2>◉ Previsualización · Preparar</h2>${tag('PREVIEW','blue')}</div><div class="monitor-picture"><div class="placeholder" style="background-image:url('${fileAsset(posters.A)}')">PREVIEW / COMPOSICIÓN</div><div class="layer" style="background:linear-gradient(90deg,#173e36ba ${100-state.videoMix}%,transparent)"></div></div><div class="flex between spaced"><small>Video A/B · Mezcla visual local</small>${button('Abrir mezcladora de video','navigate',{page:'video'})}</div></article><article class="panel"><div class="panel-head"><h2>⦿ Salida en vivo · Programa</h2>${tag(state.videoLive?'PROGRAMA LOCAL':'SIN TRANSMISIÓN',state.videoLive?'ok':'pending')}</div><div class="monitor-picture" id="console-program"><div class="placeholder" style="background-image:url('${fileAsset(posters.B)}')">${state.videoLive?'Programa visual local':'PROGRAMA / SIN EMISIÓN'}</div></div><div class="flex between spaced"><small>No está transmitiendo a espectadores.</small>${button('Enviar a programa','video-take',{},'primary')}</div></article></div>`}
@@ -146,7 +146,7 @@ function simplePage(){return `${pageTitle('Consola sencilla','Control esencial c
 function libraryPage(){let matches=state.tracks.filter(t=>(state.libraryKind==='all'||t.kind===state.libraryKind)&&([t.name,t.artist,t.genre].join(' ').toLowerCase().includes(state.libraryQuery.toLowerCase())));return `${pageTitle('Biblioteca multimedia','Archivos locales reproducibles y referencias de demostración claramente identificadas.',`<label class="btn primary">+ Importar archivos<input type="file" accept="audio/*,video/*,image/*" data-file="library" multiple hidden></label>`)}${websearchPanel()}<div class="panel"><div class="formrow">${field('library-query','Buscar en biblioteca',state.libraryQuery,'text','data-filter="library-query"') }<label class="field">Tipo de contenido${sel('library-kind',['all','audio','video','image'],state.libraryKind,'data-change="library-kind"')}</label></div><div class="cardlist">${matches.map(t=>`<article class="asset"><div class="art">${t.kind==='audio'?'♫':t.kind==='video'?'▷':'▧'}</div><h3>${esc(t.name)}</h3><small>${esc(t.artist||'Importado localmente')} · ${t.kind}${t.bpm?' · '+t.bpm+' BPM':''}${t.keyName?' · '+t.keyName:''}</small>${tag(t.demo?'METADATO DEMO':mediaUrls.has(t.id)?'ARCHIVO LOCAL':'SIN FUENTE',t.demo?'demo':'pending')}<div class="pillbar spaced">${button('A','load-deck',{id:t.id,deck:'A'})}${button('B','load-deck',{id:t.id,deck:'B'})}${button('Cola +','queue-add',{id:t.id})}${button(state.favorites.includes(t.id)?'♥':'♡','favorite',{id:t.id})}${button('Quitar','track-delete',{id:t.id},'danger')}</div></article>`).join('')||'<div class="empty">Sin resultados. Importa archivos desde tu equipo.</div>'}</div></div>`}
 function playlistsPage(){let pl=state.playlists.find(p=>p.id===state.playlistSelected)||state.playlists[0];return `${pageTitle('Playlists y favoritos','Colecciones editables, cola dinámica y gestión de sesiones.') }<div class="grid2"><section class="panel"><div class="panel-head"><h2>Mis playlists (${state.playlists.length})</h2>${button('+ Crear','playlist-new',{},'primary')}</div>${state.playlists.map(p=>`<div class="listrow"><div><strong>${esc(p.name)}</strong><small>${p.tracks.length} pista(s)</small></div><div class="actions">${button('Abrir','playlist-select',{id:p.id},pl?.id===p.id?'active':'')}${button('Renombrar','playlist-rename',{id:p.id})}${button('×','playlist-delete',{id:p.id},'danger')}</div></div>`).join('')}<div class="divider"></div><h3>Favoritos</h3>${state.favorites.map(id=>{let t=state.tracks.find(t=>t.id===id);return t?`<div class="listrow"><span>${esc(t.name)}</span>${button('+ a lista','playlist-add',{id})}</div>`:''}).join('')||'<p class="muted">Sin favoritos. Márcalos en Biblioteca.</p>'}</section><section class="panel"><div class="panel-head"><h2>${esc(pl?.name||'Playlist')}</h2>${tag('LISTA LOCAL','ok')}</div>${pl?.tracks.map((id,i)=>{let t=state.tracks.find(t=>t.id===id);return `<div class="listrow"><span>${i+1}. ${esc(t?.name||'Archivo no disponible')}</span><div class="actions">${button('↑','playlist-move',{index:i,dir:-1})}${button('↓','playlist-move',{index:i,dir:1})}${button('×','playlist-remove',{index:i},'danger')}</div></div>`}).join('')||'<div class="empty">Añade archivos desde Biblioteca.</div>'}<div class="divider"></div><label class="field">Añadir pista${sel('playlist-track',state.tracks.map(t=>[t.id,t.name]),state.tracks[0]?.id)}</label>${button('Agregar seleccionada','playlist-add-selected',{},'primary')}${button('Cargar playlist a cola','playlist-to-queue')}</section></div><section class="panel spaced"><div class="panel-head"><h2>Cola de reproducción</h2>${button('Vaciar cola','queue-clear',{},'danger')}</div>${state.queue.map((id,i)=>{let t=state.tracks.find(t=>t.id===id);return `<div class="listrow"><strong>${i+1}. ${esc(t?.name||'No encontrado')}</strong><div class="actions">${button('Cargar A','load-deck',{id,deck:'A'})}${button('↑','queue-move',{index:i,dir:-1})}${button('↓','queue-move',{index:i,dir:1})}${button('×','queue-remove',{index:i},'danger')}</div></div>`}).join('')||'<div class="empty">Sin pistas en cola.</div>'}</section>`}
 function automationPage(){return `${pageTitle('Automatización musical','Diseña bloques de programación y políticas de contingencia; la ejecución en servidor requiere AutoMix.')}${modes()}<div class="grid2"><section class="panel"><h2>Horario de sesión</h2><form data-form="segment"><div class="formrow">${field('start','Inicio','19:00','time','required')}${field('end','Fin','20:00','time','required')}${field('genre','Género','House','text','required')}${field('energy','Energía (0–100)','60','number','min="0" max="100" required')}</div><button class="primary" type="submit">+ Añadir bloque</button></form><div class="divider"></div>${state.segments.map(s=>`<div class="listrow"><div><strong>${esc(s.start)} – ${esc(s.end)} · ${esc(s.genre)}</strong><small>Energía ${s.energy}%</small></div>${button('Eliminar','segment-delete',{id:s.id},'danger')}</div>`).join('')}</section><section class="panel"><h2>Políticas autónomas</h2>${Object.entries(state.agentRules).map(([key,on])=>`<label class="toggle" style="display:flex;padding:10px;border-bottom:1px solid #2c4852"><input type="checkbox" data-change="rule" data-rule="${key}" ${on?'checked':''}>${({fallback:'AutoMix de respaldo',silence:'Detector de silencio',noRepeat:'Evitar canciones repetidas',approval:'Confirmación de acciones críticas'})[key]}</label>`).join('')}<div class="divider"></div>${slider('autonomy','Nivel de autonomía',state.agentAutonomy,0,100,'data-change="autonomy"')}<div class="callout spaced">Las reglas se guardan y se emite un evento de control. No existe un planificador ni ejecución 24/7 real en esta demostración.</div>${button('Exportar plan JSON','export-plan',{},'primary')}</section></div>`}
-function agentPage(){return `${pageTitle('Agente DJ Inteligente','Orquestación Qwen local / DeepSeek API. Interfaz lista; modelos no conectados.')}${modes()}<div class="grid2"><section class="panel"><div class="assist-top"><div class="avatar"></div><div><h2>Conversación con IA Copiloto</h2>${tag('RESPUESTAS MOCK IDENTIFICADAS','demo')}</div></div><div class="assist-chat" style="height:315px" id="agent-chat">${state.chat.map(m=>`<div class="bubble ${m.who==='user'?'user':'system'}"><small>${m.who==='user'?'Operador':'Sistema · DEMO'}</small><div>${esc(m.text)}</div></div>`).join('')}</div><form data-form="agent"><label class="field">Instrucción musical<textarea name="message" required placeholder="Planifica una sesión de salsa y luego reguetón…"></textarea></label><div class="pillbar spaced"><button type="submit" class="primary">Enviar instrucción</button>${button('🎙 Dictar por voz','agent-voice')}${button('Borrar conversación','agent-clear')}</div></form></section><section class="panel"><h2>Orquestación y supervisión</h2><div class="formrow"><label class="field">Ruta de razonamiento${sel('agent-model',[['auto','Automática'],['qwen','Qwen local'],['deepseek','DeepSeek externo']],state.agentModel,'data-change="agent-model"')}</label><label class="field">Aprobación de acciones${sel('agent-approval',[['true','Requerida'],['false','Bajo política']],String(state.agentApproval),'data-change="agent-approval"')}</label></div>${slider('autonomy','Nivel autonomía',state.agentAutonomy,0,100,'data-change="autonomy"')}<div class="statuslist"><div>Modelo operativo <b>Qwen</b> ${tag('DESCONECTADO','pending')}</div><div>Razonamiento <b>DeepSeek</b> ${tag('DESCONECTADO','pending')}</div><div>Gateway y presupuesto ${tag('PENDIENTE','pending')}</div><div>Motor de mezcla <b>C++</b> ${tag('DESCONECTADO','pending')}</div><div>Tokens facturables <b>0</b> ${tag('SIN LLAMADAS','ok')}</div></div><div class="divider"></div><h3>Solicitudes de aprobación</h3>${state.agentHistory.filter(h=>h.status==='pending').map(h=>`<div class="listrow"><span>${esc(h.text)}</span>${button('Aprobar','agent-approve',{id:h.id},'primary')}${button('Rechazar','agent-reject',{id:h.id},'danger')}</div>`).join('')||'<p class="muted">No hay decisiones pendientes.</p>'}${button('Crear acción de aprobación de prueba','agent-test-approval')}<div class="divider"></div><h3>Historial de decisiones</h3><div class="assist-list">${state.agentHistory.slice().reverse().map(h=>`<div class="listrow"><span>${esc(h.text)}</span>${tag(h.status,h.status==='approved'?'ok':'demo')}</div>`).join('')||'<p class="muted">Sin decisiones registradas.</p>'}</div></section></div>`}
+function agentPage(){return `${agentLive()?pageTitle('Agente DJ Inteligente','Conectado al agente del servidor. Qwen y DeepSeek se usan según la configuración del servidor; el audio nunca depende de ellos.','',true):pageTitle('Agente DJ Inteligente','Orquestación Qwen local / DeepSeek API. Interfaz lista; modelos no conectados.')}${modes()}<div class="grid2"><section class="panel"><div class="assist-top"><div class="avatar"></div><div><h2>Conversación con IA Copiloto</h2>${agentLive()?tag('AGENTE REAL CONECTADO','ok'):tag('RESPUESTAS MOCK IDENTIFICADAS','demo')}</div></div><div class="assist-chat" style="height:315px" id="agent-chat">${state.chat.map(m=>`<div class="bubble ${m.who==='user'?'user':'system'}"><small>${m.who==='user'?'Operador':esc(m.label||'Sistema · DEMO')}</small><div>${esc(m.text)}</div></div>`).join('')}</div><form data-form="agent"><label class="field">Instrucción musical<textarea name="message" required placeholder="Planifica una sesión de salsa y luego reguetón…"></textarea></label><div class="pillbar spaced"><button type="submit" class="primary">Enviar instrucción</button>${button('🎙 Dictar por voz','agent-voice')}${button('Borrar conversación','agent-clear')}</div></form></section><section class="panel"><h2>Orquestación y supervisión</h2><div class="formrow"><label class="field">Ruta de razonamiento${sel('agent-model',[['auto','Automática'],['qwen','Qwen local'],['deepseek','DeepSeek externo']],state.agentModel,'data-change="agent-model"')}</label><label class="field">Aprobación de acciones${sel('agent-approval',[['true','Requerida'],['false','Bajo política']],String(state.agentApproval),'data-change="agent-approval"')}</label></div>${slider('autonomy','Nivel autonomía',state.agentAutonomy,0,100,'data-change="autonomy"')}${agentStatusHtml()}<div class="divider"></div><h3>Solicitudes de aprobación</h3>${state.agentHistory.filter(h=>h.status==='pending').map(h=>`<div class="listrow"><span>${esc(h.text)}</span>${button('Aprobar','agent-approve',{id:h.id},'primary')}${button('Rechazar','agent-reject',{id:h.id},'danger')}</div>`).join('')||'<p class="muted">No hay decisiones pendientes.</p>'}${button('Crear acción de aprobación de prueba','agent-test-approval')}<div class="divider"></div><h3>Historial de decisiones</h3><div class="assist-list">${state.agentHistory.slice().reverse().map(h=>`<div class="listrow"><span>${esc(h.text)}</span>${tag(h.status,h.status==='approved'?'ok':'demo')}</div>`).join('')||'<p class="muted">Sin decisiones registradas.</p>'}</div></section></div>`}
 function videoControls(deck){const v=state.video[deck],track=state.tracks.find(t=>t.id===v.track);return `<section class="panel video-controls"><div class="panel-head"><h2>VIDEO DECK ${deck}</h2>${tag(track?'ARCHIVO CARGADO':'SIN FUENTE',track?'ok':'pending')}</div><video id="video-src-${deck}" playsinline muted preload="metadata" poster="${fileAsset('video-poster-'+deck.toLowerCase()+'.jpg')}" ${track&&mediaUrls.has(track.id)?`src="${esc(mediaUrls.get(track.id))}"`:''}></video><div class="pillbar spaced">${button(v.playing?'❚❚ Pausar':'▶ Reproducir','video-play',{deck},'primary')}${button('CUE','video-cue',{deck})}${button(v.loop?'LOOP ✓':'LOOP','video-loop',{deck},v.loop?'active':'')}<label class="btn">+ Cargar video ${deck}<input type="file" data-file="video-${deck}" accept="video/*" hidden></label></div>${slider('seek','Posición',v.seek,0,100,`data-change="video-seek" data-deck="${deck}"`)}<small>${esc(track?.name||'Selecciona un archivo de video local')}</small></section>`}
 function videoComposition(preview=false){const trackA=state.tracks.find(t=>t.id===state.video.A.track),trackB=state.tracks.find(t=>t.id===state.video.B.track),uA=trackA?mediaUrls.get(trackA.id):null,uB=trackB?mediaUrls.get(trackB.id):null;let a=(100-state.videoMix)/100,b=state.videoMix/100;const have=preview||state.videoLive;return `<div class="video-output" data-output="${preview?'preview':'program'}"><img src="${fileAsset('video-poster-a.jpg')}" alt="Imagen de referencia video A" style="opacity:${!uA?1:0}"><img src="${fileAsset('video-poster-b.jpg')}" alt="Imagen de referencia video B" style="opacity:${!uA&&!uB?0.5:0}">${have&&uA?`<video data-output-video="A" muted playsinline autoplay loop style="opacity:${a}" src="${esc(uA)}"></video>`:''}${have&&uB?`<video data-output-video="B" muted playsinline autoplay loop style="opacity:${b}" src="${esc(uB)}"></video>`:''}<div class="overlay">${preview?'PREVIEW / LOCAL':state.videoLive?'PROGRAMA LOCAL · NO STREAMING':'PROGRAMA DETENIDO'} · ${state.videoMix}% hacia B</div></div>`}
 function videoPage(){return `${pageTitle('Mezcladora de video / VJ','Dos reproductores HTML5, preview, programa local y contratos para composición profesional.',tag('NO STREAMING REAL','demo'))}<div class="grid2">${videoControls('A')}${videoControls('B')}</div><section class="panel spaced"><div class="panel-head"><h2>Mezcladora audiovisual</h2>${tag(state.videoTrans.toUpperCase(),'blue')}</div><div class="grid2"><div><h3>PREVISUALIZACIÓN · PREPARAR</h3>${videoComposition(true)}</div><div><h3>SALIDA DE PROGRAMA</h3>${videoComposition(false)}</div></div><div class="formrow spaced"><div>${slider('video-cross','A ↔ B',state.videoMix,0,100,'data-change="video-cross"')}</div><label class="field">Transición${sel('video-transition',[['fade','Desvanecer'],['cut','Corte'],['wipe','Barrido (backend pendiente)']],state.videoTrans,'data-change="video-transition"')}</label><label class="field">Salida${sel('video-output',[['local','Monitor local'],['screen-2','Pantalla 2 (requiere motor)'],['stream','Streaming (requiere servidor)']],'local','data-change="video-output"')}</label></div><div class="pillbar">${button('▶ Enviar a programa','video-take',{},'primary')}${button('■ Detener programa local','video-stop')}${button('⛶ Pantalla completa','video-fullscreen')}${button('Sincronizar reproductores','video-sync')}</div><div class="callout spaced">Preview y Programa son vistas locales con recursos HTML5. Una salida externa sincronizada, transición en GPU, grabación o transmisión requiere conectar el servicio VJ y sus contratos.</div></section><section class="panel spaced"><h2>Efectos y composición visual</h2><div class="formrow"><label class="field">Efecto visual${sel('visual-fx',['Ninguno','Brillo','Desenfoque','Glitch (backend)'],'Ninguno','data-change="visual-fx"')}</label>${field('presentation-caption','Texto de superposición','','text','data-change="caption" placeholder="Título para evento"')}</div>${button('Abrir eventos / presentaciones','navigate',{page:'eventos'})}</section>`}
@@ -174,7 +174,7 @@ async function loadToDeck(id,deck){let track=trackFor(id);if(!track)throw Error(
 function updateRole(role,permission,on){const p=state.roles[role];if(!p)return;const i=p.indexOf(permission);if(on&&i<0)p.push(permission);if(!on&&i>=0)p.splice(i,1);command('iam.roles',{role,permission,enabled:on})}
 function syncVideoScreens(){for(const deck of ['A','B']){const el=document.getElementById('video-src-'+deck);if(!el)continue;const d=state.video[deck];el.loop=d.loop; if(d.playing){el.play().catch(()=>{})}el.addEventListener('timeupdate',()=>{if(el.duration)state.video[deck].seek=Math.round(100*el.currentTime/el.duration)})}for(const el of document.querySelectorAll('video[data-output-video]')){el.play().catch(()=>{})}}
 function exportText(filename,text,mime='application/json'){let blob=new Blob([text],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
-function addChat(text){state.chat.push({who:'user',text});state.chat.push({who:'system',text:copilotReply(text)});state.chat=state.chat.slice(-40);command('agent.command',{text,route:state.agentModel,policy:'recomendación local'},'LOCAL');save();render();toast('Copiloto local (Camelot · BPM · energía).')}
+function addChat(text){if(typeof agentLive==='function'&&agentLive()){state.chat.push({who:'user',text});state.chat.push({who:'system',label:'Agente DJ',text:'Consultando al agente…'});const idx=state.chat.length-1;command('agent.command',{text,route:state.agentModel,policy:'agente real'},'LIVE');render();agentIntent(text,idx);return}state.chat.push({who:'user',text});state.chat.push({who:'system',text:copilotReply(text)});state.chat=state.chat.slice(-40);command('agent.command',{text,route:state.agentModel,policy:'recomendación local'},'LOCAL');save();render();toast('Copiloto local (Camelot · BPM · energía).')}
 function updateArraysMove(arr,index,dir){let j=index+dir;if(j<0||j>=arr.length)return;[arr[index],arr[j]]=[arr[j],arr[index]]}
 async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  switch(n){
@@ -216,8 +216,10 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'agent-clear':state.chat=[{who:'system',text:'Conversación reiniciada. Modelo sin conexión.'}];save();render();break;
  case 'agent-voice':{
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Reconocimiento de voz no disponible en este navegador o contexto.',true);return}speechRecognition=new SR();speechRecognition.lang='es-EC';speechRecognition.onresult=e=>{const transcript=e.results[0][0].transcript;let textArea=document.querySelector('form[data-form=agent] textarea');if(textArea){textArea.value=transcript;toast('Dictado listo para revisión y envío')}};speechRecognition.onerror=e=>toast('Error de micrófono: '+e.error,true);speechRecognition.start();toast('Escuchando instrucción de voz…');break}
- case 'agent-test-approval':state.agentHistory.push({id:uid('approval'),text:'Transición de prueba a género House',status:'pending'});save();render();break;
- case 'agent-approve':case 'agent-reject':{let h=state.agentHistory.find(h=>h.id===id);if(h){h.status=n==='agent-approve'?'approved':'rejected';command('agent.approval',{id,status:h.status},'MOCK');save();render();toast('Decisión registrada; no se ejecutó ninguna transición.')}break}
+ case 'agent-disconnect':agentDisconnect();break;
+ case 'agent-refresh':agentRefreshStatus().then(()=>agentSyncProposals()).then(render);break;
+ case 'agent-test-approval':if(agentLive()){agentTestProposal();break}state.agentHistory.push({id:uid('approval'),text:'Transición de prueba a género House',status:'pending'});save();render();break;
+ case 'agent-approve':case 'agent-reject':{let h=state.agentHistory.find(h=>h.id===id);if(h&&h.srv){command('agent.approval',{id,status:n==='agent-approve'?'approved':'rejected'},'LIVE');break}if(h){h.status=n==='agent-approve'?'approved':'rejected';command('agent.approval',{id,status:h.status},'MOCK');save();render();toast('Decisión registrada; no se ejecutó ninguna transición.')}break}
  case 'video-play':{let el=document.getElementById('video-src-'+deck),d=state.video[deck];if(!el?.src){toast('Carga un video real en el deck '+deck,true);return}if(el.paused){await el.play();d.playing=true}else{el.pause();d.playing=false}command('video.transport',{deck,op:d.playing?'play':'pause'},'LOCAL');render();break}
  case 'video-cue':{let el=document.getElementById('video-src-'+deck);if(el){el.pause();el.currentTime=0}state.video[deck].playing=false;state.video[deck].seek=0;command('video.transport',{deck,op:'cue'},'LOCAL');render();break}
  case 'video-loop':state.video[deck].loop=!state.video[deck].loop;command('video.transport',{deck,op:'loop',enabled:state.video[deck].loop});render();break;
@@ -286,6 +288,7 @@ function changeControl(el){const d=el.dataset,k=d.change;if(!k)return;let n=Numb
  }save();render()}catch(e){toast(e.message,true)}}
 function onSubmit(form){const type=form.dataset.form;const o=Object.fromEntries(new FormData(form));try{switch(type){
  case 'websearch':webSearch(String(o.q||''));return;
+ case 'agent-link':{const tok=String(o.token||'').trim();if(tok.length<8||tok.length>4096)throw Error('Token de agente no válido');form.reset();agentConnect(tok);return}
  case 'agent':{const text=String(o.message||'').trim();if(text.length<2||text.length>1500)throw Error('La instrucción debe tener entre 2 y 1500 caracteres');addChat(text);return}
  case 'segment':{if(String(o.end)<=String(o.start))throw Error('La hora final debe ser posterior a la inicial');let energy=Number(o.energy);if(!Number.isFinite(energy)||energy<0||energy>100)throw Error('Energía fuera de rango');state.segments.push({id:uid('segment'),start:o.start,end:o.end,genre:String(o.genre).slice(0,60),energy});command('agent.plan',{op:'append-segment',start:o.start,end:o.end});break}
  case 'event':state.events.push({id:uid('event'),name:String(o.name).slice(0,100),date:o.date,venue:String(o.venue).slice(0,100),start:o.start});command('event.cue',{op:'create-event',name:o.name});break;
@@ -308,5 +311,222 @@ for(const side of ['A','B']){const el=audioEls[side];el.addEventListener('ended'
 
 // Public diagnostic surface for QA: no writes and no secrets.
 window.AuditSoundQA=Object.freeze({version:V,pages:pages.map(p=>p[0]),contracts:Object.keys(API),getState:()=>({page:state.page,mode:state.mode,commandCount:state.logs.length,libraryCount:state.tracks.length,queueCount:state.queue.length,backendConnected:LIVE.on,engine:LIVE.on?'wasm':'demo'}),live:()=>({on:LIVE.on,ready:!!LIVE.bridge,pos:{A:LIVE.pos.A,B:LIVE.pos.B},dur:{A:LIVE.dur.A,B:LIVE.dur.B}}),getEvents:()=>state.logs.map(({name,payload,status,endpoint})=>({name,payload,status,endpoint}))});
+// (el cierre del módulo y el primer render están al final de 05-agent-live.js)
+
+// ===== 05 · Agente DJ en vivo (Fase 5) =====
+// Conecta los controles del panel del agente con el servicio dj-agent REAL a través del proxy del
+// mismo origen (/api/v1/dj-agent, ver deploy/pro/server.js). Si el servidor no anuncia el agente
+// (window.AUDIT_SOUND_AGENT !== true) o no hay token, la interfaz sigue en MODO DEMOSTRACIÓN, igual
+// que antes. Reglas:
+//  - el servidor es la fuente de verdad: si rechaza un cambio, la interfaz vuelve al estado del servidor;
+//  - el token del agente vive solo en sessionStorage de esta pestaña (nunca en localStorage ni en el código);
+//  - el audio nunca depende del agente: si se cae, se avisa y AutoMix sigue en el motor.
+const AGENT_BASE='/api/v1/dj-agent';
+const AGENT_TOKEN_KEY='as.agent.token';
+const AGENT_MODE={manual:'MANUAL',hibrido:'HIBRIDO',automatico:'AUTOMATICO'};
+const AGENT_MODE_UI={MANUAL:'manual',HIBRIDO:'hibrido',AUTOMATICO:'automatico'};
+const AGENT={available:window.AUDIT_SOUND_AGENT===true,connected:false,connecting:false,sid:null,mode:null,
+  models:[],engine:null,usage:null,ws:null,wsOk:false,lastSeq:0,retry:0,timer:null,error:''};
+
+// Redibujo por eventos del agente SIN perder lo que el operador está escribiendo: render() reemplaza el
+// HTML entero, así que se guardan y restauran los campos de texto (valor, foco y cursor).
+function agentRender(){
+  const keep=[...document.querySelectorAll('form[data-form] textarea, form[data-form] input[type=text], form[data-form] input[type=password]')]
+    .map(el=>({form:el.form&&el.form.dataset.form,name:el.name,value:el.value,focus:document.activeElement===el,
+      s:el.selectionStart,e:el.selectionEnd})).filter(k=>k.value||k.focus);
+  render();
+  for(const k of keep){
+    const el=document.querySelector(`form[data-form="${k.form}"] [name="${k.name}"]`);
+    if(!el)continue;
+    el.value=k.value;
+    if(k.focus){el.focus();try{el.setSelectionRange(k.s,k.e)}catch(e){}}
+  }
+}
+function agentLive(){return AGENT.available&&AGENT.connected&&!!AGENT.sid}
+function agentGetToken(){try{return sessionStorage.getItem(AGENT_TOKEN_KEY)||''}catch(e){return ''}}
+function agentSetToken(t){try{t?sessionStorage.setItem(AGENT_TOKEN_KEY,t):sessionStorage.removeItem(AGENT_TOKEN_KEY)}catch(e){}}
+
+async function agentFetch(path,{method='GET',body,idem=false}={}){
+  const h={'Accept':'application/json','Authorization':'Bearer '+agentGetToken()};
+  if(body!==undefined)h['Content-Type']='application/json';
+  if(idem)h['Idempotency-Key']=uid('idem');
+  let r;
+  try{r=await fetch(AGENT_BASE+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)})}
+  catch(e){throw Object.assign(Error('Sin conexión con el agente'),{code:'network'})}
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok){const er=(j&&j.error)||{};throw Object.assign(Error(er.message||('El agente respondió HTTP '+r.status)),{status:r.status,code:er.code||'',details:er.details||{}})}
+  return j;
+}
+
+const AGENT_REASON={hybrid_requires_approval:'en HÍBRIDO requiere aprobación',dangerous_action_requires_human:'acción crítica: decide una persona',
+  outside_autonomy_level:'fuera del nivel de autonomía',skip_rate_limit:'límite de saltos por hora',mode_manual_observe_only:'modo MANUAL: el agente solo observa',
+  automatic_within_autonomy:'automática dentro de la autonomía',hybrid_auto_allowed_by_policy:'automática por política'};
+function agentProposalsToHistory(list){
+  const st={PENDING:'pending',APPROVED:'approved',EXECUTED:'approved',REJECTED:'rejected',EXPIRED:'expired',FAILED:'rejected'};
+  return list.map(p=>({id:'srv-'+p.id,srv:p.id,text:p.summary+(p.reason?' · '+(AGENT_REASON[p.reason]||p.reason):''),status:st[p.status]||String(p.status).toLowerCase()}));
+}
+
+async function agentSyncProposals(){
+  if(!agentLive())return;
+  try{const list=await agentFetch(`/sessions/${AGENT.sid}/proposals`);state.agentHistory=agentProposalsToHistory(list)}catch(e){}
+}
+
+async function agentSyncPrefs(){
+  const p=await agentFetch(`/sessions/${AGENT.sid}/preferences`);
+  state.agentAutonomy=p.autonomy;state.agentApproval=!!p.approval_required;
+  state.agentModel=p.model_route==='rules'?'auto':p.model_route;
+  state.agentRules={...state.agentRules,...(p.rules||{})};
+}
+
+function agentApplySession(s){
+  AGENT.mode=s.mode;AGENT.engine=s.engine||AGENT.engine;
+  if(AGENT_MODE_UI[s.mode])state.mode=AGENT_MODE_UI[s.mode];
+  if(typeof s.last_sequence==='number')AGENT.lastSeq=Math.max(AGENT.lastSeq,s.last_sequence);
+}
+
+async function agentConnect(token){
+  if(!AGENT.available){toast('Este servidor no tiene el agente DJ configurado: la consola sigue en modo demostración.',true);return}
+  if(token!==undefined)agentSetToken(token);
+  if(!agentGetToken()){toast('Ingresa el token de acceso del agente.',true);return}
+  AGENT.connecting=true;AGENT.error='';agentRender();
+  try{
+    await agentFetch('/health');
+    const sessions=await agentFetch('/sessions');
+    let s=sessions.find(x=>!['STOPPED','FAILED'].includes(x.state));
+    if(!s){
+      try{s=await agentFetch('/sessions',{method:'POST',body:{name:'Consola v0.6',mode:AGENT_MODE[state.mode]||'HIBRIDO'}})}
+      catch(e){if(e.code==='engine_busy'&&e.details&&e.details.session_id)s=await agentFetch('/sessions/'+e.details.session_id);else throw e}
+    }
+    AGENT.sid=s.id;AGENT.connected=true;agentApplySession(s);
+    try{await agentSyncPrefs()}catch(e){/* rol sin permiso de preferencias: se muestran las locales */}
+    await agentSyncProposals();await agentRefreshStatus();
+    state.chat.push({who:'system',label:'Agente DJ',text:`Conectado al agente real (sesión ${s.name||s.id.slice(0,8)}). Modo ${s.mode}. Las órdenes ya se ejecutan en el servidor.`});
+    agentOpenWs();
+    toast('Agente DJ conectado.');
+  }catch(e){
+    AGENT.connected=false;AGENT.sid=null;AGENT.error=e.message;
+    if(e.status===401||e.status===403)agentSetToken('');
+    toast('No se pudo conectar al agente: '+e.message,true);
+  }finally{AGENT.connecting=false;agentRender()}
+}
+
+function agentDisconnect(){
+  AGENT.connected=false;AGENT.sid=null;AGENT.wsOk=false;clearTimeout(AGENT.timer);
+  if(AGENT.ws){try{AGENT.ws.onclose=null;AGENT.ws.close()}catch(e){}AGENT.ws=null}
+  agentSetToken('');state.agentHistory=[];
+  state.chat.push({who:'system',text:'Agente desconectado. La consola vuelve al modo demostración; el audio del servidor sigue con AutoMix.'});
+  agentRender();toast('Agente desconectado.');
+}
+
+async function agentRefreshStatus(){
+  if(!agentLive())return;
+  try{AGENT.models=await agentFetch('/models/status')}catch(e){}
+  try{AGENT.usage=await agentFetch('/usage')}catch(e){AGENT.usage=null}   // solo supervisor/admin
+}
+
+function agentOpenWs(){
+  if(!agentLive())return;
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+`${AGENT_BASE}/sessions/${AGENT.sid}/events`;
+  let ws;try{ws=new WebSocket(url)}catch(e){return agentScheduleWs()}
+  AGENT.ws=ws;
+  ws.onopen=()=>{ws.send(JSON.stringify({type:'auth',token:agentGetToken(),after:AGENT.lastSeq}))};
+  ws.onmessage=(m)=>{let ev;try{ev=JSON.parse(m.data)}catch(e){return}agentOnEvent(ev)};
+  ws.onclose=(e)=>{AGENT.wsOk=false;if(e.code===4401||e.code===4403){toast('El agente rechazó el token de eventos.',true);return}agentScheduleWs();agentRender()};
+}
+
+function agentScheduleWs(){
+  if(!agentLive())return;
+  clearTimeout(AGENT.timer);
+  const wait=Math.min(30000,1000*Math.pow(2,AGENT.retry++));
+  AGENT.timer=setTimeout(agentOpenWs,wait);
+}
+
+function agentOnEvent(ev){
+  if(typeof ev.sequence==='number')AGENT.lastSeq=Math.max(AGENT.lastSeq,ev.sequence);
+  const p=ev.payload||{};
+  switch(ev.type){
+    case 'session.snapshot':AGENT.wsOk=true;AGENT.retry=0;agentApplySession(p);break;
+    case 'mode.changed':if(p.to&&AGENT_MODE_UI[p.to]){AGENT.mode=p.to;state.mode=AGENT_MODE_UI[p.to]}break;
+    case 'agent.proposal.created':case 'agent.proposal.decided':case 'agent.proposal.expired':
+      agentSyncProposals().then(agentRender);return;
+    case 'preferences.updated':agentSyncPrefs().then(agentRender).catch(()=>{});return;
+    case 'plan.created':state.chat.push({who:'system',label:'Agente DJ',text:`Plan v${p.version} creado con ${p.items} pistas del catálogo.`});break;
+    case 'agent.degraded':state.chat.push({who:'system',label:'Agente DJ',text:'El agente opera degradado: '+(p.reason||'motor no disponible')+'. El audio no depende del agente.'});break;
+    case 'resync_required':case 'replay_truncated':agentFetch('/sessions/'+AGENT.sid).then(s=>{agentApplySession(s);agentRender()}).catch(()=>{});return;
+    default:return;
+  }
+  agentRender();
+}
+
+// --- Acciones del panel cuando hay agente ---
+async function agentSetMode(uiMode){
+  try{const s=await agentFetch(`/sessions/${AGENT.sid}/mode`,{method:'POST',idem:true,body:{mode:AGENT_MODE[uiMode],reason:'consola v0.6'}});
+    agentApplySession(s);toast('Modo '+s.mode+' aplicado en el servidor, sin reiniciar el audio.')}
+  catch(e){state.mode=AGENT_MODE_UI[AGENT.mode]||state.mode;toast('El servidor no cambió el modo: '+e.message,true)}  // manda el servidor
+  agentRender();
+}
+
+async function agentIntent(text,idx){
+  try{const r=await agentFetch(`/sessions/${AGENT.sid}/intent`,{method:'POST',body:{text}});
+    const src={rules:'reglas',qwen:'Qwen',deepseek:'DeepSeek'}[r.source]||r.source;
+    let msg=r.message||'';
+    if(r.plan&&r.plan.items&&r.plan.items.length)msg+=` Plan: ${r.plan.items.length} pistas (${[...new Set(r.plan.items.map(i=>i.genre).filter(Boolean))].join(' → ')}).`;
+    state.chat[idx]={who:'system',label:'Agente DJ · '+src,text:msg.trim()||'Orden recibida.'};
+    if(r.mode&&AGENT_MODE_UI[r.mode]){AGENT.mode=r.mode;state.mode=AGENT_MODE_UI[r.mode]}
+    if(r.proposal)await agentSyncProposals();
+  }catch(e){state.chat[idx]={who:'system',label:'Agente DJ · error',text:'El agente no procesó la orden: '+e.message}}
+  save();agentRender();
+}
+
+async function agentSetPolicy(payload){
+  const b={};
+  if('rule' in payload)b.rules={[payload.rule]:!!payload.enabled};
+  if('autonomy' in payload)b.autonomy=Number(payload.autonomy);
+  if('model' in payload)b.model_route=payload.model;
+  if('approval' in payload)b.approval_required=!!payload.approval;
+  try{await agentFetch(`/sessions/${AGENT.sid}/preferences`,{method:'PUT',body:b});toast('Política guardada en el servidor.')}
+  catch(e){toast('El servidor rechazó el cambio: '+e.message,true);try{await agentSyncPrefs()}catch(x){}agentRender()}
+}
+
+async function agentDecide(id,status){
+  const h=state.agentHistory.find(x=>x.id===id);
+  if(!h||!h.srv)return;
+  try{const r=await agentFetch(`/sessions/${AGENT.sid}/proposals/${h.srv}/decision`,{method:'POST',idem:true,body:{decision:status==='approved'?'approve':'reject'}});
+    toast(status==='approved'?'Propuesta aprobada · estado '+((r.proposal&&r.proposal.status)||'')+'.':'Propuesta rechazada.')}
+  catch(e){toast('No se registró la decisión: '+e.message,true)}
+  await agentSyncProposals();agentRender();
+}
+
+async function agentTestProposal(){
+  try{const r=await agentFetch(`/sessions/${AGENT.sid}/plans`,{method:'POST',idem:true,body:{count:4,energy_trend:'steady'}});
+    toast(r.outcome==='proposal'?'Propuesta creada en el servidor: espera tu aprobación.':(r.message||'Plan procesado por el agente.'))}
+  catch(e){toast('El agente no creó la propuesta: '+e.message,true)}
+  await agentSyncProposals();agentRender();
+}
+
+// Escucha los comandos que ya emite la consola (contrato v0.6) y los lleva al agente real.
+window.addEventListener('auditsound:command',(e)=>{
+  const {name,payload}=e.detail||{};
+  if(!agentLive())return;
+  if(name==='agent.mode')agentSetMode(payload.mode);
+  else if(name==='agent.policy')agentSetPolicy(payload);
+  else if(name==='agent.approval')agentDecide(payload.id,payload.status);
+});
+
+// Estado visible en la pantalla del agente (sustituye las etiquetas fijas «DESCONECTADO»).
+function agentStatusHtml(){
+  const fixed=`<div>Modelo operativo <b>Qwen</b> ${tag('DESCONECTADO','pending')}</div><div>Razonamiento <b>DeepSeek</b> ${tag('DESCONECTADO','pending')}</div><div>Gateway y presupuesto ${tag('PENDIENTE','pending')}</div><div>Motor de mezcla <b>C++</b> ${tag('DESCONECTADO','pending')}</div><div>Tokens facturables <b>0</b> ${tag('SIN LLAMADAS','ok')}</div>`;
+  if(!AGENT.available)return `<div class="statuslist">${fixed}<div>Agente DJ ${tag('NO CONFIGURADO EN ESTE SERVIDOR','demo')}</div></div>`;
+  if(!agentLive())return `<div class="statuslist">${fixed}</div><form data-form="agent-link" class="spaced"><label class="field">Token de acceso al agente<input name="token" type="password" autocomplete="off" required placeholder="Lo entrega el administrador"></label><div class="pillbar"><button type="submit" class="primary" ${AGENT.connecting?'disabled':''}>${AGENT.connecting?'Conectando…':'Conectar agente'}</button></div>${AGENT.error?`<p class="muted">${esc(AGENT.error)}</p>`:''}</form>`;
+  const m=n=>AGENT.models.find(x=>x.name===n);
+  const mt=n=>{const x=m(n);return !x||!x.configured?tag('SIN CONFIGURAR','pending'):x.breaker==='open'?tag('EN PAUSA (FALLOS)','pending'):tag('CONECTADO'+(x.model?' · '+x.model:''),'ok')};
+  const eng=AGENT.engine&&AGENT.engine.reachable;
+  const u=AGENT.usage;
+  return `<div class="statuslist"><div>Agente DJ ${tag('CONECTADO · '+(AGENT.mode||''),'ok')} ${AGENT.wsOk?tag('EVENTOS EN VIVO','ok'):tag('RECONECTANDO EVENTOS','pending')}</div><div>Modelo operativo <b>Qwen</b> ${mt('qwen')}</div><div>Razonamiento <b>DeepSeek</b> ${mt('deepseek')}</div><div>Motor de mezcla <b>C++</b> ${eng?tag('ALCANZABLE','ok'):tag('NO ALCANZABLE','pending')}</div><div>Consumo IA 24 h <b>${u?('US$ '+Number(u.cost_estimated_usd_24h).toFixed(4)):'—'}</b> ${u?tag('ESTIMACIÓN','demo'):tag('SOLO SUPERVISOR','demo')}</div></div><div class="pillbar spaced">${button('Actualizar estado','agent-refresh')}${button('Desconectar agente','agent-disconnect',{},'danger')}</div>`;
+}
+
+// Arranque: si el servidor anuncia el agente y la pestaña ya tiene token, se reconecta sola.
+if(AGENT.available&&agentGetToken())setTimeout(()=>agentConnect(),0);
+
 render();
 })();

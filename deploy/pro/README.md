@@ -77,3 +77,19 @@ docker run --rm -p 8080:80 audit-sound-pro
 ```
 Nota: la etapa de build usa `emscripten/emsdk:6.0.13` (debe coincidir con el `emcc` del
 proyecto). Si ese tag no existiera en el registro, usa el `6.0.x` más cercano.
+
+## Agente DJ (Fase 5): `DJ_AGENT_URL`
+
+El servidor reenvía `/api/v1/dj-agent/*` (HTTP y el WebSocket de eventos) al servicio `services/dj-agent`
+indicado en **`DJ_AGENT_URL`**, normalmente una dirección **interna** (p. ej. `http://dj-agent:8790`), para
+que el agente no quede expuesto a internet y el navegador hable con el mismo origen (sin CORS).
+
+| Variable | Default | Notas |
+|---|---|---|
+| `DJ_AGENT_URL` | vacía | Sin ella el proxy responde 503 y la consola v0.6 queda en modo demostración. |
+| `DJ_AGENT_TIMEOUT_MS` | 30000 | Tiempo máximo de una petición al agente (los planes con IA pueden tardar). |
+| `DJ_AGENT_MAX_BODY` | 65536 | Tamaño máximo del cuerpo reenviado. |
+
+Solo se reenvían `Authorization`, `Content-Type`, `Accept`, `Idempotency-Key` y `X-Correlation-Id`
+(nunca las cookies del sitio). `config.js` publica `window.AUDIT_SOUND_AGENT=true|false`, nunca la URL
+interna. Prueba: `node deploy/pro/agent_proxy_test.mjs`.

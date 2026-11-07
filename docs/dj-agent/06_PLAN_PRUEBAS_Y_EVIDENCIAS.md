@@ -117,3 +117,8 @@ LiteLLM de la firma (sin acceso a `LOCAL_LLM_*` desde este entorno).
 
 Detalle en `14_FASE4_INFORME.md`. `pytest` 228 pasan, 5 omitidas. Planes con Qwen3 1.7B real: 7/8 correctos,
 todas las pistas del catálogo (`evidencias/eval_fase4_planes_qwen3_1.7b.json`). **NO VERIFICADO:** DeepSeek real.
+
+## 10. Fase 5 — consola v0.6 conectada (actualización 2026-11-07)
+
+Detalle en `15_FASE5_INFORME.md`. Proxy 12/12, E2E en Chromium 24/24 (3 corridas) (agente real, motor simulado), regresión
+del v0.6 20 pantallas × 4 tamaños sin errores. 31 de 39 controles cableados.
