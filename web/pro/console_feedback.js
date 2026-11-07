@@ -56,12 +56,35 @@ export function setupFeedback({ frame, bridge, state }) {
       }
     }
     if (wv && wv.bins) {
-      ctx.strokeStyle = col; ctx.globalAlpha = .95; ctx.lineWidth = 1; ctx.beginPath();
       const n = wv.bins;
-      for (let i = 0; i < n; i++) { const x = i / n * w; ctx.moveTo(x, mid - wv.max[i] * mid * 0.95); ctx.lineTo(x, mid - wv.min[i] * mid * 0.95); }
-      ctx.stroke(); ctx.globalAlpha = 1;
+      // Submuestrea a ~1 punto por píxel: la onda se ve igual pero el dibujo es ligero
+      // (antes recorría decenas de miles de bins por frame → consola lenta).
+      const step = Math.max(1, Math.round(n / Math.max(60, Math.min(n, Math.floor(w)))));
+      // Normaliza por el pico: una pista fuerte ya no llena la tira como un bloque sólido.
+      let peak = 1e-4;
+      for (let i = 0; i < n; i += step) { const a = Math.max(Math.abs(wv.max[i]), Math.abs(wv.min[i])); if (a > peak) peak = a; }
+      const sc = (mid * 0.92) / peak;
+      const topY = (i) => mid - wv.max[i] * sc, botY = (i) => mid - wv.min[i] * sc;
+      const traceTop = () => { let f = 1; for (let i = 0; i < n; i += step) { const x = i / n * w; f ? (ctx.moveTo(x, topY(i)), f = 0) : ctx.lineTo(x, topY(i)); } };
+      const traceBot = () => { let f = 1; for (let i = 0; i < n; i += step) { const x = i / n * w; f ? (ctx.moveTo(x, botY(i)), f = 0) : ctx.lineTo(x, botY(i)); } };
+      // Envolvente RELLENA (estilo DJ) con degradado vertical suave.
+      ctx.beginPath(); traceTop(); for (let i = n - 1 - ((n - 1) % step); i >= 0; i -= step) ctx.lineTo(i / n * w, botY(i)); ctx.closePath();
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, col + '26'); grad.addColorStop(0.5, col + '80'); grad.addColorStop(1, col + '26');
+      ctx.fillStyle = grad; ctx.fill();
+      // Bordes finos y brillantes (arriba y abajo).
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, dpr); ctx.globalAlpha = 0.9;
+      ctx.beginPath(); traceTop(); ctx.stroke();
+      ctx.beginPath(); traceBot(); ctx.stroke();
+      ctx.globalAlpha = 1;
+      // Línea central tenue.
+      ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
       const dur = state.dur[d] || 0;
-      if (dur > 0) { const x = (state.pos[d] / dur) * w; ctx.strokeStyle = '#C7A83C'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+      if (dur > 0) {
+        const x = (state.pos[d] / dur) * w;
+        ctx.fillStyle = 'rgba(3,10,20,.5)'; ctx.fillRect(0, 0, x, h);   // lo ya reproducido se atenúa
+        ctx.strokeStyle = '#C7A83C'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
     }
     // tiempo (izq) + BPM (der)
     ctx.fillStyle = '#eaf2ff'; ctx.font = (11 * dpr) + 'px system-ui,sans-serif'; ctx.textBaseline = 'top';
