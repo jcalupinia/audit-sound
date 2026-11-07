@@ -84,6 +84,8 @@ class OpenAICompatibleProvider:
         latency = (time.perf_counter() - t0) * 1000
         if r.status_code in (401, 403):
             raise LLMError("auth", f"{self.name}: credencial rechazada")
+        if r.status_code == 402:
+            raise LLMError("insufficient_balance", f"{self.name}: saldo o tope de gasto agotado")
         if r.status_code == 429:
             raise LLMError("rate_limited", f"{self.name}: cuota o límite alcanzado")
         if r.status_code != 200:

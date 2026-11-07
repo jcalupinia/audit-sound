@@ -83,6 +83,8 @@ def build_plan(catalog: list[Track], *, current: Track | None = None, segments: 
     step = ENERGY_STEP.get(energy_trend, 0.0)
 
     for si, seg in enumerate(segs):
+        # Fase 4: cada bloque puede traer su propia tendencia de energía (plan multi-etapa).
+        step = ENERGY_STEP.get(seg.get("energy_trend") or energy_trend, 0.0)
         n = count if not seg.get("minutes") else max(1, round(seg["minutes"] / avg_track_minutes))
         if len(segs) > 1 and not seg.get("minutes"):
             n = max(1, count // len(segs))

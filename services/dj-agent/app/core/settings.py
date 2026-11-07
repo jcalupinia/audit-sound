@@ -52,9 +52,17 @@ class Settings:
     deepseek_api_key: str = field(default="", repr=False)
     deepseek_model: str = "deepseek-flash"
     llm_timeout_seconds: float = 8.0
+    llm_timeout_plan_seconds: float = 20.0   # planes: no son en tiempo real (la música sigue mientras tanto)
     llm_no_think: bool = True        # Qwen3: «/no_think» desactiva el razonamiento largo (latencia)
     llm_budget_usd_day: float = 1.0
     llm_budget_usd_session: float = 0.25
+    llm_max_calls_hour_org: int = 120      # cuota de llamadas a modelos por organización y hora
+    llm_max_calls_hour_session: int = 30   # … y por sesión y hora
+    llm_max_tokens_intent: int = 200
+    llm_max_tokens_plan: int = 500
+    # Tarifas por millón de tokens: ESTIMACIÓN configurable (confirmar en la cuenta DeepSeek).
+    deepseek_usd_per_mtok_in: float = 0.27
+    deepseek_usd_per_mtok_out: float = 1.10
     llm_breaker_failures: int = 3
     llm_breaker_cooldown_seconds: float = 60.0
 
@@ -79,9 +87,16 @@ class Settings:
             deepseek_api_key=_env("DEEPSEEK_API_KEY"),
             deepseek_model=_env("DEEPSEEK_MODEL", "deepseek-flash"),
             llm_timeout_seconds=_float("DJ_AGENT_LLM_TIMEOUT_SECONDS", 8.0),
+            llm_timeout_plan_seconds=_float("DJ_AGENT_LLM_TIMEOUT_PLAN_SECONDS", 20.0),
             llm_no_think=_env("DJ_AGENT_LLM_NO_THINK", "true").lower() not in ("0", "false", "no"),
             llm_budget_usd_day=_float("DJ_AGENT_LLM_BUDGET_USD_DAY", 1.0),
             llm_budget_usd_session=_float("DJ_AGENT_LLM_BUDGET_USD_SESSION", 0.25),
+            llm_max_calls_hour_org=_int("DJ_AGENT_LLM_MAX_CALLS_HOUR_ORG", 120),
+            llm_max_calls_hour_session=_int("DJ_AGENT_LLM_MAX_CALLS_HOUR_SESSION", 30),
+            llm_max_tokens_intent=_int("DJ_AGENT_LLM_MAX_TOKENS_INTENT", 200),
+            llm_max_tokens_plan=_int("DJ_AGENT_LLM_MAX_TOKENS_PLAN", 500),
+            deepseek_usd_per_mtok_in=_float("DJ_AGENT_DEEPSEEK_USD_PER_MTOK_IN", 0.27),
+            deepseek_usd_per_mtok_out=_float("DJ_AGENT_DEEPSEEK_USD_PER_MTOK_OUT", 1.10),
         )
 
     def secret_values(self) -> list[str]:

@@ -280,7 +280,7 @@ class Store:
                    "latency_ms,outcome,ts) VALUES(?,?,?,?,?,?,?,?,?,?)",
                    (u.get("session_id"), u.get("org_id"), u.get("provider"), u.get("model"),
                     u.get("tokens_in", 0), u.get("tokens_out", 0), u.get("cost_estimated", 0.0),
-                    u.get("latency_ms", 0.0), u.get("outcome"), time.time()))
+                    u.get("latency_ms", 0.0), u.get("outcome"), u.get("ts", time.time())))
 
     def usage_cost(self, *, org_id: str | None = None, session_id: str | None = None, since: float = 0.0) -> float:
         sql, args = "SELECT COALESCE(SUM(cost_estimated),0) AS c FROM llm_usage WHERE ts>=?", [since]
@@ -291,6 +291,21 @@ class Store:
             sql += " AND session_id=?"
             args.append(session_id)
         return float(self._exec(sql, tuple(args)).fetchone()["c"])
+
+    def usage_calls(self, *, org_id: str | None = None, session_id: str | None = None, since: float = 0.0) -> int:
+        sql, args = "SELECT COUNT(*) AS n FROM llm_usage WHERE ts>=?", [since]
+        if org_id:
+            sql, args = sql + " AND org_id=?", [*args, org_id]
+        if session_id:
+            sql, args = sql + " AND session_id=?", [*args, session_id]
+        return int(self._exec(sql, tuple(args)).fetchone()["n"])
+
+    def usage_by_provider(self, *, org_id: str, since: float = 0.0) -> list[dict[str, Any]]:
+        return self._exec(
+            "SELECT provider, model, COUNT(*) AS calls, COALESCE(SUM(tokens_in),0) AS tokens_in, "
+            "COALESCE(SUM(tokens_out),0) AS tokens_out, COALESCE(SUM(cost_estimated),0) AS cost_estimated, "
+            "SUM(CASE WHEN outcome='ok' THEN 1 ELSE 0 END) AS ok FROM llm_usage WHERE org_id=? AND ts>=? "
+            "GROUP BY provider, model ORDER BY provider", (org_id, since)).fetchall()
 
     def usage_rows(self, *, org_id: str, limit: int = 100) -> list[dict[str, Any]]:
         return self._exec("SELECT * FROM llm_usage WHERE org_id=? ORDER BY ts DESC LIMIT ?", (org_id, limit)).fetchall()
