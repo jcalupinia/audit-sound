@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS events(
   session_id TEXT NOT NULL, sequence INTEGER NOT NULL, event_id TEXT NOT NULL, type TEXT NOT NULL,
   payload_json TEXT NOT NULL, correlation_id TEXT, source TEXT NOT NULL, status TEXT, actor_id TEXT,
   ts REAL NOT NULL, PRIMARY KEY(session_id, sequence));
+CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT NOT NULL, updated_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS llm_usage(
   id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, org_id TEXT, provider TEXT, model TEXT,
   tokens_in INTEGER, tokens_out INTEGER, cost_estimated REAL, latency_ms REAL, outcome TEXT, ts REAL NOT NULL);
@@ -260,6 +261,18 @@ class Store:
     def last_sequence(self, session_id: str) -> int:
         return int(self._exec("SELECT COALESCE(MAX(sequence),0) AS s FROM events WHERE session_id=?",
                               (session_id,)).fetchone()["s"])
+
+    # ---------------- clave-valor interno (p. ej. sesión del agente con el motor) ----------------
+    def kv_get(self, k: str) -> str | None:
+        row = self._exec("SELECT v FROM kv WHERE k=?", (k,)).fetchone()
+        return row["v"] if row else None
+
+    def kv_set(self, k: str, v: str | None) -> None:
+        if v is None:
+            self._exec("DELETE FROM kv WHERE k=?", (k,))
+        else:
+            self._exec("INSERT INTO kv(k,v,updated_at) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v, "
+                       "updated_at=excluded.updated_at", (k, v, time.time()))
 
     # ---------------- consumo de IA ----------------
     def insert_usage(self, u: dict[str, Any]) -> None:

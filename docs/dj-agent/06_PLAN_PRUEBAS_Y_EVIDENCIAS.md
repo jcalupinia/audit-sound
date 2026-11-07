@@ -83,3 +83,25 @@ Script de verificación ejecutado contra `http://127.0.0.1:8790` (motor simulado
 - Imagen Docker: el daemon de Docker no está disponible en este entorno; el `Dockerfile` no se construyó.
 - Rendimiento y estabilidad de larga duración del servicio (soak), dispositivos iOS/Android físicos.
 - Cableado del frontend v0.6 (Fase 5).
+
+## 7. Fase 2 — evidencias con el motor C++ real (actualización 2026-11-07)
+
+Lo marcado como NO VERIFICADO en §6 respecto del motor real quedó cubierto en la Fase 2
+(detalle en `12_FASE2_INFORME.md`):
+
+| Prueba | Resultado | Evidencia |
+|---|---|---|
+| `control_api_test` (B1 metadatos, B2 cola, `set_mode_dj`) | 40 OK | binario nativo |
+| `selector_test`, `playback_recovery_test`, `engine_selftest` | OK (Selector sin cambios) | binario nativo |
+| `pytest` del agente | 133 pasan, 5 omitidas (requieren `DJ_AGENT_REAL_ENGINE_BIN`) | `services/dj-agent/tests` |
+| Pruebas contra el binario real (`tests/real`) | 5/5 | 30 cambios de modo, cola → Selector, agente caído |
+| Soak 10 min (motor + Icecast + agente AUTOMÁTICO) | 11/11 | `evidencias/soak_fase2_10min.json` |
+| Soak 1 h 55 min | 11/11 | `evidencias/soak_fase2_2h.json` |
+| Soak 15 min tras la corrección | 11/11, cola de vuelta en la 1.ª transición | `evidencias/soak_fase2_15min_correccion.json` |
+| Soak 4 h continuas | **NO VERIFICADO** en este entorno | ver informe 12 §2 |
+
+Hallazgo del soak de 2 h (corregido): tras el reinicio del agente el plan viejo seguía ACTIVO y la pista al
+aire (elegida por el Selector durante la caída) no estaba en él, así que el agente no volvía a encolar hasta que
+por azar sonaba una pista del plan (≈5 min). Ahora detecta el plan desfasado (pista al aire fuera del plan y
+cola del motor vacía) y replanifica en el siguiente ciclo. Prueba de regresión:
+`tests/failover/test_continuity_recovery.py::test_tras_caida_del_agente_el_plan_desfasado_se_replanifica`.

@@ -1,8 +1,7 @@
-# 11 · Propuesta técnica Fase 2 — extensiones mínimas del motor C++ (PARA APROBACIÓN)
+# 11 · Fase 2 — extensiones mínimas del motor C++ (APROBADA e IMPLEMENTADA)
 
-> **No se ha modificado el motor C++.** Este documento propone el contrato; su implementación requiere tu
-> aprobación expresa. El agente (Fase 1) ya está preparado para él: capacidades `metadata` y `queue` del
-> `EngineAdapter`, simuladas en `FakeEngine` y probadas.
+> **Estado:** aprobada por el dueño («Arranca la Fase 2») e **implementada** en la rama `claude/dj-agent-fase2`.
+> El §8 resume lo implementado y lo que cambió respecto de esta propuesta al probar con el binario real.
 
 ## 1. Principios
 
@@ -77,3 +76,31 @@ Propuesta: no tocar el crossfader si hay un plato sonando. El simulador reproduc
 ## 7. Estimación orientativa
 
 C++ (B1 + B2 + estado) 1,5–2 días · adaptador e integración 1 día · pruebas y soak 1–1,5 días (más las 4 h de soak).
+
+## 8. Implementado (Fase 2)
+
+| Elemento | Dónde | Prueba |
+|---|---|---|
+| B1 · `/api/tracks` con `bpm`, `key`, `energy`, `duration` y `metadata:true/false` (aditivo) | `engine/api/control_api.cpp` (`control_api_add_track_meta`), `tools/audit_sound_server.cpp` (guarda el análisis existente + `dj_file_duration`) | `control_api_test` (B1 ×4) · real: los BPM analizados coinciden con los generados |
+| B2 · `queue_set/append/remove/clear` (≤ 50, validación de índices), `GET /api/queue`, `queue`/`next_source` en `/api/status` | `control_api.cpp` | `control_api_test` (B2 ×15) |
+| B2 · la cola tiene prioridad y, vacía, decide el Selector **sin cambios** | `audit_sound_server.cpp::nextChained` (envoltorio del callback; `Selector::nextTrackCb` intacto) | `selector_test` OK · real: el AutoMix toma la pista encolada y luego vuelve al Selector |
+| Cerrojo propio de la cola (`queueMu`), sin depender del de la API HTTP | `control_api.cpp` | sin bloqueos en las pruebas reales |
+| Pista encolada sin archivo → se descarta y se prueba la siguiente | `control_api_next_queued` | `control_api_test` |
+| `set_mode_dj`: el crossfader solo se centra si no suena nada | `control_api.cpp` | real: 30 cambios de modo sin corte |
+
+### Cambios respecto de la propuesta, descubiertos con el binario real
+
+1. **Bug previo del motor corregido (grave):** al pasar a MANUAL, `set_mode_dj` decidía si un plato estaba vacío
+   mirando `deckTitle`, que el AutoMix nunca rellena, y **recargaba la pista 0 encima del plato que sonaba**,
+   cortando el audio. Ahora usa `dj_loaded()` y conserva el título de lo que deja sonando el AutoMix. El motor
+   simulado de la Fase 1 no lo reproducía (modelaba "plato vacío" de otra forma) y se ajustó al C++ corregido.
+2. **Latencia de la cola:** el AutoMix precarga la siguiente pista apenas empieza una. La cola del agente entra en
+   la **siguiente carga libre**, es decir, como mucho una pista después de la ya precargada. No se cambió el
+   AutoMix; el agente planifica con esa demora.
+3. **Control tras un reinicio del agente:** el motor da el control al primer dispositivo y mantiene viva su sesión
+   2 h, así que un agente reiniciado con un login nuevo quedaba sin control. Solución en el agente, sin tocar el C++:
+   token de la sesión persistido en su base (reanuda la misma sesión tras una caída), `logout` al apagarse
+   (libera el control) y un único reintento de `control/take` si un comando recibe 409 (solo prospera si el
+   control está libre; nunca se arrebata).
+4. **El Selector no conoce las pistas que encola el agente** (no hay API para informarle sin cambiar su algoritmo):
+   el planificador del agente evita sus propias repeticiones; queda como limitación documentada.

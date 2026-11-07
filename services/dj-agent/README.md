@@ -1,13 +1,13 @@
-# AUDIT SOUND · Agente DJ (`services/dj-agent`) — Fase 1
+# AUDIT SOUND · Agente DJ (`services/dj-agent`) — Fases 1 y 2
 
 Servicio **aislado del motor de audio**: recibe instrucciones, decide según el modo
 (MANUAL / HÍBRIDO / AUTOMÁTICO) y la política, y envía **comandos validados** al motor.
 El agente **nunca produce ni mezcla audio** y **no es necesario para que el motor siga sonando**:
 si el agente cae, el motor C++ y su AutoMix continúan.
 
-> **Estado: Fase 1 — LISTO PARA REVISIÓN.** Funciona con el **motor SIMULADO** y reglas
-> deterministas. No hay integración real con el motor C++, Qwen ni DeepSeek (Fases 2–4).
-> No está desplegado en ningún entorno.
+> **Estado: Fase 2 — LISTO PARA REVISIÓN.** Integrado con el **motor C++ real** (metadatos y cola
+> del agente, probados contra el binario) además del motor simulado para pruebas. Reglas deterministas:
+> Qwen y DeepSeek siguen sin conectar (Fases 3–4). No está desplegado en ningún entorno.
 
 ## Requisitos
 - Python 3.12+
@@ -41,10 +41,25 @@ curl -s -X POST localhost:8790/api/v1/dj-agent/sessions -H "Authorization: Beare
 ## Pruebas
 
 ```bash
-.venv/bin/python -m pytest          # 125 pruebas: unitarias, integración, contrato, failover
+.venv/bin/python -m pytest          # 132 pruebas (+5 con el motor real si se define DJ_AGENT_REAL_ENGINE_BIN)
 .venv/bin/ruff check app tests
 .venv/bin/python scripts/export_openapi.py   # regenera docs/dj-agent/03_CONTRATOS_API_OPENAPI.yaml
 ```
+
+## Con el motor C++ real (local, aislado)
+
+```bash
+# 1) compilar el motor (desde la raíz del repo)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && cmake --build build -j
+# 2) pruebas de integración contra el binario real (se omiten si no se define la variable)
+DJ_AGENT_REAL_ENGINE_BIN=$PWD/build/audit_sound_server services/dj-agent/.venv/bin/python -m pytest services/dj-agent/tests/real
+# 3) soak con motor real + Icecast + agente en AUTOMÁTICO (+ caída y reinicio del agente)
+DUR=600 services/dj-agent/.venv/bin/python scripts/soak_agente_fase2.py      # 10 min; DUR=14400 → 4 h
+```
+
+Para usarlo como servicio: `DJ_AGENT_ENGINE=control_api`, `DJ_AGENT_ENGINE_URL=http://<motor>:8787`,
+`DJ_AGENT_ENGINE_USER/PASS` (la cuenta de la Control API del motor). El agente guarda el token de su sesión con
+el motor en su base para recuperar el control tras una caída y lo libera (`logout`) al apagarse.
 
 ## Estructura
 

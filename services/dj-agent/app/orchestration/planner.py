@@ -73,7 +73,10 @@ def build_plan(catalog: list[Track], *, current: Track | None = None, segments: 
     if not has_meta:
         warnings.append("metadatos_no_disponibles_B1: plan sin filtro de género ni compatibilidad (confianza baja)")
     segs = segments or [{"genre": genre, "minutes": None}]
-    used: set[int] = set(history_ids or []) if no_repeat else set()
+    # "No repetir" mira las pistas recientes, pero nunca más de la mitad del catálogo: con un
+    # catálogo pequeño, una ventana fija dejaría al agente sin candidatas.
+    window = max(1, len(catalog) // 2)
+    used: set[int] = set((history_ids or [])[-window:]) if no_repeat else set()
     items: list[PlanItem] = []
     prev = current
     target = current.energy if current and current.energy is not None else None

@@ -37,10 +37,12 @@ planifica y emite comandos validados; el motor C++ y su AutoMix garantizan la co
 Motor por defecto: SIMULADO. Contratos derivados del código implementado."""
 
 
-def build_engine(settings: Settings) -> EngineAdapter:
+def build_engine(settings: Settings, store: Store) -> EngineAdapter:
     if settings.engine_kind == "control_api":
         return ControlApiAdapter(settings.engine_url, settings.engine_user, settings.engine_pass,
-                                 timeout=settings.engine_timeout_seconds)
+                                 timeout=settings.engine_timeout_seconds,
+                                 token_store=(lambda: store.kv_get("engine_token"),
+                                              lambda v: store.kv_set("engine_token", v)))
     return FakeEngine()
 
 
@@ -51,7 +53,7 @@ def create_app(settings: Settings | None = None, *, engine: EngineAdapter | None
     logger = configure_logging(settings.secret_values())
     store = store or Store(settings.db_path)
     bus = EventBus(store)
-    engine = engine or build_engine(settings)
+    engine = engine or build_engine(settings, store)
     router = router or ModelRouter(settings, store)
     manager = SessionManager(settings, store, bus, engine, router, clock=clock or time.time)
 
@@ -67,6 +69,9 @@ def create_app(settings: Settings | None = None, *, engine: EngineAdapter | None
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+        close = getattr(engine, "close", None)
+        if callable(close):  # libera el control del motor; el audio NO se detiene
+            await asyncio.to_thread(close)
 
     app = FastAPI(title="AUDIT SOUND · Agente DJ", version=__version__, description=DESCRIPTION, lifespan=lifespan)
     app.state.settings, app.state.store, app.state.bus = settings, store, bus

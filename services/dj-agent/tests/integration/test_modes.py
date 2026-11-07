@@ -119,3 +119,32 @@ def test_motor_caido_no_cambia_el_modo(client, engine):
     assert r.status_code == 503 and r.json()["error"]["code"] == "engine_unreachable"
     engine.set_reachable(True)
     assert client.get(f"{BASE}/sessions/{sid}", headers=H("op1")).json()["mode"] == "HIBRIDO"
+
+
+def test_automatico_replanifica_aunque_el_motor_no_informe_ids(settings, clock):
+    """Motor real: los platos traen título pero no índice. El agente debe ver avanzar su plan."""
+    from fastapi.testclient import TestClient
+
+    from app.adapters.engine_fake import FakeEngine
+    from app.main import create_app
+
+    class TitleOnly(FakeEngine):
+        def status(self):
+            snap = super().status()
+            for d in snap.decks:
+                d.track_id = None
+            return snap
+
+    eng = TitleOnly()
+    with TestClient(create_app(settings, engine=eng, clock=clock)) as c:
+        sid = new_session(c, mode="AUTOMATICO")["id"]
+        m = c.app.state.manager
+        clock.advance(60)
+        m.tick(sid)
+        first = c.get(f"{BASE}/sessions/{sid}/plans/current", headers=H("op1")).json()
+        for _ in range(6):                      # consumir el plan (6 pistas de 180 s)
+            eng.advance(180)
+            clock.advance(40)
+            m.tick(sid)
+        second = c.get(f"{BASE}/sessions/{sid}/plans/current", headers=H("op1")).json()
+        assert second["id"] != first["id"] and second["status"] == "ACTIVE"   # replanificó solo
