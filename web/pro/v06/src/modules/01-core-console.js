@@ -24,6 +24,52 @@ const mediaUrls=new Map();const liveVideoElements={};let lastToastTimer=null;let
 // LIVE.on alterna entre DEMO (audio por <audio>+WebAudio) y motor profesional (AudioBridge/WASM).
 const mediaFiles=new Map();const DECK_IDX={A:0,B:1};
 const LIVE={on:false,bridge:null,pos:{A:0,B:0},dur:{A:0,B:0}};
+// --- P0.2: biblioteca + análisis reales y copiloto local (módulos ya probados) ---
+const CO=()=>(window.__ASLive&&window.__ASLive.copilot)||null;
+const LIBX=()=>(window.__ASLive&&window.__ASLive.lib)||null;
+const camelot=(k)=>window.__ASLive?window.__ASLive.camelot(k):'—';
+let libHydrated=false;
+// Analiza una pista por el MOTOR (BPM/tonalidad/energía), la persiste en IndexedDB y la
+// registra en el copiloto. Se dispara al importar (gesto del usuario). Si no hay motor
+// (sin aislamiento de origen) conserva el valor por defecto sin romper la demo.
+async function analyzeAndStore(item,file){
+  try{
+    if(self.crossOriginIsolated&&window.__ASLive){
+      try{await liveStart();const a=await LIVE.bridge.analyzeAwait(file,item.name);if(a){item.bpm=Math.round(a.bpm||item.bpm)||item.bpm;item.key=(a.key??-1)|0;item.energy=+a.energy||0;item.keyName=camelot(item.key);}}catch(e){}
+    }
+    const lib=LIBX();
+    if(lib){try{const bytes=await file.arrayBuffer();await lib.putTrack({id:item.id,name:item.name,bpm:item.bpm,key:item.key??-1,energy:item.energy||0,size:file.size,type:file.type,bytes});item.persisted=true;}catch(e){}}
+    const co=CO();if(co)co.addTrack({id:item.id,name:item.name,bpm:item.bpm,key:item.key??-1,energy:item.energy||0});
+    render();
+  }catch(e){}
+}
+// Carga la biblioteca persistente (IndexedDB) a la vista y al copiloto, una vez por sesión.
+async function hydrateLibrary(){
+  if(libHydrated)return;libHydrated=true;
+  const lib=LIBX();if(!lib)return;
+  try{
+    const rows=await lib.listTracks();const co=CO();
+    for(const r of rows){
+      if(!state.tracks.some(t=>t.id===r.id))state.tracks.push({id:r.id,name:r.name,artist:'Biblioteca',kind:'audio',genre:'Local',bpm:r.bpm||120,key:r.key,keyName:camelot(r.key),energy:r.energy||0,duration:0,src:null,demo:false,persisted:true});
+      if(co)co.addTrack({id:r.id,name:r.name,bpm:r.bpm,key:r.key,energy:r.energy});
+    }
+    if(rows.length)render();
+  }catch(e){}
+}
+// Respuesta REAL del copiloto: recomienda la siguiente pista (Camelot + BPM + energía).
+function copilotReply(text){
+  const co=CO();
+  if(!co||co.size()===0)return 'Copiloto local listo. Importa pistas a la biblioteca y te recomiendo la siguiente por tonalidad (Camelot), BPM y energía. Qwen/DeepSeek siguen sin conectar.';
+  const curId=(state.deck.A.playing&&state.deck.A.track)||(state.deck.B.playing&&state.deck.B.track)||state.deck.A.track||state.deck.B.track||null;
+  const cur=curId?trackFor(curId):null;
+  const current=cur?{name:cur.name,bpm:cur.bpm,key:cur.key,energy:cur.energy}:null;
+  const recs=co.recommend(current,3);
+  if(!recs.length)return 'Necesito al menos una pista más en la biblioteca para recomendar. Importa otra.';
+  const top=recs[0],tip=current?co.suggestTransition(current,top):'';
+  const base=cur?('Desde «'+cur.name+'» ('+camelot(cur.key)+' · '+Math.round(cur.bpm||0)+' BPM) '):'';
+  const list=recs.map((r,i)=>(i+1)+'. '+r.track.name+' — '+camelot(r.track.key)+' · '+Math.round(r.track.bpm||0)+' BPM · '+Math.round(r.score*100)+'% ('+r.reason+')').join('   |   ');
+  return base+'→ siguiente sugerida: «'+top.track.name+'» ('+Math.round(top.score*100)+'%). '+(tip?('Transición: '+tip+'. '):'')+'Top 3: '+list;
+}
 function onLiveStatus(m){if(!m||!m.decks)return;for(const dk of m.decks){const s=dk.deck===1?'B':'A';LIVE.pos[s]=dk.pos||0;LIVE.dur[s]=dk.dur||0;if(typeof dk.playing==='boolean')state.deck[s].playing=dk.playing;}}
 function onLiveLoaded(m){if(!m)return;const s=m.deck===1?'B':'A';if(m.bpm)state.deck[s].bpm=Math.round(m.bpm);}
 async function liveStart(){if(LIVE.bridge)return LIVE.bridge;if(!window.__ASLive)throw Error('Motor en vivo no disponible: la página debe servirse con COOP/COEP.');if(!self.crossOriginIsolated)throw Error('Sin aislamiento de origen (SharedArrayBuffer no disponible).');LIVE.bridge=await window.__ASLive.create({onStatus:onLiveStatus,onLoaded:onLiveLoaded});return LIVE.bridge;}
