@@ -214,8 +214,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'segment-delete':state.segments=state.segments.filter(s=>s.id!==id);save();render();break;
  case 'agent-suggestion':addChat(a.prompt);break;
  case 'agent-clear':state.chat=[{who:'system',text:'Conversación reiniciada. Modelo sin conexión.'}];save();render();break;
- case 'agent-voice':{
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Reconocimiento de voz no disponible en este navegador o contexto.',true);return}speechRecognition=new SR();speechRecognition.lang='es-EC';speechRecognition.onresult=e=>{const transcript=e.results[0][0].transcript;let textArea=document.querySelector('form[data-form=agent] textarea');if(textArea){textArea.value=transcript;toast('Dictado listo para revisión y envío')}};speechRecognition.onerror=e=>toast('Error de micrófono: '+e.error,true);speechRecognition.start();toast('Escuchando instrucción de voz…');break}
+ case 'agent-voice':voiceToggle();break;
  case 'agent-disconnect':agentDisconnect();break;
  case 'agent-refresh':agentRefreshStatus().then(()=>agentSyncProposals()).then(render);break;
  case 'agent-test-approval':if(agentLive()){agentTestProposal();break}state.agentHistory.push({id:uid('approval'),text:'Transición de prueba a género House',status:'pending'});save();render();break;
@@ -429,8 +428,8 @@ function agentOpenWs(){
   const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+`${AGENT_BASE}/sessions/${AGENT.sid}/events`;
   let ws;try{ws=new WebSocket(url)}catch(e){return agentScheduleWs()}
   AGENT.ws=ws;
-  ws.onopen=()=>{ws.send(JSON.stringify({type:'auth',token:agentGetToken(),after:AGENT.lastSeq}))};
-  ws.onmessage=(m)=>{let ev;try{ev=JSON.parse(m.data)}catch(e){return}agentOnEvent(ev)};
+  ws.onopen=()=>{AGENT.lastMsg=Date.now();ws.send(JSON.stringify({type:'auth',token:agentGetToken(),after:AGENT.lastSeq}))};
+  ws.onmessage=(m)=>{AGENT.lastMsg=Date.now();let ev;try{ev=JSON.parse(m.data)}catch(e){return}agentOnEvent(ev)};
   ws.onclose=(e)=>{AGENT.wsOk=false;if(e.code===4401||e.code===4403){toast('El agente rechazó el token de eventos.',true);return}agentScheduleWs();agentRender()};
 }
 
@@ -467,7 +466,7 @@ async function agentSetMode(uiMode){
 }
 
 async function agentIntent(text,idx){
-  try{const r=await agentFetch(`/sessions/${AGENT.sid}/intent`,{method:'POST',body:{text}});
+  try{const r=await agentFetch(`/sessions/${AGENT.sid}/intent`,{method:'POST',body:{text,channel:voiceChannelFor(text)}});
     const src={rules:'reglas',qwen:'Qwen',deepseek:'DeepSeek'}[r.source]||r.source;
     let msg=r.message||'';
     if(r.plan&&r.plan.items&&r.plan.items.length)msg+=` Plan: ${r.plan.items.length} pistas (${[...new Set(r.plan.items.map(i=>i.genre).filter(Boolean))].join(' → ')}).`;
@@ -527,6 +526,104 @@ function agentStatusHtml(){
 
 // Arranque: si el servidor anuncia el agente y la pestaña ya tiene token, se reconecta sola.
 if(AGENT.available&&agentGetToken())setTimeout(()=>agentConnect(),0);
+// (el cierre del módulo y el primer render están al final de 06-voice-mobile.js)
+
+// ===== 06 · Voz y móvil (Fase 6) =====
+// Dictado: lo hace el NAVEGADOR (Web Speech API). El texto se escribe en el cuadro de la orden y NUNCA
+// se envía solo: la persona lo revisa y pulsa «Enviar». Las acciones críticas siguen exigiendo
+// aprobación en el servidor, vengan de voz o de texto. Si el agente está conectado, la orden viaja
+// con channel:"voice" para que la auditoría distinga lo dictado.
+// Móvil: al volver la pestaña a primer plano o recuperar la red, se reconectan los eventos y se
+// resincroniza la sesión (los navegadores móviles cortan los WebSocket en segundo plano).
+const VOICE={rec:null,listening:false,base:'',finalText:'',dictated:'',noticed:false};
+const VOICE_ERR={
+  'not-allowed':'Permiso de micrófono denegado. Actívalo en los ajustes del navegador (en iPhone: Ajustes › Safari › Micrófono).',
+  'service-not-allowed':'El navegador no permite el dictado en esta página.',
+  'no-speech':'No se oyó nada. Acércate al micrófono y vuelve a intentarlo.',
+  'audio-capture':'No se encontró un micrófono en este dispositivo.',
+  'network':'El dictado del navegador necesita conexión a internet.',
+  'language-not-supported':'El idioma del dictado no está disponible en este navegador.'};
+
+function voiceRecognizer(){return window.SpeechRecognition||window.webkitSpeechRecognition||null}
+function voiceTextarea(){return document.querySelector('main form[data-form=agent] textarea[name=message]')||document.querySelector('form[data-form=agent] textarea[name=message]')}
+function voiceSecure(){return window.isSecureContext||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)}
+
+function voiceButtons(){
+  document.querySelectorAll('button[data-action=agent-voice]').forEach(b=>{
+    if(!b.dataset.label)b.dataset.label=b.textContent;
+    b.textContent=VOICE.listening?'⏹ Detener dictado':b.dataset.label;
+    b.classList.toggle('active',VOICE.listening);
+    b.setAttribute('aria-pressed',String(VOICE.listening));
+  });
+}
+
+function voiceWrite(extra){
+  const ta=voiceTextarea();if(!ta)return;
+  ta.value=[VOICE.base,(VOICE.finalText+' '+(extra||'')).trim()].filter(Boolean).join(' ').slice(0,1500);
+}
+
+function voiceToggle(){
+  if(VOICE.listening){try{VOICE.rec&&VOICE.rec.stop()}catch(e){}return}
+  const ta=voiceTextarea();
+  if(!voiceSecure()){toast('El dictado necesita una conexión segura (HTTPS). Escribe la orden en el cuadro.',true);ta&&ta.focus();return}
+  const SR=voiceRecognizer();
+  if(!SR){toast('Este navegador no admite dictado. Escribe la orden en el cuadro (en iPhone usa el micrófono del teclado).',true);ta&&ta.focus();return}
+  if(!VOICE.noticed){
+    VOICE.noticed=true;
+    state.chat.push({who:'system',label:'Dictado',text:'El dictado lo hace tu navegador: Chrome y Edge envían el audio a Google o Microsoft, y Safari a Apple. AUDIT SOUND no graba ni guarda el audio. El texto queda en el cuadro para que lo revises antes de enviarlo.'});
+    agentRender();
+  }
+  const rec=new SR();
+  rec.lang=(state.settings&&state.settings.voiceLang)||'es-EC';
+  rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;
+  VOICE.rec=rec;VOICE.base=(voiceTextarea()&&voiceTextarea().value.trim())||'';VOICE.finalText='';
+  rec.onresult=(e)=>{
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i];
+      if(r.isFinal)VOICE.finalText=(VOICE.finalText+' '+r[0].transcript).trim();else interim+=r[0].transcript;
+    }
+    voiceWrite(interim);
+  };
+  rec.onerror=(e)=>{if(e.error!=='aborted')toast(VOICE_ERR[e.error]||('Error de dictado: '+e.error),true)};
+  rec.onend=()=>{
+    VOICE.listening=false;VOICE.rec=null;voiceButtons();
+    if(VOICE.finalText){
+      voiceWrite('');VOICE.dictated=VOICE.finalText;
+      const t=voiceTextarea();if(t){t.focus();try{t.setSelectionRange(t.value.length,t.value.length)}catch(x){}}
+      toast('Dictado listo: revísalo y pulsa «Enviar».');
+    }
+  };
+  try{rec.start()}catch(e){toast('No se pudo iniciar el dictado: '+(e.message||e),true);return}
+  VOICE.listening=true;voiceButtons();
+  command('agent.voice',{lang:rec.lang},'LOCAL');
+  toast('Escuchando… habla y luego revisa el texto.');
+}
+
+// Canal de la orden que se va a enviar: «voice» si hubo dictado desde el último envío.
+function voiceChannelFor(text){const c=VOICE.dictated&&text.includes(VOICE.dictated)?'voice':'text';VOICE.dictated='';return c}
+
+// --- Móvil: reanudar al volver a primer plano o al recuperar la red ---
+// En móvil un WebSocket puede quedar «medio abierto» (figura OPEN pero ya no recibe nada): al volver
+// a primer plano o recuperar la red se abre uno NUEVO (el agente reenvía lo perdido con «after»).
+function agentReopenWs(){
+  if(AGENT.ws){try{AGENT.ws.onclose=null;AGENT.ws.close()}catch(e){}AGENT.ws=null}
+  AGENT.wsOk=false;AGENT.retry=0;clearTimeout(AGENT.timer);agentOpenWs();
+}
+function agentResume(){
+  if(!agentLive())return;
+  agentReopenWs();
+  agentFetch('/sessions/'+AGENT.sid).then(s=>{agentApplySession(s);return agentSyncProposals()}).then(agentRender).catch(()=>{});
+}
+// Pulso: cada 25 s un «ping»; si en 70 s no llegó ningún mensaje, la conexión está muerta → reabrir.
+setInterval(()=>{
+  if(!agentLive()||document.visibilityState!=='visible'||!AGENT.ws)return;
+  if(AGENT.ws.readyState===1){try{AGENT.ws.send(JSON.stringify({type:'ping'}))}catch(e){}}
+  if(AGENT.lastMsg&&Date.now()-AGENT.lastMsg>70000){agentReopenWs();agentRender()}
+},25000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')agentResume()});
+window.addEventListener('online',agentResume);
+window.addEventListener('offline',()=>{if(agentLive()){AGENT.wsOk=false;toast('Sin conexión: el audio del servidor sigue con AutoMix; la consola se reconectará sola.',true);agentRender()}});
 
 render();
 })();

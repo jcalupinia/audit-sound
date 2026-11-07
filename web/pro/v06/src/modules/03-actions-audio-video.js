@@ -46,8 +46,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'segment-delete':state.segments=state.segments.filter(s=>s.id!==id);save();render();break;
  case 'agent-suggestion':addChat(a.prompt);break;
  case 'agent-clear':state.chat=[{who:'system',text:'Conversación reiniciada. Modelo sin conexión.'}];save();render();break;
- case 'agent-voice':{
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Reconocimiento de voz no disponible en este navegador o contexto.',true);return}speechRecognition=new SR();speechRecognition.lang='es-EC';speechRecognition.onresult=e=>{const transcript=e.results[0][0].transcript;let textArea=document.querySelector('form[data-form=agent] textarea');if(textArea){textArea.value=transcript;toast('Dictado listo para revisión y envío')}};speechRecognition.onerror=e=>toast('Error de micrófono: '+e.error,true);speechRecognition.start();toast('Escuchando instrucción de voz…');break}
+ case 'agent-voice':voiceToggle();break;
  case 'agent-disconnect':agentDisconnect();break;
  case 'agent-refresh':agentRefreshStatus().then(()=>agentSyncProposals()).then(render);break;
  case 'agent-test-approval':if(agentLive()){agentTestProposal();break}state.agentHistory.push({id:uid('approval'),text:'Transición de prueba a género House',status:'pending'});save();render();break;

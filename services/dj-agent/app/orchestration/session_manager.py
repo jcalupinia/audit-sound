@@ -703,7 +703,8 @@ class SessionManager:
                 intent, plan_reasons = self._plan_with_llm(row, body.text, intent, policy.model_route)
                 reasons += plan_reasons
             self._publish(sid, "agent.intent.parsed", {"intent": intent.intent, "parameters": intent.parameters,
-                                                       "confidence": intent.confidence, "source": source},
+                                                       "confidence": intent.confidence, "source": source,
+                                                       "channel": body.channel},
                           corr=corr, actor=principal.user_id)
             result = self._act(row, principal, intent, corr)
             out = IntentOut(intent=intent.intent, parameters=intent.parameters, confidence=intent.confidence,

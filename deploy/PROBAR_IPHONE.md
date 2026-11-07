@@ -90,3 +90,30 @@ En iPhone no es fácil ver la consola. Lo más rápido: dime **qué pasó** (no 
 la pista, no suena, se corta al bloquear…) y manda una **captura**. Para depurar a fondo se
 puede conectar el iPhone a un Mac (Safari → Desarrollo → Web Inspector), pero normalmente con
 tu descripción + la comprobación de escritorio basta.
+
+---
+
+## C) Agente DJ y dictado por voz en el teléfono (Fase 6)
+
+Requiere el agente desplegado y `DJ_AGENT_URL` configurada (ver `deploy/pro/README.md`). Sirve igual
+en iPhone (Safari) y Android (Chrome). Esto NO se pudo verificar en un dispositivo físico desde el
+entorno de desarrollo: hay que hacerlo aquí.
+
+1. Abre `https://<URL>/v06/` → entra → menú ☰ → **Agente DJ inteligente**.
+2. Pega el token de acceso del agente → **Conectar agente**. Debe aparecer «CONECTADO» y «EVENTOS EN VIVO».
+3. **Modos:** toca DJ Manual / Híbrido / Automático. El botón debe responder al primer toque y la barra
+   superior debe mostrar el modo nuevo.
+4. **Dictado:** toca **🎙 Dictar por voz** → el navegador pide permiso del micrófono → acéptalo → di
+   «salta la canción». El texto aparece en el cuadro **y no se envía solo**. Revísalo y toca **Enviar**:
+   el agente responde en el chat.
+   - Si rechazas el permiso, debe decir «Permiso de micrófono denegado…» (en iPhone: Ajustes › Safari ›
+     Micrófono).
+   - Si el navegador no tiene dictado, avisa y puedes usar el micrófono del teclado del teléfono.
+   - Privacidad: el dictado lo hace el navegador (Safari envía el audio a Apple; Chrome a Google).
+     AUDIT SOUND no graba el audio.
+5. **Segundo plano:** cambia a otra app 1 minuto y vuelve. En pocos segundos debe volver «EVENTOS EN VIVO»
+   sin recargar.
+6. **Red:** activa el modo avión 10 s y desactívalo. Debe avisar «Sin conexión…» y reconectarse solo.
+   El audio del servidor (Modo C) no se interrumpe por esto.
+
+Qué enviar si algo falla: captura de pantalla, modelo del teléfono y versión del sistema, y la hora aproximada.

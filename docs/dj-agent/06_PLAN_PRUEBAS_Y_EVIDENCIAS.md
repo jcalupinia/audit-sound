@@ -122,3 +122,8 @@ todas las pistas del catálogo (`evidencias/eval_fase4_planes_qwen3_1.7b.json`).
 
 Detalle en `15_FASE5_INFORME.md`. Proxy 12/12, E2E en Chromium 24/24 (3 corridas) (agente real, motor simulado), regresión
 del v0.6 20 pantallas × 4 tamaños sin errores. 31 de 39 controles cableados.
+
+## 11. Fase 6 — voz y móvil (actualización 2026-11-07)
+
+Detalle en `16_FASE6_INFORME.md`. Voz y móvil 30/30 ×3 (micrófono simulado; iPhone 13 y Pixel 7 emulados),
+Fase 5 24/24, `pytest` 229. **NO VERIFICADO:** dispositivos físicos.
