@@ -1036,6 +1036,13 @@ components:
           maxLength: 1500
           minLength: 1
           title: Text
+        channel:
+          type: string
+          enum:
+          - text
+          - voice
+          title: Channel
+          default: text
       additionalProperties: false
       type: object
       required:

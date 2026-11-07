@@ -6,3 +6,17 @@
 /* QA responsive patch: prevent tablet deck controls from overflowing at 768px. */
 @media(min-width:681px) and (max-width:900px){.audiorow{grid-template-columns:1fr 1fr}.audiorow .mixer{grid-column:1/-1;order:3}.deckbody{grid-template-columns:70px minmax(0,1fr)}.deckbtns{flex-wrap:wrap}}
 @media(min-width:681px) and (max-width:790px){.audiorow{grid-template-columns:1fr}.audiorow .mixer{grid-column:auto;order:3}.deckbody{grid-template-columns:90px minmax(0,1fr)}}
+
+/* Fase 6 · Pantallas táctiles: objetivos de toque de al menos 44 px (guía de Apple y Google). */
+@media (pointer: coarse) {
+  button, select, .field input:not([type=range]):not([type=checkbox]), .field textarea { min-height: 44px; }
+}
+/* Fase 6 · Teléfono: la barra superior fija no debe tapar la pantalla. El estado (control local,
+   agente conectado) ya se ve dentro de la página; en la barra quedan el menú, el modo y «Salir». */
+@media (max-width: 680px) {
+  .topbar { gap: 8px; padding: 8px 10px; }
+  .topbar > .flex.wrap { flex-wrap: nowrap; gap: 6px; }
+  .topbar > .flex.wrap .tag { display: none; }
+  .topbar > .flex.wrap button { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+  .topbar .left b { font-size: 15px; }
+}

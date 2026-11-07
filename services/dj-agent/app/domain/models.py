@@ -108,6 +108,9 @@ class CommandIn(_Strict):
 
 class IntentIn(_Strict):
     text: str = Field(min_length=1, max_length=1500)
+    # Fase 6: de dónde vino el texto. «voice» = dictado del navegador (transcripción revisada por la
+    # persona antes de enviarla). Se registra en la auditoría; no cambia los permisos de la orden.
+    channel: Literal["text", "voice"] = "text"
 
 
 class PlanRequest(_Strict):

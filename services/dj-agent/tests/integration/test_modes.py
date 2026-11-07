@@ -148,3 +148,18 @@ def test_automatico_replanifica_aunque_el_motor_no_informe_ids(settings, clock):
             m.tick(sid)
         second = c.get(f"{BASE}/sessions/{sid}/plans/current", headers=H("op1")).json()
         assert second["id"] != first["id"] and second["status"] == "ACTIVE"   # replanificó solo
+
+
+def test_orden_por_voz_queda_registrada_con_su_canal(client):
+    """Fase 6: el dictado se audita como canal «voice»; los permisos y la política no cambian."""
+    sid = new_session(client)["id"]
+    r = client.post(f"{BASE}/sessions/{sid}/intent", json={"text": "salta la canción", "channel": "voice"},
+                    headers=H("op1"))
+    assert r.status_code == 200 and r.json()["intent"] == "SKIP_TRACK"
+    evs = client.get(f"{BASE}/sessions/{sid}/events", headers=H("op1")).json()
+    parsed = [e for e in evs if e["type"] == "agent.intent.parsed"]
+    assert parsed[-1]["payload"]["channel"] == "voice"
+    assert client.post(f"{BASE}/sessions/{sid}/intent", json={"text": "x", "channel": "telepatia"},
+                       headers=H("op1")).status_code == 422
+    texto = client.post(f"{BASE}/sessions/{sid}/intent", json={"text": "salta la canción"}, headers=H("op1"))
+    assert texto.status_code == 200

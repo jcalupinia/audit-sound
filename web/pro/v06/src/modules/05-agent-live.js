@@ -114,8 +114,8 @@ function agentOpenWs(){
   const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+`${AGENT_BASE}/sessions/${AGENT.sid}/events`;
   let ws;try{ws=new WebSocket(url)}catch(e){return agentScheduleWs()}
   AGENT.ws=ws;
-  ws.onopen=()=>{ws.send(JSON.stringify({type:'auth',token:agentGetToken(),after:AGENT.lastSeq}))};
-  ws.onmessage=(m)=>{let ev;try{ev=JSON.parse(m.data)}catch(e){return}agentOnEvent(ev)};
+  ws.onopen=()=>{AGENT.lastMsg=Date.now();ws.send(JSON.stringify({type:'auth',token:agentGetToken(),after:AGENT.lastSeq}))};
+  ws.onmessage=(m)=>{AGENT.lastMsg=Date.now();let ev;try{ev=JSON.parse(m.data)}catch(e){return}agentOnEvent(ev)};
   ws.onclose=(e)=>{AGENT.wsOk=false;if(e.code===4401||e.code===4403){toast('El agente rechazó el token de eventos.',true);return}agentScheduleWs();agentRender()};
 }
 
@@ -152,7 +152,7 @@ async function agentSetMode(uiMode){
 }
 
 async function agentIntent(text,idx){
-  try{const r=await agentFetch(`/sessions/${AGENT.sid}/intent`,{method:'POST',body:{text}});
+  try{const r=await agentFetch(`/sessions/${AGENT.sid}/intent`,{method:'POST',body:{text,channel:voiceChannelFor(text)}});
     const src={rules:'reglas',qwen:'Qwen',deepseek:'DeepSeek'}[r.source]||r.source;
     let msg=r.message||'';
     if(r.plan&&r.plan.items&&r.plan.items.length)msg+=` Plan: ${r.plan.items.length} pistas (${[...new Set(r.plan.items.map(i=>i.genre).filter(Boolean))].join(' → ')}).`;
@@ -212,6 +212,4 @@ function agentStatusHtml(){
 
 // Arranque: si el servidor anuncia el agente y la pestaña ya tiene token, se reconecta sola.
 if(AGENT.available&&agentGetToken())setTimeout(()=>agentConnect(),0);
-
-render();
-})();
+// (el cierre del módulo y el primer render están al final de 06-voice-mobile.js)
