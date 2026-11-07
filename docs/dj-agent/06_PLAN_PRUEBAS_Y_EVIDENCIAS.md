@@ -97,6 +97,7 @@ Lo marcado como NO VERIFICADO en §6 respecto del motor real quedó cubierto en 
 | Pruebas contra el binario real (`tests/real`) | 5/5 | 30 cambios de modo, cola → Selector, agente caído |
 | Soak 10 min (motor + Icecast + agente AUTOMÁTICO) | 11/11 | `evidencias/soak_fase2_10min.json` |
 | Soak 1 h 55 min | 11/11 | `evidencias/soak_fase2_2h.json` |
+| Soak 15 min tras la corrección | 11/11, cola de vuelta en la 1.ª transición | `evidencias/soak_fase2_15min_correccion.json` |
 | Soak 4 h continuas | **NO VERIFICADO** en este entorno | ver informe 12 §2 |
 
 Hallazgo del soak de 2 h (corregido): tras el reinicio del agente el plan viejo seguía ACTIVO y la pista al
