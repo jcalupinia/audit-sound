@@ -1,5 +1,5 @@
 # AUDIT SOUND — despliegue Opción B en Coolify (Hetzner).
-# Tres servicios: icecast (stream), engine (DJ autónomo), web (frontend).
+# Cuatro servicios: icecast (stream), engine (DJ autónomo), dj-agent (agente DJ, interno), web (frontend).
 #
 # En Coolify: crear un recurso "Docker Compose", apuntar a este archivo, definir
 # las variables de entorno (ver deploy/.env.example). UN SOLO DOMINIO: asigna dominio solo
@@ -75,6 +75,44 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # Agente DJ (Fases 1–6). INTERNO: sin dominio ni puertos publicados. La consola v0.6
+  # (deploy/pro, sound.audit-ia.ec) llega a él por su proxy con DJ_AGENT_URL. Controla el
+  # motor por la Control API interna (engine:8787). Si se cae, el motor sigue con AutoMix.
+  # Guía: deploy/DESPLEGAR_AGENTE_DJ.md
+  dj-agent:
+    build:
+      context: ../services/dj-agent
+      dockerfile: Dockerfile
+    depends_on:
+      - engine
+    environment:
+      DJ_AGENT_ENGINE: control_api
+      DJ_AGENT_ENGINE_URL: http://engine:8787
+      # Misma cuenta del Control API que define el motor (un solo controlador a la vez).
+      DJ_AGENT_ENGINE_USER: ${AUDIT_SOUND_API_USER:-}
+      DJ_AGENT_ENGINE_PASS: ${AUDIT_SOUND_API_PASS:-}
+      # Tokens de acceso a la consola (token:usuario:rol:org;...). SECRETO: solo en Coolify.
+      DJ_AGENT_DEV_TOKENS: ${DJ_AGENT_DEV_TOKENS:-}
+      # IA: mismas variables que auditbrain-backend. El servidor Qwen está en la tailnet:
+      # este servidor debe estar unido a Tailscale (como el backend) para alcanzarlo.
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-}
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
+      DJ_AGENT_LLM_TIMEOUT_SECONDS: ${DJ_AGENT_LLM_TIMEOUT_SECONDS:-8}
+      DJ_AGENT_LLM_BUDGET_USD_DAY: ${DJ_AGENT_LLM_BUDGET_USD_DAY:-1.0}
+      DJ_AGENT_LLM_BUDGET_USD_SESSION: ${DJ_AGENT_LLM_BUDGET_USD_SESSION:-0.25}
+    volumes:
+      - dj_agent_data:/data      # sesiones, auditoría y token del motor (SQLite)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8790/api/v1/dj-agent/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
   web:
     build:
       context: ..
@@ -96,3 +134,4 @@ services:
 
 volumes:
   audit_music:   # biblioteca del DJ (vacío por defecto → suena la demo sintética)
+  dj_agent_data: # base del agente DJ (sesiones, auditoría, consumo de IA)

@@ -138,3 +138,11 @@ tema?» → estado; «propónme … pero no las hagas» → HÍBRIDO). DeepSeek 
 
 `deepseek-flash`: órdenes 38/38, planes 7/8, 0 salidas inválidas, 0 fugas (`evidencias/eval_deepseek_real_*.json`).
 Corregido: los topes de tokens (600 órdenes / 1500 planes) porque el razonamiento del modelo cuenta en `max_tokens`.
+
+## 14. Ensayo del despliegue (actualización 2026-11-07)
+
+Topología del despliegue reproducida en local con los binarios y versiones reales: consola (`deploy/pro/server.js`
+con `DJ_AGENT_URL`) → agente (`DJ_AGENT_ENGINE=control_api`) → motor C++ (`engine:8787` en el compose) + Icecast,
+con DeepSeek real. `scripts/verificar_despliegue_agente.sh` → **RESULTADO: OK**; catálogo con metadatos y cola;
+«esta canción no me gusta nada» → SKIP_TRACK por DeepSeek, ejecutado y confirmado por el motor.
+**NO VERIFICADO:** la construcción con Docker y la red de Coolify (no disponibles en el entorno de desarrollo).
