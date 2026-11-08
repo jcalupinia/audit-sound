@@ -1,0 +1,89 @@
+{
+  "duracion_s": 1262.7,
+  "titulos": [
+    {
+      "t": 0.7,
+      "titulo": "El Gran Proyecto - Latino Soy"
+    },
+    {
+      "t": 92.0,
+      "titulo": "Los Cuban Boys - Reciclate, evaporate"
+    },
+    {
+      "t": 621.3,
+      "titulo": "Xaviant Haze - Cuban Cigars"
+    },
+    {
+      "t": 792.7,
+      "titulo": "Ronald Nunez - La Bachata Loca"
+    },
+    {
+      "t": 1044.7,
+      "titulo": "Juanitos - El Cha Cha Man"
+    }
+  ],
+  "transiciones": [
+    {
+      "t": 92.0,
+      "medible": true,
+      "fundido_s": 5.5,
+      "fundido_desde_s": 80.0,
+      "fundido_hasta_s": 85.5,
+      "bajon_db": 1.4,
+      "nivel_base_dbfs": -13.1,
+      "bpm_saliente": 142.3,
+      "bpm_entrante": 99.7,
+      "diferencia_bpm_pct": 29.9,
+      "veredicto": "mezcla suave",
+      "de": "El Gran Proyecto - Latino Soy",
+      "a": "Los Cuban Boys - Reciclate, evaporate"
+    },
+    {
+      "t": 621.3,
+      "medible": true,
+      "fundido_s": 1.0,
+      "fundido_desde_s": 619.0,
+      "fundido_hasta_s": 620.0,
+      "bajon_db": 17.0,
+      "nivel_base_dbfs": -11.0,
+      "bpm_saliente": 99.7,
+      "bpm_entrante": 119.8,
+      "diferencia_bpm_pct": 20.2,
+      "veredicto": "bajón de volumen",
+      "de": "Los Cuban Boys - Reciclate, evaporate",
+      "a": "Xaviant Haze - Cuban Cigars"
+    },
+    {
+      "t": 792.7,
+      "medible": true,
+      "fundido_s": 12.5,
+      "fundido_desde_s": 780.5,
+      "fundido_hasta_s": 793.0,
+      "bajon_db": 2.5,
+      "nivel_base_dbfs": -13.3,
+      "bpm_saliente": 119.0,
+      "bpm_entrante": 96.6,
+      "diferencia_bpm_pct": 18.8,
+      "veredicto": "mezcla suave",
+      "de": "Xaviant Haze - Cuban Cigars",
+      "a": "Ronald Nunez - La Bachata Loca"
+    },
+    {
+      "t": 1044.7,
+      "medible": true,
+      "fundido_s": 3.5,
+      "fundido_desde_s": 1033.5,
+      "fundido_hasta_s": 1037.0,
+      "bajon_db": 5.2,
+      "nivel_base_dbfs": -15.1,
+      "bpm_saliente": 144.3,
+      "bpm_entrante": 136.0,
+      "diferencia_bpm_pct": 5.8,
+      "veredicto": "mezcla suave",
+      "de": "Ronald Nunez - La Bachata Loca",
+      "a": "Juanitos - El Cha Cha Man"
+    }
+  ],
+  "segundos_en_silencio": 1.0,
+  "nivel_medio_dbfs": -12.8
+}
