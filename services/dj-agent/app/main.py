@@ -24,7 +24,7 @@ from app.api.v1.routes import router as rest_router
 from app.api.v1.ws import ws_router
 from app.core.errors import AppError
 from app.core.logging import configure_logging
-from app.core.security import StaticTokenAuthenticator
+from app.core.security import ChainAuthenticator, CommandCenterAuthenticator, StaticTokenAuthenticator
 from app.core.settings import Settings
 from app.events.bus import EventBus
 from app.orchestration.model_router import ModelRouter
@@ -76,7 +76,12 @@ def create_app(settings: Settings | None = None, *, engine: EngineAdapter | None
     app = FastAPI(title="AUDIT SOUND · Agente DJ", version=__version__, description=DESCRIPTION, lifespan=lifespan)
     app.state.settings, app.state.store, app.state.bus = settings, store, bus
     app.state.engine, app.state.router, app.state.manager = engine, router, manager
-    app.state.auth = StaticTokenAuthenticator(settings.dev_tokens)
+    # Llaves de respaldo (DJ_AGENT_DEV_TOKENS) primero y luego el login del Command Center (Fase 7).
+    app.state.auth = ChainAuthenticator(
+        StaticTokenAuthenticator(settings.dev_tokens),
+        CommandCenterAuthenticator(settings.cc_api, app_key=settings.cc_app, roles=settings.cc_roles,
+                                   default_role=settings.cc_default_role, org=settings.cc_org,
+                                   me_path=settings.cc_me_path) if settings.cc_api else None)
     app.state.logger = logger
 
     @app.middleware("http")

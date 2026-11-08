@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /srv/dj-agent
 
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir "fastapi==0.115.6" "pydantic==2.10.4" "uvicorn==0.34.0" \
+RUN pip install --no-cache-dir --upgrade "pip>=26.2" && pip install --no-cache-dir "fastapi==0.162.2" "pydantic==2.10.4" "uvicorn==0.34.0" \
         "httpx==0.28.1" "websockets==14.1"
 
 COPY app ./app

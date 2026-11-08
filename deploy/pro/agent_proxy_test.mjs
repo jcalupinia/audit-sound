@@ -93,6 +93,19 @@ function startServer(env) {
   void root;
 }
 
+// 1b) Límite de peticiones por IP
+{
+  const { p, port } = await startServer({ DJ_AGENT_URL: AGENT_URL, DJ_AGENT_RATE_PER_MIN: '5' });
+  const codes = [];
+  for (let i = 0; i < 7; i++) codes.push((await fetch(`http://127.0.0.1:${port}/api/v1/dj-agent/health`)).status);
+  const r = await fetch(`http://127.0.0.1:${port}/api/v1/dj-agent/health`);
+  ok(codes.slice(0, 5).every((c) => c === 201) && codes[5] === 429 && r.headers.get('retry-after') === '30',
+    `límite de peticiones por IP (5/min): ${codes.join(',')}`);
+  const h = await fetch(`http://127.0.0.1:${port}/healthz`);
+  ok(h.status === 200, 'el límite solo aplica al agente (la consola sigue respondiendo)');
+  p.kill();
+}
+
 // 2) Agente caído
 {
   const { p, port } = await startServer({ DJ_AGENT_URL: 'http://127.0.0.1:1' });

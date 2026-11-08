@@ -216,6 +216,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'agent-clear':state.chat=[{who:'system',text:'Conversación reiniciada. Modelo sin conexión.'}];save();render();break;
  case 'agent-voice':voiceToggle();break;
  case 'agent-disconnect':agentDisconnect();break;
+ case 'agent-connect-cc':agentConnect();break;
  case 'agent-refresh':agentRefreshStatus().then(()=>agentSyncProposals()).then(render);break;
  case 'agent-test-approval':if(agentLive()){agentTestProposal();break}state.agentHistory.push({id:uid('approval'),text:'Transición de prueba a género House',status:'pending'});save();render();break;
  case 'agent-approve':case 'agent-reject':{let h=state.agentHistory.find(h=>h.id===id);if(h&&h.srv){command('agent.approval',{id,status:n==='agent-approve'?'approved':'rejected'},'LIVE');break}if(h){h.status=n==='agent-approve'?'approved':'rejected';command('agent.approval',{id,status:h.status},'MOCK');save();render();toast('Decisión registrada; no se ejecutó ninguna transición.')}break}
@@ -342,7 +343,14 @@ function agentRender(){
   }
 }
 function agentLive(){return AGENT.available&&AGENT.connected&&!!AGENT.sid}
-function agentGetToken(){try{return sessionStorage.getItem(AGENT_TOKEN_KEY)||''}catch(e){return ''}}
+// Login unificado (Fase 7): si la persona inició sesión en la consola con su cuenta AUDIT-IA, se usa ese
+// mismo token (auditsound.cc.token, lo guarda commandcenter.js); la llave pegada a mano es el respaldo.
+const AGENT_CC_TOKEN_KEY='auditsound.cc.token';
+const AGENT_OFF_KEY='as.agent.off';
+function agentCcToken(){try{return localStorage.getItem(AGENT_CC_TOKEN_KEY)||''}catch(e){return ''}}
+function agentGetToken(){try{return sessionStorage.getItem(AGENT_TOKEN_KEY)||agentCcToken()}catch(e){return ''}}
+function agentManualOff(v){try{v?sessionStorage.setItem(AGENT_OFF_KEY,'1'):sessionStorage.removeItem(AGENT_OFF_KEY)}catch(e){}}
+function agentIsOff(){try{return sessionStorage.getItem(AGENT_OFF_KEY)==='1'}catch(e){return false}}
 function agentSetToken(t){try{t?sessionStorage.setItem(AGENT_TOKEN_KEY,t):sessionStorage.removeItem(AGENT_TOKEN_KEY)}catch(e){}}
 
 async function agentFetch(path,{method='GET',body,idem=false}={}){
@@ -385,7 +393,8 @@ function agentApplySession(s){
 
 async function agentConnect(token){
   if(!AGENT.available){toast('Este servidor no tiene el agente DJ configurado: la consola sigue en modo demostración.',true);return}
-  if(token!==undefined)agentSetToken(token);
+  if(token)agentSetToken(token);
+  agentManualOff(false);
   if(!agentGetToken()){toast('Ingresa el token de acceso del agente.',true);return}
   AGENT.connecting=true;AGENT.error='';agentRender();
   try{
@@ -412,7 +421,7 @@ async function agentConnect(token){
 function agentDisconnect(){
   AGENT.connected=false;AGENT.sid=null;AGENT.wsOk=false;clearTimeout(AGENT.timer);
   if(AGENT.ws){try{AGENT.ws.onclose=null;AGENT.ws.close()}catch(e){}AGENT.ws=null}
-  agentSetToken('');state.agentHistory=[];
+  agentSetToken('');agentManualOff(true);state.agentHistory=[];
   state.chat.push({who:'system',text:'Agente desconectado. La consola vuelve al modo demostración; el audio del servidor sigue con AutoMix.'});
   agentRender();toast('Agente desconectado.');
 }
@@ -516,7 +525,7 @@ window.addEventListener('auditsound:command',(e)=>{
 function agentStatusHtml(){
   const fixed=`<div>Modelo operativo <b>Qwen</b> ${tag('DESCONECTADO','pending')}</div><div>Razonamiento <b>DeepSeek</b> ${tag('DESCONECTADO','pending')}</div><div>Gateway y presupuesto ${tag('PENDIENTE','pending')}</div><div>Motor de mezcla <b>C++</b> ${tag('DESCONECTADO','pending')}</div><div>Tokens facturables <b>0</b> ${tag('SIN LLAMADAS','ok')}</div>`;
   if(!AGENT.available)return `<div class="statuslist">${fixed}<div>Agente DJ ${tag('NO CONFIGURADO EN ESTE SERVIDOR','demo')}</div></div>`;
-  if(!agentLive())return `<div class="statuslist">${fixed}</div><form data-form="agent-link" class="spaced"><label class="field">Token de acceso al agente<input name="token" type="password" autocomplete="off" required placeholder="Lo entrega el administrador"></label><div class="pillbar"><button type="submit" class="primary" ${AGENT.connecting?'disabled':''}>${AGENT.connecting?'Conectando…':'Conectar agente'}</button></div>${AGENT.error?`<p class="muted">${esc(AGENT.error)}</p>`:''}</form>`;
+  if(!agentLive())return `<div class="statuslist">${fixed}</div>${agentCcToken()?`<div class="pillbar spaced">${button(AGENT.connecting?'Conectando…':'Conectar con mi sesión AUDIT-IA','agent-connect-cc',{},'primary')}</div><p class="muted">O usa una llave de acceso del administrador:</p>`:''}<form data-form="agent-link" class="spaced"><label class="field">Token de acceso al agente<input name="token" type="password" autocomplete="off" required placeholder="Lo entrega el administrador"></label><div class="pillbar"><button type="submit" class="primary" ${AGENT.connecting?'disabled':''}>${AGENT.connecting?'Conectando…':'Conectar agente'}</button></div>${AGENT.error?`<p class="muted">${esc(AGENT.error)}</p>`:''}</form>`;
   const m=n=>AGENT.models.find(x=>x.name===n);
   const mt=n=>{const x=m(n);return !x||!x.configured?tag('SIN CONFIGURAR','pending'):x.breaker==='open'?tag('EN PAUSA (FALLOS)','pending'):tag('CONECTADO'+(x.model?' · '+x.model:''),'ok')};
   const eng=AGENT.engine&&AGENT.engine.reachable;
@@ -525,7 +534,7 @@ function agentStatusHtml(){
 }
 
 // Arranque: si el servidor anuncia el agente y la pestaña ya tiene token, se reconecta sola.
-if(AGENT.available&&agentGetToken())setTimeout(()=>agentConnect(),0);
+if(AGENT.available&&agentGetToken()&&!agentIsOff())setTimeout(()=>agentConnect(),0);
 // (el cierre del módulo y el primer render están al final de 06-voice-mobile.js)
 
 // ===== 06 · Voz y móvil (Fase 6) =====

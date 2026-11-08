@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AUDIT SOUND · Agente DJ autónomo, conversacional y supervisado (servicio aislado del motor)"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi==0.115.6",
+  "fastapi==0.162.2",
   "pydantic==2.10.4",
   "uvicorn==0.34.0",
   "httpx==0.28.1",

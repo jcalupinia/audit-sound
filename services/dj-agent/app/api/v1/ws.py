@@ -33,7 +33,9 @@ async def session_events(ws: WebSocket, sid: str) -> None:
     except (TimeoutError, WebSocketDisconnect, ValueError, json.JSONDecodeError):
         await _close(ws, 4401)
         return
-    principal = app.state.auth.authenticate(str(msg.get("token", ""))) if msg.get("type") == "auth" else None
+    # En hilo aparte: el login del Command Center hace una petición HTTP y no debe bloquear el bucle.
+    principal = (await asyncio.to_thread(app.state.auth.authenticate, str(msg.get("token", "")))
+                 if msg.get("type") == "auth" else None)
     if principal is None:
         await _close(ws, 4401)
         return

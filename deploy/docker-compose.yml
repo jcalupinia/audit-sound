@@ -91,8 +91,13 @@ services:
       # Misma cuenta del Control API que define el motor (un solo controlador a la vez).
       DJ_AGENT_ENGINE_USER: ${AUDIT_SOUND_API_USER:-}
       DJ_AGENT_ENGINE_PASS: ${AUDIT_SOUND_API_PASS:-}
-      # Tokens de acceso a la consola (token:usuario:rol:org;...). SECRETO: solo en Coolify.
+      # Llaves de respaldo (token:usuario:rol:org;...). SECRETO: solo en Coolify.
       DJ_AGENT_DEV_TOKENS: ${DJ_AGENT_DEV_TOKENS:-}
+      # Login unificado (Fase 7): el agente acepta la sesión AUDIT-IA de la consola. DJ_AGENT_CC_API = el mismo
+      # valor que AUDIT_SOUND_CC_API de la consola. Roles por correo: correo:admin;correo2:operator.
+      DJ_AGENT_CC_API: ${DJ_AGENT_CC_API:-}
+      DJ_AGENT_CC_ROLES: ${DJ_AGENT_CC_ROLES:-}
+      DJ_AGENT_CC_DEFAULT_ROLE: ${DJ_AGENT_CC_DEFAULT_ROLE:-listener}
       # IA: mismas variables que auditbrain-backend. El servidor Qwen está en la tailnet:
       # este servidor debe estar unido a Tailscale (como el backend) para alcanzarlo.
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}

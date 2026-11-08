@@ -39,6 +39,13 @@ class Settings:
     engine_timeout_seconds: float = 3.0
     # Autenticación de desarrollo: "token:usuario:rol:org;token2:..."
     dev_tokens: str = field(default="", repr=False)
+    # Login unificado (Fase 7): base de la API del Command Center (igual que AUDIT_SOUND_CC_API de la consola).
+    cc_api: str = ""
+    cc_app: str = "audit_sound"
+    cc_roles: str = ""                 # correo:rol;*:rol  (roles: admin, operator, supervisor, listener)
+    cc_default_role: str = "listener"  # quien no figure en cc_roles: solo lectura
+    cc_org: str = "auditconsulting"
+    cc_me_path: str = "/apps/auth/me"
     lease_seconds: int = 120
     scheduler_enabled: bool = True
     scheduler_interval_seconds: float = 5.0
@@ -78,6 +85,12 @@ class Settings:
             engine_pass=_env("DJ_AGENT_ENGINE_PASS"),
             engine_timeout_seconds=_float("DJ_AGENT_ENGINE_TIMEOUT_SECONDS", 3.0),
             dev_tokens=_env("DJ_AGENT_DEV_TOKENS"),
+            cc_api=_env("DJ_AGENT_CC_API"),
+            cc_app=_env("DJ_AGENT_CC_APP", "audit_sound"),
+            cc_roles=_env("DJ_AGENT_CC_ROLES"),
+            cc_default_role=_env("DJ_AGENT_CC_DEFAULT_ROLE", "listener"),
+            cc_org=_env("DJ_AGENT_CC_ORG", "auditconsulting"),
+            cc_me_path=_env("DJ_AGENT_CC_ME_PATH", "/apps/auth/me"),
             lease_seconds=_int("DJ_AGENT_LEASE_SECONDS", 120),
             scheduler_enabled=_env("DJ_AGENT_SCHEDULER_ENABLED", "true").lower() not in ("0", "false", "no"),
             scheduler_interval_seconds=_float("DJ_AGENT_SCHEDULER_INTERVAL_SECONDS", 5.0),

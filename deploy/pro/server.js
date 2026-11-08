@@ -50,6 +50,28 @@ const AGENT = {
   timeoutMs: parseInt(process.env.DJ_AGENT_TIMEOUT_MS || '30000', 10),
 };
 const AGENT_PREFIX = '/api/v1/dj-agent/';
+// Límite de peticiones por IP hacia el agente (Fase 7): protege al agente y a los modelos de IA de abusos o
+// de un cliente en bucle. Ventana deslizante simple en memoria (una sola instancia del servidor).
+const AGENT_RATE = {
+  max: parseInt(process.env.DJ_AGENT_RATE_PER_MIN || '240', 10),
+  hits: new Map(),   // ip -> [timestamps]
+};
+function agentClientIp(req) {
+  // La ÚLTIMA IP de X-Forwarded-For la agrega el proxy de Coolify (Traefik); las anteriores las puede
+  // inventar el cliente para esquivar el límite.
+  const parts = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const xff = parts.length ? parts[parts.length - 1] : '';
+  return xff || req.socket.remoteAddress || 'desconocida';
+}
+function agentRateOk(req) {
+  if (!(AGENT_RATE.max > 0)) return true;
+  const ip = agentClientIp(req), now = Date.now();
+  const arr = (AGENT_RATE.hits.get(ip) || []).filter((t) => now - t < 60000);
+  if (arr.length >= AGENT_RATE.max) { AGENT_RATE.hits.set(ip, arr); return false; }
+  arr.push(now); AGENT_RATE.hits.set(ip, arr);
+  if (AGENT_RATE.hits.size > 5000) AGENT_RATE.hits.clear();   // tope de memoria
+  return true;
+}
 // Solo se reenvían estas cabeceras (nada de cookies del sitio ni cabeceras de salto).
 const AGENT_FWD = ['authorization', 'content-type', 'accept', 'idempotency-key', 'x-correlation-id'];
 
@@ -58,6 +80,11 @@ function agentTarget() {
 }
 
 function proxyAgent(req, res, pathWithQuery) {
+  if (!agentRateOk(req)) {
+    res.writeHead(429, { ...headers('application/json'), 'Retry-After': '30' });
+    return res.end(JSON.stringify({ error: { code: 'rate_limited',
+      message: 'Demasiadas peticiones al agente desde esta conexión. Espera unos segundos.' } }));
+  }
   const target = agentTarget();
   if (!target) return sendJson(res, 503, { error: { code: 'agent_not_configured',
     message: 'El agente DJ no está configurado en este servidor (falta DJ_AGENT_URL).' } });
