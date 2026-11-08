@@ -45,6 +45,7 @@ struct AutoMixImpl {
   //  AUDIT_SOUND_TEMPO_RETURN=0     → la entrante se queda al tempo de la saliente (antes).
   bool mixByEnergy = true;
   bool tempoReturn = true;
+  double maxAdvance = 45.0;  // s: lo más que se adelanta el final (AUDIT_SOUND_MIX_MAX_ADELANTO)
   bool rampActive = false;
   std::chrono::steady_clock::time_point rampFrom{}, rampLast{};
   bool deckLoaded[2] = {false, false};
@@ -89,8 +90,8 @@ struct AutoMixImpl {
     // Punto de mezcla por energía: si la pista decae claramente antes de su último sonido, el
     // fundido termina 1 s después de su parte fuerte (la saliente aún suena llena al mezclar).
     const double loud = deckLoudEnd[fromDeck];
-    if (mode.load() == 0 && mixByEnergy && loud > transitionTime.load() && loud + 1.0 < fadeEnd) {
-      fadeEnd = loud + 1.0;
+    if (mode.load() == 0 && mixByEnergy) {
+      fadeEnd = mixpoints::energyFadeEnd(loud, fadeEnd, transitionTime.load(), maxAdvance);
     }
     double fadeBegin = fadeEnd - transitionTime.load();
     if (fadeBegin < 0) fadeBegin = 0;
@@ -276,6 +277,8 @@ AutoMix automix_create(DjEngine engine) {
   a->engine = engine;
   if (const char* mp = std::getenv("AUDIT_SOUND_MIX_POINT"))
     a->mixByEnergy = std::strcmp(mp, "silence") != 0;
+  if (const char* ma = std::getenv("AUDIT_SOUND_MIX_MAX_ADELANTO"))
+    a->maxAdvance = std::atof(ma) > 0 ? std::atof(ma) : 45.0;
   if (const char* tr = std::getenv("AUDIT_SOUND_TEMPO_RETURN"))
     a->tempoReturn = std::strcmp(tr, "0") != 0;
   return a;
