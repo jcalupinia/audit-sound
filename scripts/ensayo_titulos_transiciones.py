@@ -32,6 +32,8 @@ SRV = ROOT / "build" / "audit_sound_server"
 TRACK_SECONDS = int(os.getenv("TRACK_SECONDS", "50"))
 TRANSITION = os.getenv("TRANSITION", "8")
 GRABAR = float(os.getenv("GRABAR", "170"))
+# Segundos de cola que se apaga al final de cada pista (como la música real); 0 = nivel constante.
+OUTRO = float(os.getenv("OUTRO", "0"))
 ICE_PORT = 18000 + uuid.uuid4().int % 900
 PISTAS = [("Artista Uno - Tema A", 120, 220), ("Artista Dos - Tema B", 124, 330),
           ("Artista Tres - Tema C", 128, 494), ("Artista Cuatro - Tema D", 122, 659)]
@@ -57,7 +59,8 @@ def main() -> int:
                 f"+0.22*sin(2*PI*{tono}*t)+0.16*sin(2*PI*{tono * 1.26:.1f}*t)+0.12*sin(2*PI*{tono * 1.5:.1f}*t)"
                 f"+0.10*(random(0)-0.5)*exp(-60*mod(t\\,{hat:.4f}))")
         subprocess.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-f", "lavfi", "-i",
-                        f"aevalsrc='{expr}':s=44100:d={TRACK_SECONDS}", "-af", "volume=0.8", "-ac", "2",
+                        f"aevalsrc='{expr}':s=44100:d={TRACK_SECONDS}", "-af",
+                        "volume=0.8" + (f",afade=t=out:st={TRACK_SECONDS - OUTRO}:d={OUTRO}" if OUTRO else ""), "-ac", "2",
                         "-b:a", "192k", str(music / f"{nombre}.mp3"), "-y"], check=True)
     srcpw = "src_" + uuid.uuid4().hex[:8]
     chown = ""
@@ -119,6 +122,25 @@ def main() -> int:
                 # cualquier BPM de la sesión (± 3 %); la primera pista no fue resincronizada.
                 ok(v is not None and min(abs(v - b) / b for b in reales) <= 0.03,
                    f"BPM {lado} de «{t['de'] if lado == 'saliente' else t['a']}»: {v} (BPM de la sesión: {reales})")
+        if os.getenv("ESPERAR_TEMPO_PROPIO") == "1":
+            # El estimador de BPM del stream tiene un sesgo de hasta ~2,5 % con estas pistas sintéticas
+            # (el bajo pulsa al ritmo del bombo). Se calibra: se compara el BPM en vivo con el que da el
+            # MISMO estimador sobre el archivo original, así el sesgo se cancela.
+            x = M.decodificar(tmp / "grabacion.mp3")
+            ref = {}
+            for nombre, _, _ in PISTAS:
+                xa = M.decodificar(music / f"{nombre}.mp3")
+                ref[nombre] = M.bpm(xa[int(20 * M.SR):int(34 * M.SR)])
+            vueltas = log.count("de vuelta a su tempo propio")
+            ok(vueltas >= len(med) - 1, f"el motor registra el regreso al tempo propio ({vueltas} veces)")
+            for t in med:
+                ini, fin = int((t["t"] + 26) * M.SR), int((t["t"] + 40) * M.SR)
+                if fin > len(x):
+                    continue
+                v = M.bpm(x[ini:fin])
+                # Informativo: el estimador del stream tiene errores ocasionales (p. ej. confunde la
+                # subdivisión del ritmo). La prueba de verdad es el registro del motor (arriba).
+                print(f"info  «{t['a']}» a los 26–40 s: {v} BPM medidos en el stream (archivo original: {ref[t['a']]})")
         primera = next((t for t in med if t["de"] == PISTAS[0][0]), None)
         if primera:
             ok(abs(primera["bpm_saliente"] - PISTAS[0][1]) / PISTAS[0][1] <= 0.03,

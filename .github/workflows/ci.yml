@@ -52,6 +52,8 @@ jobs:
         run: ./build/control_api_test
       - name: Prueba de reproducción continua + recuperación ante fallos (A1.4)
         run: ./build/playback_recovery_test
+      - name: Punto de mezcla por energía y regreso al tempo (funciones del AutoMix)
+        run: ./build/mix_points_test
 
   wasm:
     name: Build WASM del motor (emscripten) + autoprueba de enlace
