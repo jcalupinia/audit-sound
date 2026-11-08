@@ -1,6 +1,8 @@
 # Propuesta · Bloque 2: video y audiovisual
 
-> **Estado:** propuesta para decisión del dueño (2026-11-08). No se ha escrito código de esta propuesta.
+> **Estado:** APROBADA por el dueño (2026-11-08: «acepto las recomendadas, arranca V1»). D1 = por etapas (primero
+> solo en el local), D2 = archivos propios, D3 = ambos modos, D4 = servidor de medios local. V1 en curso:
+> evidencia en `B_EVIDENCIA_VIDEO.md`.
 > Reemplaza el esbozo del Bloque 2 en `PLAN_ETAPA_B.md` (fases 5 a 9). Las fases se llaman **V1…V6** para no
 > confundirlas con las fases del Agente DJ.
 
