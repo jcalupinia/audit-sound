@@ -20,3 +20,11 @@
   .topbar > .flex.wrap button { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
   .topbar .left b { font-size: 15px; }
 }
+/* Bloque 2 · V1: compositor de video */
+.vj-slot{position:absolute;inset:0}
+.vj-slot .vj-canvas,.vj-out .vj-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;background:#060d13}
+.vj-out .overlay{z-index:2}
+.vj-deck-slot{aspect-ratio:16/9;background:#071017;border:1px solid #30505e;border-radius:8px;overflow:hidden}
+.vj-deck-slot video{width:100%;height:100%;object-fit:contain;display:block}
+.vj-fxrow{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.vj-fxrow .deckfield input[type=range]{min-width:0;flex:1}
+.cc-gate{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;background:var(--bg)}

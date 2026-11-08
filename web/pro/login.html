@@ -76,9 +76,16 @@
   import * as CC from './commandcenter.js';
   const $ = (s) => document.querySelector(s);
   // Ya autenticado -> a la pantalla de elección
-  if (CC.isAuthed()) location.replace('./index.html');
+  const motivo = new URLSearchParams(location.search).get('motivo');
+  if (CC.isAuthed()) {
+    const v = await CC.verify();
+    if (v.ok || v.network) location.replace('./index.html');
+  }
 
   const msg = $('#msg');
+  const MOTIVOS = { caducada: 'Tu sesión caducó. Vuelve a iniciar sesión.', sin_acceso: 'Tu cuenta no tiene acceso a AUDIT SOUND.',
+                    sin_sesion: 'Inicia sesión para entrar a la consola.', cambiar_clave: 'Debes cambiar tu contraseña: inicia sesión de nuevo.' };
+  if (motivo && MOTIVOS[motivo]) { msg.className = 'msg err'; msg.textContent = MOTIVOS[motivo]; }
   if (!CC.configured()) {
     msg.className = 'msg';
     msg.textContent = CC.demoAllowed()

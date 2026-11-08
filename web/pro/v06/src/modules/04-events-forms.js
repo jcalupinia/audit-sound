@@ -6,10 +6,13 @@ function changeControl(el){const d=el.dataset,k=d.change;if(!k)return;let n=Numb
  case 'master':state.master=n;applyAudio();command('mixer.master',{volume:n},'LOCAL');break;
  case 'video-cross':state.videoMix=n;command('video.crossfade',{position:n},'LOCAL');break;
  case 'video-transition':state.videoTrans=el.value;command('video.transition',{type:el.value});break;
- case 'video-seek':{let v=document.getElementById('video-src-'+d.deck);if(v?.duration)v.currentTime=(n/100)*v.duration;state.video[d.deck].seek=n;command('video.transport',{deck:d.deck,op:'seek',percentage:n},'LOCAL');break}
- case 'video-output':command('video.output',{output:el.value});toast('Salida '+el.value+': necesita integración VJ si es externa.');break;
- case 'visual-fx':command('video.transition',{fx:el.value});break;
- case 'caption':command('video.transition',{caption:el.value});break;
+ case 'video-seek':{let v=vjVideo(d.deck);if(v?.duration)v.currentTime=(n/100)*v.duration;state.video[d.deck].seek=n;command('video.transport',{deck:d.deck,op:'seek',percentage:n},'LOCAL');break}
+ case 'video-output':command('video.output',{output:el.value});if(el.value!=='local')toast(el.value==='screen-2'?'La salida a una segunda pantalla llega en la fase V2. Por ahora usa «Pantalla completa».':'La transmisión del video por internet llega en la fase V5.');break;
+ case 'visual-fx':state.videoFx=el.value;command('video.transition',{fx:el.value,amount:state.videoFxAmount});break;
+ case 'video-fx-amount':state.videoFxAmount=n;command('video.transition',{fx:state.videoFx,amount:n});break;
+ case 'video-logo':state.videoLogo=el.value;command('video.transition',{logo:el.value||null});break;
+ case 'video-pick':if(el.value)loadToDeck(el.value,d.deck);return;
+ case 'caption':state.videoCaption=el.value.slice(0,80);command('video.transition',{caption:state.videoCaption});break;
  case 'library-kind':state.libraryKind=el.value;break;
  case 'rule':state.agentRules[d.rule]=el.checked;command('agent.policy',{rule:d.rule,enabled:el.checked});break;
  case 'autonomy':state.agentAutonomy=n;command('agent.policy',{autonomy:n});break;
