@@ -90,7 +90,9 @@ try {
   ok(await until(async () => p.url().includes('/login.html')), '«Salir» vuelve a login.html');
   ok(!(await token(p)), '«Salir» borra la sesión guardada');
 
-  // 5) Sesión caducada: la v0.6 vuelve al login con el motivo
+  // 5) Sesión caducada: la v0.6 vuelve al login con el motivo. (El token se planta desde una página
+  //    neutra: si se planta mientras carga login.html, el login lo comprueba y lo borra, que es lo correcto.)
+  await p.goto(BASE + '/healthz');
   await p.evaluate(() => localStorage.setItem('auditsound.cc.token', 'cc-caducado'));
   await p.goto(BASE + '/v06/');
   ok(await until(async () => p.url().includes('motivo=caducada')), 'sesión caducada en la v0.6 → login con motivo');
