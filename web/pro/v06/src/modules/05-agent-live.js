@@ -98,7 +98,7 @@ async function agentConnect(token){
     toast('Agente DJ conectado.');
   }catch(e){
     AGENT.connected=false;AGENT.sid=null;AGENT.error=e.message;
-    if(e.status===401||e.status===403)agentSetToken('');
+    if(e.status===401||e.status===403){let manual=false;try{manual=!!sessionStorage.getItem(AGENT_TOKEN_KEY)}catch(x){}agentSetToken('');if(!manual&&agentCcToken())ccAgentRejected()}
     toast('No se pudo conectar al agente: '+e.message,true);
   }finally{AGENT.connecting=false;agentRender()}
 }

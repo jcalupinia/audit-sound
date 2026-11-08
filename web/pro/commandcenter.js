@@ -62,6 +62,25 @@ export function session() {
   } catch (e) { return { token: '', user: '', apps: [] }; }
 }
 export function isAuthed() { return !!session().token; }
+
+// Comprueba con el Command Center que la sesión guardada SIGA VIGENTE (el token caduca).
+// Devuelve { ok, me } | { ok:false, reason:'sin_sesion'|'caducada'|'sin_acceso' } |
+// { ok:false, network:true } (sin red: no se borra la sesión). En modo demo, basta el token.
+export async function verify() {
+  const { token } = session();
+  if (!token) return { ok: false, reason: 'sin_sesion' };
+  if (!configured()) return { ok: true, demo: true };
+  let res;
+  try {
+    res = await fetch(apiBase() + mePath(), { headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store' });
+  } catch (e) { return { ok: false, network: true }; }
+  if (res.status === 401 || res.status === 403) { logout(); return { ok: false, reason: 'caducada' }; }
+  if (!res.ok) return { ok: false, network: true, status: res.status };
+  let me = {};
+  try { me = await res.json(); } catch (e) {}
+  if (Array.isArray(me.apps) && !me.apps.includes(appKey())) { logout(); return { ok: false, reason: 'sin_acceso' }; }
+  return { ok: true, me };
+}
 export function logout() {
   try { localStorage.removeItem(LS_TOKEN); localStorage.removeItem(LS_USER); localStorage.removeItem(LS_APPS); } catch (e) {}
 }

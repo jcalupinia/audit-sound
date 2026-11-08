@@ -22,8 +22,11 @@
    scripts/verificar_despliegue_agente.sh https://sound.audit-ia.ec
    ```
    Debe terminar en `RESULTADO: OK`. No pide credenciales.
-2. En el navegador: `https://sound.audit-ia.ec/v06/` → entrar con la cuenta AUDIT-IA → «Agente DJ inteligente».
-   Debe decir **EVENTOS EN VIVO** sin pegar ninguna llave (login unificado, Fase 7).
+2. En el navegador: `https://sound.audit-ia.ec/login.html` → entrar con la cuenta AUDIT-IA → «Mezclar» (abre la
+   consola v0.6 con la cuenta, sin entrada de demostración) → «Agente DJ inteligente». Debe decir **EVENTOS EN VIVO**
+   sin pegar ninguna llave (login unificado, Fase 7). La sesión del Command Center caduca (60 min por defecto,
+   `AUDITBRAIN_JWT_EXPIRE_MINUTES` del backend): al caducar, la consola vuelve al login con el aviso «Tu sesión
+   caducó». La consola anterior sigue disponible en `/console.html`.
 3. Abrir el stream y escuchar 10 segundos.
 
 ## 3. Variables (dónde se configura cada cosa)

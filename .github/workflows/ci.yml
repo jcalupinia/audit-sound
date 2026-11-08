@@ -95,7 +95,7 @@ jobs:
         run: node web/pro/setai_test.mjs
 
   video:
-    name: Compositor de video V1 (Chromium real)
+    name: Consola v0.6 en Chromium real (video y sesión AUDIT-IA)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -108,3 +108,10 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Mezcla por GPU y respaldo 2D, transiciones, efectos, texto, logo y biblioteca persistente
         run: node web/pro/v06/tests/video_v1_e2e.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencias del agente DJ
+        run: pip install "fastapi==0.162.2" "pydantic==2.10.4" "uvicorn==0.34.0" "httpx==0.28.1" "websockets==14.1"
+      - name: Inicio de sesión real del Command Center en la v0.6 (Command Center simulado)
+        run: PYTHON=python node web/pro/v06/tests/sesion_real_e2e.mjs
