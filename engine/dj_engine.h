@@ -71,6 +71,10 @@ int dj_analyze_silence(const char* path, double* first_sound, double* last_sound
 
 /** Length in seconds from the file header / decoder. Does not decode PCM. */
 double dj_file_duration(const char* path);
+// Fin (s) de la parte FUERTE de la pista, antes de su decaimiento final (nivel por segundo frente al
+// nivel habitual de la pista). El AutoMix termina ahí el fundido en vez de en el último sonido.
+// Devuelve 1 si lo encontró; loud_end_sec = -1 si no.
+int dj_analyze_loud_end(const char* path, double* loud_end_sec);
 
 /** Load PCM and apply previously cached analysis (skips BPM/key). bpm<=0 runs a full analyze. */
 int dj_load_with_analysis(DjEngine engine, int deck, const char* path, float bpm, int key,
