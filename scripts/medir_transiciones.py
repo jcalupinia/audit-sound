@@ -22,6 +22,7 @@ Requiere ffmpeg y numpy. Respeta HTTPS_PROXY (urllib).
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import subprocess
 import sys
@@ -44,29 +45,38 @@ def grabar(url: str, segundos: float, destino: Path) -> tuple[list[tuple[float, 
         metaint = int(r.headers.get("icy-metaint") or 0)
         br = int((r.headers.get("icy-br") or "0").split(",")[0] or 0) * 1000
         fin = time.time() + segundos
-        while time.time() < fin:
-            if metaint:
-                audio += r.read(metaint)
-                n = r.read(1)
-                if not n:
-                    break
-                ln = n[0] * 16
-                if ln:
-                    meta = r.read(ln).rstrip(b"\0").decode("utf-8", "replace")
-                    if "StreamTitle='" in meta:
-                        t = meta.split("StreamTitle='", 1)[1].split("';", 1)[0]
-                        titulos.append((len(audio), t))
-            else:
-                chunk = r.read(16384)
-                if not chunk:
-                    break
-                audio += chunk
+        try:
+            _leer(r, metaint, fin, audio, titulos)
+        except (http.client.IncompleteRead, ConnectionError, TimeoutError, OSError) as e:
+            # El stream se cortó (red o proxy): se analiza lo grabado hasta ahí, sin perderlo.
+            print(f"aviso: la conexión se cortó tras {len(audio) * 8 / max(br, 1):.0f} s ({type(e).__name__}); "
+                  "se analiza lo grabado", flush=True)
     destino.write_bytes(bytes(audio))
     if not br:
         out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=bit_rate", "-of", "csv=p=0",
                               str(destino)], capture_output=True, text=True).stdout.strip()
         br = int(out or 192000)
     return [(b * 8 / br, t) for b, t in titulos], br
+
+
+def _leer(r, metaint: int, fin: float, audio: bytearray, titulos: list) -> None:
+    while time.time() < fin:
+        if metaint:
+            audio += r.read(metaint)
+            n = r.read(1)
+            if not n:
+                break
+            ln = n[0] * 16
+            if ln:
+                meta = r.read(ln).rstrip(b"\0").decode("utf-8", "replace")
+                if "StreamTitle='" in meta:
+                    t = meta.split("StreamTitle='", 1)[1].split("';", 1)[0]
+                    titulos.append((len(audio), t))
+        else:
+            chunk = r.read(16384)
+            if not chunk:
+                break
+            audio += chunk
 
 
 def decodificar(mp3: Path) -> np.ndarray:
