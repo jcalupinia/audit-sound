@@ -62,3 +62,89 @@ class StaticTokenAuthenticator:
 
     def __len__(self) -> int:
         return len(self._entries)
+
+
+class CommandCenterAuthenticator:
+    """Login unificado (Fase 7): valida tokens de las Cuentas de Aplicaciones AUDIT-IA.
+
+    Llama a ``GET {base}{me_path}`` del Command Center con el mismo token que la consola obtuvo
+    al iniciar sesión. Solo acepta cuentas activas, con acceso a la app (``audit_sound``) y sin
+    cambio de clave pendiente. El rol del agente sale de ``roles`` por correo
+    (``correo:rol;*:rol``); quien no figure recibe ``default_role`` (por defecto solo lectura).
+    Las respuestas se guardan en caché (``ttl``) para no consultar al Command Center en cada
+    petición; un rechazo se recuerda poco tiempo (``negative_ttl``). Nunca se registra el token.
+    """
+
+    def __init__(self, base_url: str, *, app_key: str = "audit_sound", roles: str = "",
+                 default_role: str = "listener", org: str = "auditconsulting", me_path: str = "/apps/auth/me",
+                 timeout: float = 5.0, ttl: float = 60.0, negative_ttl: float = 10.0, max_cache: int = 1000,
+                 transport: object | None = None, clock: object | None = None):
+        import time as _time
+        self._base = (base_url or "").rstrip("/")
+        self._app, self._org, self._me = app_key, org, "/" + me_path.lstrip("/")
+        self._timeout, self._ttl, self._neg, self._max = timeout, ttl, negative_ttl, max_cache
+        self._transport, self._clock = transport, (clock or _time.monotonic)
+        self._roles: dict[str, Role] = {}
+        for item in (roles or "").split(";"):
+            email, _, role = item.strip().rpartition(":")
+            try:
+                r = Role(role.strip())
+            except ValueError:
+                continue
+            if email and r != Role.AGENT:
+                self._roles[email.strip().lower()] = r
+        try:
+            self._default = Role(default_role)
+        except ValueError:
+            self._default = Role.LISTENER
+        if self._default == Role.AGENT:
+            self._default = Role.LISTENER
+        self._cache: dict[str, tuple[float, Principal | None]] = {}
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self._base)
+
+    def authenticate(self, token: str) -> Principal | None:
+        if not self._base or not token or len(token) > 8192:
+            return None
+        import hashlib
+
+        import httpx
+        key = hashlib.sha256(token.encode()).hexdigest()
+        now = self._clock()  # type: ignore[operator]
+        hit = self._cache.get(key)
+        if hit and hit[0] > now:
+            return hit[1]
+        principal: Principal | None = None
+        cache_for = self._neg
+        try:
+            with httpx.Client(timeout=self._timeout, transport=self._transport) as c:  # type: ignore[arg-type]
+                r = c.get(self._base + self._me, headers={"Authorization": f"Bearer {token}"})
+            if r.status_code == 200:
+                me = r.json()
+                email = str(me.get("email") or "").strip().lower()
+                if email and self._app in (me.get("apps") or []) and not me.get("password_reset_required"):
+                    role = self._roles.get(email) or self._roles.get("*") or self._default
+                    principal = Principal(user_id=email, role=role, org_id=self._org)
+                    cache_for = self._ttl
+        except (httpx.HTTPError, ValueError):
+            return None   # Command Center no disponible: no se cachea (se reintenta en la próxima petición)
+        if len(self._cache) >= self._max:
+            self._cache.clear()
+        self._cache[key] = (now + cache_for, principal)
+        return principal
+
+
+class ChainAuthenticator:
+    """Prueba varios autenticadores en orden (p. ej. llaves de respaldo y luego Command Center)."""
+
+    def __init__(self, *auths: Authenticator):
+        self._auths = [a for a in auths if a is not None]
+
+    def authenticate(self, token: str) -> Principal | None:
+        for a in self._auths:
+            p = a.authenticate(token)
+            if p is not None:
+                return p
+        return None

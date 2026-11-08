@@ -154,3 +154,11 @@ https://sound.audit-ia.ec` → **RESULTADO: OK**: consola en línea y con el age
 alcanzable con cola, Qwen (`auditia-rutina`) y DeepSeek (`deepseek-flash`) configurados. Ajuste encontrado: la
 consola llega al agente por el nombre corto `dj-agent` (no por `dj-agent-<uuid>`). Pendiente: primera orden real
 desde el navegador (confirma Qwen por Tailscale) y prueba en teléfono.
+
+## 16. Fase 7 — login unificado y endurecimiento (2026-11-08)
+
+Pruebas del login con el Command Center simulado: `test_login_command_center.py` (7) y `cc_login_e2e.mjs` (10/10).
+Límite de peticiones del proxy: `agent_proxy_test.mjs`. fastapi 0.162.2 / starlette 1.10.0: `pytest` 236 pasan,
+5 omitidas; `pip-audit` sin hallazgos; E2E de las Fases 5 y 6 y regresión de las 20 pantallas sin cambios.
+Prueba de estabilidad de 4 h con las dependencias nuevas: ver `17_FASE7_INFORME.md` §3.
+**NO VERIFICADO:** login contra el Command Center real (requiere el merge y las variables en Coolify).

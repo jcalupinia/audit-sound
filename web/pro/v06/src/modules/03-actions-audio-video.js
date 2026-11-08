@@ -48,6 +48,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'agent-clear':state.chat=[{who:'system',text:'Conversación reiniciada. Modelo sin conexión.'}];save();render();break;
  case 'agent-voice':voiceToggle();break;
  case 'agent-disconnect':agentDisconnect();break;
+ case 'agent-connect-cc':agentConnect();break;
  case 'agent-refresh':agentRefreshStatus().then(()=>agentSyncProposals()).then(render);break;
  case 'agent-test-approval':if(agentLive()){agentTestProposal();break}state.agentHistory.push({id:uid('approval'),text:'Transición de prueba a género House',status:'pending'});save();render();break;
  case 'agent-approve':case 'agent-reject':{let h=state.agentHistory.find(h=>h.id===id);if(h&&h.srv){command('agent.approval',{id,status:n==='agent-approve'?'approved':'rejected'},'LIVE');break}if(h){h.status=n==='agent-approve'?'approved':'rejected';command('agent.approval',{id,status:h.status},'MOCK');save();render();toast('Decisión registrada; no se ejecutó ninguna transición.')}break}

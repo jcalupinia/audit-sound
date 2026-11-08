@@ -38,6 +38,8 @@ navegador ──HTTPS──► sound.audit-ia.ec  (Application · deploy/pro/Doc
 | `LOCAL_LLM_API_KEY` | copiar de `auditbrain-backend` | **Sí** |
 | `DEEPSEEK_API_KEY` | copiar de `auditbrain-backend` (la vigente, no la revocada) | **Sí** |
 | `DEEPSEEK_MODEL` | `deepseek-flash` | No |
+| `DJ_AGENT_CC_API` | el mismo valor que `AUDIT_SOUND_CC_API` de la consola (Fase 7, login unificado) | No |
+| `DJ_AGENT_CC_ROLES` | `correo-del-dueno:admin;correo-operador:operator` (quien no figure entra como oyente) | No |
 
 Cada `TOKEN` se genera en una terminal (no en el chat) con:
 
@@ -45,7 +47,8 @@ Cada `TOKEN` se genera en una terminal (no en el chat) con:
 python3 -c "import secrets;print(secrets.token_urlsafe(32))"
 ```
 
-Los tokens son las «llaves» que se pegan en la consola para conectarse al agente. Roles: `admin`,
+Con `DJ_AGENT_CC_API` la consola se conecta sola con la sesión AUDIT-IA (cuentas con la app «audit_sound»); los
+tokens quedan como **llaves de respaldo** que se pegan en la consola si el Command Center no responde. Roles: `admin`,
 `operator` (opera), `supervisor` (aprueba y ve el consumo), `listener` (solo mira).
 
 ## 3. Red compartida y despliegue del compose
@@ -79,7 +82,7 @@ scripts/verificar_despliegue_agente.sh https://sound.audit-ia.ec
 ```
 
 Debe terminar en `RESULTADO: OK`. Luego, en el navegador: `https://sound.audit-ia.ec/v06/` → entrar → «Agente DJ
-inteligente» → pegar un token → «Conectar agente» → probar «salta la canción» y un cambio de modo. En el teléfono:
+inteligente» → debe conectarse solo con la sesión AUDIT-IA (o pegar una llave de respaldo → «Conectar agente») → probar «salta la canción» y un cambio de modo. En el teléfono:
 `deploy/PROBAR_IPHONE.md`, sección C.
 
 ## 6. Volver atrás (sin tocar el audio)
@@ -90,7 +93,8 @@ inteligente» → pegar un token → «Conectar agente» → probar «salta la c
 
 ## 7. Riesgos conocidos
 
-- Los tokens de acceso son de desarrollo: falta enlazarlos con el login del Command Center (Fase 7).
+- Login unificado (Fase 7): si el Command Center no responde, nadie entra con su sesión hasta que vuelva; las
+  llaves de respaldo siguen funcionando. Operación e incidentes: `docs/dj-agent/RUNBOOK_AGENTE_DJ.md`.
 - La Control API del motor admite **un controlador a la vez**: si otro panel la usa con la misma cuenta, el
   agente reintenta tomar el control.
 - Las tarifas que muestra `/usage` son una estimación configurada.
