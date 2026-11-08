@@ -1,7 +1,7 @@
 # 17 · Fase 7: informe de entrega (endurecimiento, estabilidad, runbook y candidato de despliegue)
 
-> **Estado:** en revisión, en la rama `claude/dj-agent-fase7`. No hay cambios en producción hasta que el dueño haga merge y cargue las dos variables
-> nuevas en Coolify (§4).
+> **Estado:** CERRADA EN PRODUCCIÓN (2026-11-08). Fusionada (PR 61) y desplegada por el dueño con `DJ_AGENT_CC_API` y
+> `DJ_AGENT_CC_ROLES` cargadas en Coolify. Verificación con la cuenta real en §7.
 
 ## 1. Alcance entregado
 
@@ -64,10 +64,26 @@ prueba en producción del runbook (§8): un día de poca audiencia en AUTOMÁTIC
   algo raro, se vuelve atrás con «Redeploy» del despliegue anterior en Coolify (runbook §5).
 - El límite de peticiones se guarda en la memoria de la consola. Vale mientras haya una sola instancia.
 
+## 5b. Verificación en producción (2026-11-08, cuenta real del dueño)
+
+| Prueba | Resultado |
+|---|---|
+| `scripts/verificar_despliegue_agente.sh https://sound.audit-ia.ec` | **RESULTADO: OK** (agente, base, motor real con cola, Qwen y DeepSeek configurados) |
+| Login unificado: la consola v0.6 se conecta al agente con la sesión AUDIT-IA, sin llaves | **OK** |
+| Rol por correo (`jcalupinia@auditconsulting.ec:admin`): cambio a «DJ Automático 24/7» aplicado en el servidor | **OK** |
+| «salta la canción» → reglas → ejecutada y confirmada por el motor | **OK** |
+| «pon algo más tranquilo para la hora de la cena» → reglas → plan de 4 pistas confirmado por el motor | **OK** |
+| Orden ambigua («como en una boda cuando empieza la fiesta») → **Qwen** (`auditia-rutina`, por Tailscale) → plan confirmado | **OK** (primera evidencia de Qwen real desde producción) |
+
+Hallazgos durante la verificación (corregidos):
+1. `DJ_AGENT_CC_ROLES` tenía un correo distinto al de la cuenta AUDIT-IA: el dueño entraba como oyente. Corregido en Coolify.
+2. La sesión caducada (60 min) se reutilizaba sin avisar y la v0.6 tenía su propia entrada de demostración: PR 65.
+3. Durante el despliegue convivieron dos contenedores (versiones mezcladas) y el botón «Ingresar» quedó sin respuesta: PR 66.
+4. El mensaje del plan mostraba «Plan: 4 pistas ()» cuando el catálogo no trae géneros: ahora muestra los títulos (este PR).
+
 ## 6. Dictamen
 
-**EN REVISIÓN.** Login unificado, endurecimiento y runbook hechos y probados en local. Queda **NO VERIFICADO** lo
+**CERRADA EN PRODUCCIÓN.** Login unificado, endurecimiento y runbook hechos, probados y verificados con la cuenta real (§7). Queda **NO VERIFICADO** lo
 siguiente:
-- el login contra el Command Center real;
 - las pruebas en teléfonos físicos (pendiente desde la Fase 6);
-- la primera orden real desde el navegador de producción, que confirma que Qwen responde por Tailscale.
+- la prueba de estabilidad de 4 h continuas (ver §3: se hará en producción, runbook §8).
