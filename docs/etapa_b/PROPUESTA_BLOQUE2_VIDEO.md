@@ -39,10 +39,15 @@ P1-06 (sin salida a pantallas externas). Los contratos de la API de video están
 - **No recomendado:** videos de YouTube u otras plataformas. Sus condiciones no permiten reproducirlos en un evento
   ni retransmitirlos, y además se cortan con publicidad.
 
-### D3 · ¿El video lleva sonido?
-- **Recomendado:** los videos se reproducen **sin sonido** (visuales de VJ) y el audio lo pone siempre el motor de
-  música. Así no se rompe la mezcla de audio que ya funciona.
-- Opción posterior: pasar el audio de un video al motor como si fuera una pista más (más trabajo).
+### D3 · ¿El video lleva sonido? — **DECIDIDO (2026-11-08): ambos modos**
+- **Visuales (sin sonido):** loops y videos de ambientación. El audio lo pone el motor de música, como hoy.
+- **Videoclips (DJ de video):** cada video trae su canción. El sonido pasa por el motor de audio (ecualizador, BPM,
+  sincronía, AutoMix) y la imagen va enganchada a ese sonido. Un solo crossfader mezcla imagen y sonido a la vez.
+  - Verificado en el código: el decodificador del motor (`engine/ffmpeg_aac.hpp`, FFmpeg) ya lee el audio de MP4.
+    Falta que `tools/audit_sound_server.cpp::isAudio` acepte `.mp4` (hoy: mp3, wav, flac, opus, ogg, m4a, aac, m4b),
+    y lo mismo en el motor WASM de la consola.
+  - Objetivo de sincronía labios-voz: desfase ≤ 80 ms, medido en las pruebas.
+  - Derechos: los videoclips oficiales requieren licencia de comunicación pública para eventos o transmisiones.
 
 ### D4 · Generar con IA
 La firma tiene un servidor de medios local («AuditIA Media Local», con generar imagen, generar video y animar
@@ -83,13 +88,14 @@ se hace merge ni despliegue sin su autorización.
 | Fase | Qué se entrega | Cómo se prueba | Depende de | Estimación |
 |---|---|---|---|---|
 | **V1 · Compositor de video** | Mezcla A/B por GPU (WebGL); transiciones Desvanecer/Corte/Barrido; efectos (brillo, desenfoque, glitch); texto y logo encima; biblioteca de videos que se guarda; categoría «Videos» | E2E en Chromium con `tests/sample.mp4`: se leen píxeles del lienzo para comprobar mezcla y transición; rendimiento (cuadros por segundo) | D2, D3 | 3–4 días |
+| **V1b · Videoclips (DJ de video)** | `.mp4` en el motor (servidor y WASM); al cargar un videoclip, su audio va al deck de audio y su imagen al deck de video del mismo lado; un crossfader para ambos; la imagen sigue la posición, el pitch y los saltos del audio; categoría «Videoclips» | E2E con un videoclip de prueba: se mide el desfase imagen-sonido (≤ 80 ms) tras play, CUE, cambio de pitch y crossfade; pruebas del motor C++ | V1 | 3–4 días |
 | **V2 · Preview → Programa y Pantalla 2** | «Enviar a programa» real con la transición elegida; ventana «Programa» a pantalla completa en el proyector/TV, controlada desde la consola; botón de pánico (logo fijo) | E2E con dos ventanas; **prueba física pendiente** con proyector real | V1 | 2–3 días |
 | **V3 · Presentaciones y eventos** | Diapositivas desde PDF e imágenes (PowerPoint convertido a PDF); los cues del evento disparan diapositivas o videos a una hora | E2E con un PDF de ejemplo y un evento programado | V2 | 2–3 días |
 | **V4 · Agente DJ con video** (opcional) | Órdenes «pon el video de playa», «cambia los visuales con la energía»; cortes de video al ritmo (BPM) en modo automático | Pruebas del agente + E2E | V2 y el agente desplegado | 2–3 días |
 | **V5 · Transmisión por internet** (solo si D1 = B o C) | Servicio MediaMTX en el compose; el navegador envía el programa por WHIP; los oyentes ven HLS con el audio del motor; página de reproducción; acceso solo con sesión AUDIT-IA si se desea | Ensayo local completo (navegador → MediaMTX → HLS → reproductor) y luego despliegue autorizado | V2, D1 | 4–5 días |
 | **V6 · Generar con IA** | Imagen/video/animación desde un texto con el servidor de medios local; el resultado entra a la biblioteca «Generados por IA» y siempre se revisa antes de ir a programa | Prueba contra el servidor real (si está accesible) y tiempos medidos | D4 | 2–3 días |
 
-Orden recomendado: **V1 → V2 → V3**, que ya dejan un VJ útil en un evento presencial. Después, V4, V5 y V6 según lo
+Orden recomendado: **V1 → V1b → V2 → V3**, que ya dejan un VJ útil en un evento presencial. Después, V4, V5 y V6 según lo
 que decida.
 
 Pendiente aparte del Bloque 1 (sonido): micrófonos y talkover (la Fase 4 original) siguen sin servidor. Para eventos
@@ -107,13 +113,14 @@ con presentaciones conviene hacerlos junto con V3. Propongo incluirlos ahí si e
 
 | Riesgo | Mitigación |
 |---|---|
+| Imagen y sonido del videoclip se desfasan | La imagen sigue al reloj del motor de audio (nunca al revés) y se corrige si pasa de 80 ms; medido en E2E |
 | El computador del DJ no tiene GPU suficiente | Limitar a 720p, medir cuadros por segundo en V1 y bajar la calidad automáticamente |
-| iPhone/Safari: no reproduce automático con sonido y no tiene la API de presentación | El video va sin sonido (D3); la Pantalla 2 se abre como ventana normal. Se prueba en dispositivo físico |
+| iPhone/Safari: no reproduce automático con sonido y no tiene la API de presentación | La imagen va siempre sin sonido propio (el sonido de los videoclips lo pone el motor); la Pantalla 2 se abre como ventana normal. Se prueba en dispositivo físico |
 | Derechos de autor de los videos | Solo archivos propios o con licencia (D2); aviso en la biblioteca |
 | Tráfico y costo de transmitir video | V5 opcional y con números previos (§5) |
 | La IA genera algo inapropiado | Nada generado va a programa sin que una persona lo apruebe (misma regla que el agente) |
 
 ## 7. Qué hago apenas usted decida
 
-Con D1 a D4 respondidas (o «acepto las recomendadas»), abro la rama de **V1**, construyo el compositor y entrego
+D3 ya está decidida (ambos modos). Con D1, D2 y D4 respondidas (o «acepto las recomendadas»), abro la rama de **V1**, construyo el compositor y entrego
 el PR con sus pruebas, como en las fases del agente.
