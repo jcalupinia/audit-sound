@@ -161,6 +161,8 @@ int main() {
   control_api_add_track_meta(api5, "Tema Cero", f0.c_str(), 124.0f, 7, 0.62f, 183.4);
   control_api_add_track_meta(api5, "Tema Uno", f1.c_str(), 126.0f, 8, 0.70f, 200.0);
   control_api_add_track_meta(api5, "Fantasma", "/tmp/as_f2_no_existe.wav", 120.0f, 19, 0.40f, 150.0);
+  control_api_set_track_genre(api5, 1, "merengue");
+  control_api_set_track_genre(api5, 9, "salsa");  // índice inexistente: se ignora
   const std::string T5 = field(req(B5 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=secreto&name=agente").body, "token");
   Resp tr = req(B5 + "/api/tracks", "GET", T5.c_str());
   check(tr.code == 200 && tr.body.find("\"metadata\":true") != std::string::npos,
@@ -169,6 +171,10 @@ int main() {
         "B1 /api/tracks expone BPM, tonalidad, energía y duración");
   check(tr.body.find("{\"i\":0,\"title\":\"Tema Cero\"") != std::string::npos,
         "B1 cambio aditivo: se conservan i y title");
+  check(tr.body.find("\"duration\":200.00,\"genre\":\"merengue\"}") != std::string::npos,
+        "/api/tracks publica el género de la pista que lo tiene");
+  check(tr.body.find("\"duration\":183.40}") != std::string::npos && tr.body.find("salsa") == std::string::npos,
+        "sin género no se publica el campo (y un índice inexistente se ignora)");
   auto cmd = [&](const std::string& q, const std::string& tok) { return req(B5 + "/api/command?" + q, "POST", tok.c_str()); };
   Resp qs = cmd("action=queue_set&tracks=2,1,0", T5);
   check(qs.code == 200 && qs.body.find("\"queue\":[2,1,0]") != std::string::npos, "B2 queue_set → 200 y cola resultante");

@@ -36,6 +36,10 @@ void control_api_add_track(ControlApi api, const char* title, const char* path);
 void control_api_add_track_meta(ControlApi api, const char* title, const char* path, float bpm, int key,
                                 float energy, double duration);
 
+// Género de la pista `index` (orden de alta). GET /api/tracks lo publica como "genre"; vacío = no se
+// publica. Lo usa el agente para órdenes como «pon merengue» (cambio aditivo).
+void control_api_set_track_genre(ControlApi api, int index, const char* genre);
+
 // Fase 2 · B2 — cola del agente. La llama el callback de "siguiente pista" del AutoMix
 // ANTES que el Selector: si hay pistas encoladas devuelve 1 y la ruta de la primera
 // (descarta las que ya no existen en disco); si la cola está vacía devuelve 0 y el

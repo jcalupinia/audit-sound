@@ -1192,7 +1192,8 @@ int dj_analyze_silence(const char* path, double* first_sound, double* last_sound
   return 1;
 }
 
-int dj_analyze_loud_end(const char* path, double* loud_end_sec) {
+int dj_analyze_loud_range(const char* path, double* loud_start_sec, double* loud_end_sec) {
+  if (loud_start_sec) *loud_start_sec = -1.0;
   if (loud_end_sec) *loud_end_sec = -1.0;
   if (!path) return 0;
   StreamingDecoder dec;
@@ -1210,7 +1211,12 @@ int dj_analyze_loud_end(const char* path, double* loud_end_sec) {
   }
   const double e = mixpoints::loudEndSec(db);
   if (loud_end_sec) *loud_end_sec = e;
+  if (loud_start_sec) *loud_start_sec = mixpoints::loudStartSec(db);
   return e > 0 ? 1 : 0;
+}
+
+int dj_analyze_loud_end(const char* path, double* loud_end_sec) {
+  return dj_analyze_loud_range(path, nullptr, loud_end_sec);
 }
 
 double dj_file_duration(const char* path) {

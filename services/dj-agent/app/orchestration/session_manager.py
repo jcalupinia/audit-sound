@@ -611,7 +611,12 @@ class SessionManager:
         current = next((t for t in catalog if on_air and t.id == on_air.track_id), None)
         if current is None and on_air is not None:
             current = next((t for t in catalog if t.title == on_air.title), None)
-        history = self._history_ids(sid) + ([current.id] if current else [])
+        # La pista ya cargada en el otro deck (la «siguiente» del motor) suena antes que cualquier plan:
+        # si el plan la repitiera, sonaría dos veces seguidas (producción, 2026-11-08: «Cielos»).
+        cued = _cued(snap) if snap.reachable else None
+        cued_t = next((t for t in catalog if cued and t.title == cued.title), None)
+        history = (self._history_ids(sid) + ([current.id] if current else [])
+                   + ([cued_t.id] if cued_t and cued_t is not current else []))
         policy = self._policy(row)
         items, warnings = build_plan(catalog, current=current, segments=constraints.get("segments") or None,
                                      genre=constraints.get("genre"), count=int(constraints.get("count", 8)),
@@ -955,6 +960,13 @@ def _on_air(snap: EngineSnapshot):
     if len(playing) == 1:
         return playing[0]
     return next((d for d in playing if d.deck == (1 if snap.xfader > 0.5 else 0)), playing[0])
+
+
+def _cued(snap: EngineSnapshot):
+    """Deck cargado y en pausa: la pista que el motor ya preparó para la próxima transición."""
+    on = _on_air(snap)
+    return next((d for d in snap.decks if d.loaded and not d.playing and d.title
+                 and (on is None or d.deck != on.deck)), None)
 
 
 def _msg(r: dict[str, Any], what: str) -> str:

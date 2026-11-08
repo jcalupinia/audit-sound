@@ -52,6 +52,13 @@ services:
       AUDIT_SOUND_BIBLIOTECA: ${AUDIT_SOUND_BIBLIOTECA:-latina}
       AUDIT_SOUND_TRANSITION: ${AUDIT_SOUND_TRANSITION:-8}
       AUDIT_SOUND_MIX_MODE: ${AUDIT_SOUND_MIX_MODE:-0}
+      # Ajustes del AutoMix (vacío = comportamiento por defecto; ver docs/dj-agent/19 y 20):
+      #   MIX_POINT=silence · TEMPO_RETURN=0 · MIX_MAX_ADELANTO (s) · INTRO_SALTO=0 · INTRO_MAX (s)
+      AUDIT_SOUND_MIX_POINT: ${AUDIT_SOUND_MIX_POINT:-}
+      AUDIT_SOUND_TEMPO_RETURN: ${AUDIT_SOUND_TEMPO_RETURN:-}
+      AUDIT_SOUND_MIX_MAX_ADELANTO: ${AUDIT_SOUND_MIX_MAX_ADELANTO:-}
+      AUDIT_SOUND_INTRO_SALTO: ${AUDIT_SOUND_INTRO_SALTO:-}
+      AUDIT_SOUND_INTRO_MAX: ${AUDIT_SOUND_INTRO_MAX:-}
       # Audio de DEMO: si /music está vacío y no hay Subsonic, suena una demo sintética
       # (para probar el Preview sin subir música). Pon tu biblioteca en /music para
       # reemplazarla, o pon AUDIT_SOUND_DEMO=0 para exigir fuente propia.

@@ -26,7 +26,10 @@ elif has_audio /cc-music || has_audio /cc-music-latina; then
     todas)
       dir=/tmp/biblioteca-todas; desc="latina + deep/tech house"
       mkdir -p "$dir"
-      for f in /cc-music/* /cc-music-latina/*; do [ -f "$f" ] && ln -sf "$f" "$dir/"; done ;;
+      for f in /cc-music/* /cc-music-latina/*; do
+        case "$f" in */generos.txt) ;; *) [ -f "$f" ] && ln -sf "$f" "$dir/" ;; esac
+      done
+      cat /cc-music/generos.txt /cc-music-latina/generos.txt > "$dir/generos.txt" 2>/dev/null || true ;;
     *) dir=/cc-music-latina; desc="latina: salsa, merengue, cha-cha-chá, bachata" ;;
   esac
   has_audio "$dir" || { dir=/cc-music; desc="deep/tech house"; }

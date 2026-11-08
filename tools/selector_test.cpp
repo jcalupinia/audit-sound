@@ -72,7 +72,32 @@ int main() {
   const double frac = transitions ? (double)compat / transitions : 0;
   std::printf("transiciones: %d  compatibles: %d (%.1f%%)  repeticiones<cooldown: %d\n",
               transitions, compat, 100.0 * frac, repeats);
-  const bool ok = frac >= 0.80 && repeats == 0;
+  // notePlayed: una pista que puso la cola del agente no se repite justo después.
+  Selector s2(cfg);
+  s2.addTrack("a.mp3", 120, 0, 0.5f);
+  s2.addTrack("b.mp3", 120, 0, 0.5f);
+  s2.addTrack("c.mp3", 120, 0, 0.5f);
+  int rep2 = 0;
+  for (int i = 0; i < 200; ++i) {
+    s2.notePlayed("b.mp3");
+    if (s2.next() == "b.mp3") ++rep2;
+  }
+  std::printf("tras una pista de la cola, el selector la repitió %d de 200 veces\n", rep2);
+  // Tempo: desde 100 BPM, con tonalidad neutra, elige la pista de 98 BPM antes que la de 135.
+  SelectorConfig c3;
+  c3.temperature = 0.01;
+  c3.cooldown = 1;
+  Selector s3(c3);
+  s3.addTrack("ref.mp3", 100, -1, 0.5f);
+  s3.addTrack("cerca.mp3", 98, -1, 0.5f);
+  s3.addTrack("lejos.mp3", 135, -1, 0.5f);
+  int cerca = 0;
+  for (int i = 0; i < 50; ++i) {
+    s3.notePlayed("ref.mp3");
+    if (s3.next() == "cerca.mp3") ++cerca;
+  }
+  std::printf("desde 100 BPM eligió la de 98 BPM %d de 50 veces\n", cerca);
+  const bool ok = frac >= 0.80 && repeats == 0 && rep2 == 0 && cerca == 50;
   std::printf("RESULTADO: %s\n", ok ? "OK (>=80%% armónico, sin repeticiones)" : "FALLO");
   return ok ? 0 : 1;
 }

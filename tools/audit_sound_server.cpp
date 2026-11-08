@@ -25,6 +25,8 @@
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <fstream>
+#include <map>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -115,8 +117,27 @@ struct NextTrackChain {
 static int nextChained(void* user, char* out, int cap) {
   auto* c = static_cast<NextTrackChain*>(user);
   ControlApi a = c->api.load();
-  if (a && control_api_next_queued(a, out, cap)) return 1;
+  if (a && control_api_next_queued(a, out, cap)) {
+    if (c->sel) c->sel->notePlayed(out);  // el Selector no la repite justo después
+    return 1;
+  }
   return Selector::nextTrackCb(c->sel, out, cap);
+}
+
+// Géneros de la biblioteca: archivo opcional «generos.txt» en la carpeta de música, una línea por
+// pista con «Título|género» (Título = nombre del archivo sin extensión). Líneas con # se ignoran.
+static std::map<std::string, std::string> loadGenres(const std::string& dir) {
+  std::map<std::string, std::string> g;
+  std::ifstream in(fs::path(dir) / "generos.txt");
+  std::string line;
+  while (std::getline(in, line)) {
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+    const auto bar = line.rfind('|');
+    if (line.empty() || line[0] == '#' || bar == std::string::npos) continue;
+    std::string genre = line.substr(bar + 1);
+    if (!genre.empty()) g[line.substr(0, bar)] = genre;
+  }
+  return g;
 }
 
 struct TrackMeta {
@@ -147,6 +168,7 @@ int main(int argc, char** argv) {
   NextTrackChain chain;
   chain.sel = &selector;
   std::vector<TrackMeta> metas;
+  std::string localDir;  // carpeta local de música (para generos.txt)
 
   const char* subUrl = std::getenv("AUDIT_SOUND_SUBSONIC_URL");
   if (subUrl && subUrl[0]) {
@@ -176,6 +198,7 @@ int main(int argc, char** argv) {
                    "o AUDIT_SOUND_SUBSONIC_URL)\n");
       return 2;
     }
+    localDir = dir;
     std::error_code ec;
     for (auto& p : fs::directory_iterator(dir, ec)) {
       if (p.is_regular_file() && isAudio(p.path().extension().string()))
@@ -233,6 +256,8 @@ int main(int argc, char** argv) {
     api = control_api_start(apiPort, apiUser, apiPass ? apiPass : "", e, am);
     if (api) {
       // Catálogo para el modo manual (pistas locales).
+      const auto genres = loadGenres(localDir);
+      if (!genres.empty()) std::printf("géneros: %zu pistas con género (generos.txt)\n", genres.size());
       for (size_t i = 0; i < local.files.size(); ++i) {
         const std::string& f = local.files[i];
         const std::string title = fs::path(f).stem().string();
@@ -241,6 +266,8 @@ int main(int argc, char** argv) {
                                      metas[i].duration);
         else
           control_api_add_track(api, title.c_str(), f.c_str());
+        auto it = genres.find(title);
+        if (it != genres.end()) control_api_set_track_genre(api, (int)i, it->second.c_str());
       }
       chain.api.store(api);  // desde aquí la cola del agente participa en la selección
       std::printf("Control API en el puerto %d (usuario '%s', %zu pistas)\n", apiPort, apiUser,

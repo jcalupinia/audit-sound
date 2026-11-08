@@ -44,6 +44,9 @@ RUN mkdir -p /cc-music && cd /cc-music \
       curl -fL --retry 3 --retry-delay 2 -o "$dst" "$base/$src" \
         || { echo "WARN: no se pudo descargar $dst"; rm -f "$dst"; }; \
     done \
+ && printf '%s\n' "# Título|género (lo lee el motor; ver cc-music-latina/generos.txt)" \
+      "Paulo Olarte - Cielos|house" "Ruido Selecto - Talisman|house" "Sir Leaks - Espejismo|house" \
+      "Deraout - Electricamente|house" "MALA - Bang It|house" "Velez - Down By Law|house" > /cc-music/generos.txt \
  && echo "cc-music:" && ls -la /cc-music
 
 # ---- runtime ----
