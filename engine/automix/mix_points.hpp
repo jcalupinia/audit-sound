@@ -36,6 +36,17 @@ inline double loudEndSec(const std::vector<float>& rmsDb, float dropDb = 6.0f) {
   return -1.0;
 }
 
+// Fin del fundido con punto de mezcla por energía, LIMITADO: termina 1 s después de la parte fuerte,
+// pero nunca más de `maxAdvance` segundos antes del último sonido. Sin el límite, una pista con una
+// segunda mitad más tranquila se cortaba a la mitad (producción, 2026-11-08: «Cielos» pasó de 11,6 a
+// 5,7 min). Un DJ adelanta la mezcla para no hacerla sobre la cola; no se salta minutos de música.
+inline double energyFadeEnd(double loudEnd, double lastSound, double transition, double maxAdvance) {
+  if (loudEnd <= transition || lastSound <= 0) return lastSound;
+  const double cand = loudEnd + 1.0;
+  if (cand >= lastSound) return lastSound;
+  return std::max(cand, lastSound - std::max(0.0, maxAdvance));
+}
+
 // Mueve `rate` hacia `target` como máximo `perSec` por segundo transcurrido.
 inline float rampToward(float rate, float target, double dtSec, float perSec) {
   if (dtSec <= 0.0 || perSec <= 0.0f) return rate;

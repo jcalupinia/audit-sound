@@ -63,6 +63,13 @@ int main() {
   ok(mixpoints::rampToward(0.95f, 1.0f, 1.0, 0.003f) > 0.95f, "también sube desde un tempo más lento");
   ok(mixpoints::rampToward(1.0f, 1.0f, 1.0, 0.003f) == 1.0f, "ya en su tempo, no cambia");
 
+  // 2b) energyFadeEnd: el adelanto se limita (caso real «Cielos»: parte fuerte termina a 330 s de 700).
+  ok(mixpoints::energyFadeEnd(330, 700, 8, 45) == 655, "pista con segunda mitad tranquila: solo se adelanta 45 s");
+  ok(mixpoints::energyFadeEnd(72, 80, 8, 45) == 73, "cola corta: termina 1 s tras la parte fuerte");
+  ok(mixpoints::energyFadeEnd(-1, 80, 8, 45) == 80, "sin dato de energía: último sonido");
+  ok(mixpoints::energyFadeEnd(79.5, 80, 8, 45) == 80, "sin decaimiento: último sonido");
+  ok(mixpoints::energyFadeEnd(5, 80, 8, 45) == 80, "parte fuerte más corta que el fundido: último sonido");
+
   // 3) dj_analyze_loud_end sobre un WAV real: 40 s a nivel pleno + 15 s de cola que se apaga.
   const int sr = 44100;
   std::vector<float> pcm;

@@ -1,0 +1,100 @@
+{
+  "duracion_s": 1202.7,
+  "titulos": [
+    {
+      "t": 0.7,
+      "titulo": "Ruido Selecto - Talisman"
+    },
+    {
+      "t": 5.3,
+      "titulo": "Deraout - Electricamente"
+    },
+    {
+      "t": 376.0,
+      "titulo": "Velez - Down By Law"
+    },
+    {
+      "t": 567.3,
+      "titulo": "Paulo Olarte - Cielos"
+    },
+    {
+      "t": 912.0,
+      "titulo": "MALA - Bang It"
+    },
+    {
+      "t": 1090.0,
+      "titulo": "Deraout - Electricamente"
+    }
+  ],
+  "transiciones": [
+    {
+      "t": 5.3,
+      "medible": false,
+      "motivo": "faltan segundos antes o después del cambio",
+      "de": "Ruido Selecto - Talisman",
+      "a": "Deraout - Electricamente"
+    },
+    {
+      "t": 376.0,
+      "medible": true,
+      "fundido_s": 10.5,
+      "fundido_desde_s": 364.0,
+      "fundido_hasta_s": 374.5,
+      "bajon_db": 8.1,
+      "nivel_base_dbfs": -5.0,
+      "bpm_saliente": 122.6,
+      "bpm_entrante": 162.7,
+      "diferencia_bpm_pct": 32.7,
+      "veredicto": "bajón de volumen",
+      "de": "Deraout - Electricamente",
+      "a": "Velez - Down By Law"
+    },
+    {
+      "t": 567.3,
+      "medible": true,
+      "fundido_s": 7.5,
+      "fundido_desde_s": 561.5,
+      "fundido_hasta_s": 569.0,
+      "bajon_db": 0.6,
+      "nivel_base_dbfs": -9.4,
+      "bpm_saliente": 83.1,
+      "bpm_entrante": 122.8,
+      "diferencia_bpm_pct": 47.8,
+      "veredicto": "mezcla suave",
+      "de": "Velez - Down By Law",
+      "a": "Paulo Olarte - Cielos"
+    },
+    {
+      "t": 912.0,
+      "medible": true,
+      "fundido_s": 7.5,
+      "fundido_desde_s": 902.5,
+      "fundido_hasta_s": 910.0,
+      "bajon_db": 1.1,
+      "nivel_base_dbfs": -9.1,
+      "bpm_saliente": 122.6,
+      "bpm_entrante": 127.6,
+      "diferencia_bpm_pct": 4.1,
+      "veredicto": "mezcla suave",
+      "de": "Paulo Olarte - Cielos",
+      "a": "MALA - Bang It"
+    },
+    {
+      "t": 1090.0,
+      "medible": true,
+      "fundido_s": 3.5,
+      "fundido_desde_s": 1078.0,
+      "fundido_hasta_s": 1081.5,
+      "bajon_db": 1.6,
+      "nivel_base_dbfs": -6.4,
+      "bpm_saliente": 129.5,
+      "bpm_entrante": 122.6,
+      "diferencia_bpm_pct": 5.3,
+      "veredicto": "mezcla suave",
+      "de": "MALA - Bang It",
+      "a": "Deraout - Electricamente"
+    }
+  ],
+  "segundos_en_silencio": 0.0,
+  "nivel_medio_dbfs": -9.4
+}

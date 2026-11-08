@@ -42,3 +42,21 @@ Solo se aplica en el modo 0 (salta silencios, el de producción); el modo 1 («p
 
 - Tras el merge (y el redeploy automático del compose): repetir `scripts/medir_transiciones.py --segundos 900` en
   producción y comparar con el informe 18, §6.
+
+## 5. Medición en producción tras el merge (2026-11-08, 20 min) y corrección
+
+Evidencia: `evidencias/transiciones_prod_2026-11-08_v2.{md,json}`.
+
+| # | Transición | Cambio audible | Bajón |
+|---|---|---|---|
+| 2 | Deraout - Electricamente → Velez - Down By Law | 10,5 s | 8,1 dB |
+| 3 | Velez - Down By Law → Paulo Olarte - Cielos | 7,5 s | **0,6 dB** |
+| 4 | Paulo Olarte - Cielos → MALA - Bang It | 7,5 s | **1,1 dB** |
+| 5 | MALA - Bang It → Deraout - Electricamente | 3,5 s | **1,6 dB** |
+
+- El bajón bajó de 5,1–6,8 dB (medición anterior) a 0,6–1,6 dB en 3 de 4 transiciones medibles. La excepción entra
+  a «Down By Law», cuyo tempo (~81/162 BPM según el medidor) queda fuera del rango que el motor sincroniza.
+- **Efecto no deseado:** «Cielos» sonó 5,7 min en lugar de 11,6 min: su segunda mitad es más tranquila (más de 6 dB
+  bajo su nivel habitual) y el motor la tomó como decaimiento. **Corregido:** el final solo se adelanta hasta 45 s
+  antes del último sonido (`mixpoints::energyFadeEnd`, ajustable con `AUDIT_SOUND_MIX_MAX_ADELANTO`). Pruebas
+  `mix_points_test` 15/15 (incluye el caso «Cielos»); ensayo con colas que se apagan: bajón 0,8–1,0 dB, RESULTADO OK.
