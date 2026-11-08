@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 // Abstracción de salida de audio del motor (issue C2, introducida en C1 para
 // poder compilar headless en Linux sin Oboe).
 //
@@ -20,4 +22,6 @@ struct IAudioSink {
   virtual void stop() = 0;
   virtual int sampleRate() const = 0;
   virtual int channels() const = 0;
+  // Título de lo que suena; lo reenvían los sinks de streaming a su destino (no-op por defecto).
+  virtual void setTitle(const std::string&) {}
 };

@@ -47,6 +47,7 @@ const settle = () => sleep(350);
 async function pxIs(p, x, y, rgb, tol = 40, which = 'mix') {
   let last = null;
   const okk = await until(async () => { last = await px(p, x, y, which); return near(last, rgb, tol); }, 4000);
+  if (!okk) console.log(`      (píxel leído en ${x},${y}: ${last && last.slice(0, 3)}; esperado ${rgb})`);
   return okk;
 }
 

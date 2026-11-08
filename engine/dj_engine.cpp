@@ -1347,6 +1347,17 @@ void dj_set_xfader(DjEngine engine, float x) {
   asEngine(engine)->xfader.store(clamp01(x));
 }
 
+void dj_set_stream_title(DjEngine engine, const char* title) {
+#ifndef __ANDROID__
+  Engine* e = asEngine(engine);
+  std::lock_guard<std::mutex> lk(e->streamMutex);
+  if (e->sink) e->sink->setTitle(title ? title : "");
+#else
+  (void)engine;
+  (void)title;
+#endif
+}
+
 void dj_set_master(DjEngine engine, float linear) {
   asEngine(engine)->master.store(std::max(0.0f, linear));
 }

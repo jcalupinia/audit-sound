@@ -49,6 +49,10 @@ class StreamSink : public IAudioSink {
     if (out_) out_->close();
   }
 
+  void setTitle(const std::string& t) override {
+    if (out_) out_->setTitle(t);
+  }
+
   int sampleRate() const override { return sampleRate_; }
   int channels() const override { return channels_; }
 
