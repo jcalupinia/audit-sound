@@ -132,7 +132,7 @@ function card(title,body,cls=''){return `<section class="panel ${cls}"><div clas
 function statusBar(){return `<div class="status-strip"><span>● <b>DEMO LOCAL</b> · ${esc(state.mode.toUpperCase())}</span><span>Audio: <b>${state.deck.A.playing?'A ▶':'A ■'} / ${state.deck.B.playing?'B ▶':'B ■'}</b></span><span>Motor WASM: ${LIVE.on?tag('EN VIVO','ok'):tag('DEMO','pending')} ${button(LIVE.on?'● Motor PRO ON':'○ Activar motor PRO','engine-live',{},LIVE.on?'active':'')}</span><span>Qwen: ${tag('OFFLINE','pending')}</span><span>DeepSeek: ${tag('OFFLINE','pending')}</span></div>`}
 function navHtml(){return NAV.map(([label,items])=>`<div class="navgroup"><div class="navlabel">${label}</div>${items.map(([id,ic,name])=>`<button class="navbtn ${state.page===id?'active':''}" data-action="navigate" data-page="${id}"><span class="sym">${ic}</span>${esc(name)}</button>`).join('')}</div>`).join('')}
 function loginView(){return `<section class="login"><div class="login-visual" role="img" aria-label="Imagen corporativa Audit Sound"></div><form class="login-form" id="login-form"><div class="brand">AUDIT <em>SOUND</em><small>DJ INTELIGENTE CON IA · COMMAND CENTER</small></div><h1>Acceso a la plataforma</h1><p class="muted">La consola, el agente DJ y los módulos comerciales comparten la misma sesión de usuario.</p><div class="demo-note">⚠ Entorno demostrativo: no hay autenticación real. No introduzcas contraseñas personales.</div>${field('username','Usuario de demostración','demo@audit-sound.local','email','required autocomplete="off"')}${field('password','Contraseña de prueba','','password','required minlength="4" autocomplete="off"')}<label class="toggle"><input type="checkbox" name="remember"> Recordar configuración de la demo (sin guardar contraseña)</label><button class="primary" type="submit">Ingresar a AUDIT SOUND</button><button type="button" data-action="guest">Abrir demostración sin credenciales</button><p class="micro muted" style="margin-top:15px">AUDIT CONSULTING GROUP · Grupo empresarial con innovación y compromiso</p></form></section>`}
-function appView(){let title=pages.find(p=>p[0]===state.page)?.[2]||'Consola';return `<div class="shell"><aside class="sidebar"><div class="logo"><div class="brand">AUDIT <em>SOUND</em><small>DJ · VIDEO · EVENTOS · IA</small></div></div>${navHtml()}<div class="sidebar-footer">Command Center PRO v${V}<p>Interfaz real · modo demostración</p></div></aside><div class="content"><header class="topbar"><div class="left">${button('☰','mobile-nav',{},'hamburger')}<div><b>${esc(title)}</b><div class="now">${agentLive()?'Agente DJ <b>CONECTADO</b> · resto de módulos en demostración':'Sesión <b>DEMO</b> · Sin conexión al servidor'}</div></div></div><div class="flex wrap">${tag('CONTROL LOCAL','ok')}${agentLive()?tag('AGENTE DJ CONECTADO','ok'):tag('BACKEND DESCONECTADO','pending')}${button('◉ MODO '+state.mode.toUpperCase(),'go-agent')}${button('Salir','logout',{},'ghost')}</div></header><nav class="mobile-nav ${state.mobileNav?'show':''}">${navHtml()}</nav><main class="main">${renderPage()}</main><footer class="foot"><span>AUDIT SOUND v${V} · FRONTEND INTERACTIVO · NO PRODUCCIÓN</span><span>${esc(state.organization)} · ${agentLive()?'API del agente conectada':'API no conectada'}</span></footer></div></div>`}
+function appView(){let title=pages.find(p=>p[0]===state.page)?.[2]||'Consola';return `<div class="shell"><aside class="sidebar"><div class="logo"><div class="brand">AUDIT <em>SOUND</em><small>DJ · VIDEO · EVENTOS · IA</small></div></div>${navHtml()}<div class="sidebar-footer">Command Center PRO v${V}<p>Interfaz real · modo demostración</p></div></aside><div class="content"><header class="topbar"><div class="left">${button('☰','mobile-nav',{},'hamburger')}<div><b>${esc(title)}</b><div class="now">${agentLive()?'Agente DJ <b>CONECTADO</b> · resto de módulos en demostración':(state.ccUser?'Sesión de <b>'+esc(state.ccUser)+'</b> · agente sin conectar':'Sesión <b>DEMO</b> · Sin conexión al servidor')}</div></div></div><div class="flex wrap">${tag('CONTROL LOCAL','ok')}${agentLive()?tag('AGENTE DJ CONECTADO','ok'):tag('BACKEND DESCONECTADO','pending')}${button('◉ MODO '+state.mode.toUpperCase(),'go-agent')}${button('Salir','logout',{},'ghost')}</div></header><nav class="mobile-nav ${state.mobileNav?'show':''}">${navHtml()}</nav><main class="main">${renderPage()}</main><footer class="foot"><span>AUDIT SOUND v${V} · FRONTEND INTERACTIVO · NO PRODUCCIÓN</span><span>${esc(state.organization)} · ${agentLive()?'API del agente conectada':'API no conectada'}</span></footer></div></div>`}
 function screenHero(){return `<div class="hero"><div class="dj-photo" role="img" aria-label="DJ IA Copiloto"></div><div><div class="micro">AUDIT SOUND · DJ & PRODUCCIÓN AUDIOVISUAL CON IA</div><h1>IA <em>Copiloto</em></h1><p>Tu asistente de mezcla inteligente para música, video y eventos</p></div><div class="hero-controls"><div><div class="micro muted">Tipo de contenido</div><div class="pillbar">${['musica','video','presentaciones'].map(x=>button(({musica:'♫ Música',video:'▷ Video',presentaciones:'▣ Presentaciones'})[x],'content',{kind:x},state.content===x?'active':'')).join('')}</div></div><div><div class="micro muted">Vista de consola</div><div class="pillbar">${button('Sencilla','navigate',{page:'sencilla'})}${button('Profesional','navigate',{page:'consola'},'active')}</div></div></div></div>`}
 function modes(){return `<div class="modebar panel"><div><h3>Modo de operación <span class="muted micro">(cambio en vivo)</span></h3><small>${agentLive()?'El modo se aplica en el agente del servidor sin reiniciar el audio.':'La interfaz conserva la sesión al cambiar de modo. Ejecución autónoma pendiente de backend.'}</small></div><div class="pillbar">${button('🎚 DJ Manual','set-mode',{mode:'manual'},state.mode==='manual'?'active':'')}${button('✧ DJ Híbrido IA','set-mode',{mode:'hibrido'},state.mode==='hibrido'?'active':'')}${button('▷ DJ Automático 24/7','set-mode',{mode:'automatico'},state.mode==='automatico'?'active':'')}</div>${agentLive()?tag(state.mode.toUpperCase()+' · SERVIDOR','ok'):tag(state.mode.toUpperCase()+' · DEMO','demo')}</div>`}
 function deckCard(side){let d=state.deck[side],track=state.tracks.find(t=>t.id===d.track),ae=audioEls[side];return `<article class="panel deck"><div class="trackhead"><div class="decks-title"><span class="deckletter ${side==='B'?'b':''}">${side}</span>DECK ${side}<small> · ${esc(track?.genre||'Archivo local')}</small></div><div class="right"><div class="micro">${esc(track?.name||'Sin pista cargada')}</div><small>${fmt(LIVE.on?LIVE.pos[side]:ae.currentTime)} / ${fmt(LIVE.on?LIVE.dur[side]:ae.duration)} · ${d.bpm} BPM</small></div></div>${wave(side==='B'?'b':'')}<div class="deckbody"><div class="jog ${side==='B'?'b':''}">◉</div><div><div class="deckbtns">${button(d.playing?'❚❚ PAUSA':'▶ PLAY','deck-play',{deck:side},'primary')}${button('CUE','deck-cue',{deck:side})}${button(d.sync?'SYNC ✓':'SYNC','deck-sync',{deck:side},d.sync?'active':'')}${button(d.keylock?'🔒 KEY':'🔓 KEY','deck-keylock',{deck:side})}</div>${slider('rate','Pitch',d.rate,80,120,`data-change="deck-rate" data-deck="${side}"`)}<div class="deckbtns">${button('◀ 4','deck-beatjump',{deck:side,beats:-4})}${button('4 ▶','deck-beatjump',{deck:side,beats:4})}${sel('loop',[['0','Loop OFF'],['4','4 beats'],['8','8 beats'],['16','16 beats']],d.loop,`data-change="deck-loop" data-deck="${side}"`)}</div></div></div><div class="deckbtns">${[1,2,3,4].map(i=>button('HOT '+i,'deck-hotcue',{deck:side,slot:i},d.cues[i]!==undefined?'active':'')).join('')}</div><div class="flex between wrap"><label class="btn compact">+ Cargar audio ${side}<input type="file" accept="audio/*" data-file="audio-${side}" hidden></label>${tag(track?.demo?'PISTA DEMO SIN AUDIO':track?'ARCHIVO LOCAL':'SIN PISTA',track?.demo?'demo':'pending')}</div></article>`}
@@ -179,7 +179,7 @@ function updateArraysMove(arr,index,dir){let j=index+dir;if(j<0||j>=arr.length)r
 async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  switch(n){
  case 'guest':state.logged=true;state.page='inicio';render();hydrateLibrary();toast('Acceso de demostración; no hay autenticación.');break;
- case 'logout':state.logged=false;for(const s of ['A','B']){audioEls[s].pause();if(LIVE.on&&LIVE.bridge)LIVE.bridge.play(DECK_IDX[s],false);state.deck[s].playing=false}render();break;
+ case 'logout':if(ccEnabled()){ccLogout();break}state.logged=false;for(const s of ['A','B']){audioEls[s].pause();if(LIVE.on&&LIVE.bridge)LIVE.bridge.play(DECK_IDX[s],false);state.deck[s].playing=false}render();break;
  case 'engine-live':await toggleLive();break;
  case 'navigate':if(!pages.some(x=>x[0]===a.page))throw Error('Pantalla no encontrada');state.page=a.page;state.mobileNav=false;render();window.scrollTo(0,0);break;
  case 'mobile-nav':state.mobileNav=!state.mobileNav;render();break;
@@ -416,7 +416,7 @@ async function agentConnect(token){
     toast('Agente DJ conectado.');
   }catch(e){
     AGENT.connected=false;AGENT.sid=null;AGENT.error=e.message;
-    if(e.status===401||e.status===403)agentSetToken('');
+    if(e.status===401||e.status===403){let manual=false;try{manual=!!sessionStorage.getItem(AGENT_TOKEN_KEY)}catch(x){}agentSetToken('');if(!manual&&agentCcToken())ccAgentRejected()}
     toast('No se pudo conectar al agente: '+e.message,true);
   }finally{AGENT.connecting=false;agentRender()}
 }
@@ -784,5 +784,35 @@ window.__ASVJ={get mode(){return VJ.mode},get fps(){return VJ.fps},get drawn(){r
     const g=t.getContext('2d');g.drawImage(c,0,0);return Array.from(g.getImageData(Math.round(x*c.width),Math.round(y*c.height),1,1).data)},
   video(deck){const v=VJ.el[deck];return v?{src:!!v.getAttribute('src'),paused:v.paused,time:v.currentTime,ready:v.readyState,connected:v.isConnected}:null}};
 
-render();
+
+// --- Sesión real del Command Center (AUDIT-IA) para la consola v0.6 ---
+// Con AUDIT_SOUND_CC_API configurado (producción), la v0.6 NO ofrece la entrada de demostración:
+// usa la sesión iniciada en ../login.html, la comprueba con GET /apps/auth/me y, si falta o caducó,
+// vuelve a ../login.html explicando el motivo. Sin Command Center (desarrollo y pruebas) o con
+// AUDIT_SOUND_ALLOW_DEMO habilitado a propósito, la consola sigue con su demostración de siempre.
+const CC_CFG={api:String(window.AUDIT_SOUND_CC_API||'').replace(/\/+$/,''),me:window.AUDIT_SOUND_CC_ME_PATH||'/apps/auth/me',app:window.AUDIT_SOUND_CC_APP||'audit_sound'};
+function ccEnabled(){const d=window.AUDIT_SOUND_ALLOW_DEMO;return !!CC_CFG.api&&!(d===true||d===1||d==='1'||d==='true')}
+function ccClear(){try{for(const k of ['auditsound.cc.token','auditsound.cc.user','auditsound.cc.apps']){localStorage.removeItem(k);sessionStorage.removeItem(k)}}catch(e){}}
+function ccToLogin(reason){ccClear();location.replace('../login.html'+(reason?'?motivo='+encodeURIComponent(reason):''))}
+async function ccCheck(){const tok=agentCcToken();if(!tok)return {ok:false,reason:'sin_sesion'};
+  let r;try{r=await fetch(CC_CFG.api+CC_CFG.me,{headers:{Authorization:'Bearer '+tok},cache:'no-store'})}catch(e){return {ok:false,network:true}}
+  if(r.status===401||r.status===403)return {ok:false,reason:'caducada'};
+  if(!r.ok)return {ok:false,network:true,status:r.status};
+  let me={};try{me=await r.json()}catch(e){}
+  if(Array.isArray(me.apps)&&!me.apps.includes(CC_CFG.app))return {ok:false,reason:'sin_acceso'};
+  if(me.password_reset_required)return {ok:false,reason:'cambiar_clave'};
+  return {ok:true,me}}
+async function ccEnter(){const c=await ccCheck();
+  if(!c.ok&&!c.network){ccToLogin(c.reason);return}
+  state.logged=true;state.ccUser=(c.me&&(c.me.display_name||c.me.email))||'';state.page='inicio';
+  render();hydrateLibrary();
+  if(c.network)toast('No se pudo comprobar tu sesión con el Command Center (sin conexión). Se volverá a comprobar al conectar el agente.',true)}
+// El agente rechazó la sesión: ¿caducó o falta configurar el agente?
+async function ccAgentRejected(){if(!CC_CFG.api)return;const c=await ccCheck();
+  if(!c.ok&&!c.network){toast('Tu sesión AUDIT-IA caducó. Vuelve a iniciar sesión.',true);setTimeout(()=>ccToLogin(c.reason),1800);return}
+  if(c.ok)toast('Tu sesión AUDIT-IA es válida, pero el agente no la aceptó: revisa DJ_AGENT_CC_API en el servidor del agente.',true)}
+function ccLogout(){for(const s of ['A','B']){try{audioEls[s].pause();if(LIVE.on&&LIVE.bridge)LIVE.bridge.play(DECK_IDX[s],false)}catch(e){}}ccToLogin('')}
+
+if(ccEnabled()){root.innerHTML='<main class="cc-gate" role="status">Comprobando tu sesión AUDIT-IA…</main>';ccEnter()}
+else render();
 })();

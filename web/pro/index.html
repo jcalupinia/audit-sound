@@ -25,7 +25,7 @@
   <div class="frame">
     <img src="./assets/landing_elige.webp" alt="AUDIT SOUND — ¿Qué deseas hacer? Elige tu modo: Mezclar o Escuchar en vivo." fetchpriority="high">
     <!-- Tarjeta "Mezclar" -> consola -->
-    <a class="hot" href="./console.html" aria-label="Mezclar: consola DJ profesional"
+    <a class="hot" href="./v06/" aria-label="Mezclar: consola DJ profesional"
        style="left:4.5%;top:44%;width:44%;height:37%"></a>
     <!-- Tarjeta "Escuchar en vivo" -> reproductor -->
     <a class="hot" href="./escuchar.html" aria-label="Escuchar en vivo"
@@ -37,8 +37,9 @@
 
 <script src="config.js" onerror="void 0"></script>
 <script type="module">
-  import { isAuthed, logout } from './commandcenter.js';
+  import { isAuthed, logout, verify } from './commandcenter.js';
   if (!isAuthed()) location.replace('./login.html');
+  else verify().then((v) => { if (!v.ok && !v.network) location.replace('./login.html?motivo=' + (v.reason || 'caducada')); });
   const u = document.getElementById('hotUser');
   if (u) u.addEventListener('click', (e) => { e.preventDefault(); if (confirm('¿Cerrar sesión?')) { logout(); location.replace('./login.html'); } });
 </script>

@@ -27,3 +27,4 @@
 .vj-deck-slot{aspect-ratio:16/9;background:#071017;border:1px solid #30505e;border-radius:8px;overflow:hidden}
 .vj-deck-slot video{width:100%;height:100%;object-fit:contain;display:block}
 .vj-fxrow{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.vj-fxrow .deckfield input[type=range]{min-width:0;flex:1}
+.cc-gate{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;background:var(--bg)}

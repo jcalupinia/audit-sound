@@ -145,5 +145,3 @@ window.__ASVJ={get mode(){return VJ.mode},get fps(){return VJ.fps},get drawn(){r
     const g=t.getContext('2d');g.drawImage(c,0,0);return Array.from(g.getImageData(Math.round(x*c.width),Math.round(y*c.height),1,1).data)},
   video(deck){const v=VJ.el[deck];return v?{src:!!v.getAttribute('src'),paused:v.paused,time:v.currentTime,ready:v.readyState,connected:v.isConnected}:null}};
 
-render();
-})();

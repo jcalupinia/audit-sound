@@ -11,7 +11,7 @@ function updateArraysMove(arr,index,dir){let j=index+dir;if(j<0||j>=arr.length)r
 async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  switch(n){
  case 'guest':state.logged=true;state.page='inicio';render();hydrateLibrary();toast('Acceso de demostración; no hay autenticación.');break;
- case 'logout':state.logged=false;for(const s of ['A','B']){audioEls[s].pause();if(LIVE.on&&LIVE.bridge)LIVE.bridge.play(DECK_IDX[s],false);state.deck[s].playing=false}render();break;
+ case 'logout':if(ccEnabled()){ccLogout();break}state.logged=false;for(const s of ['A','B']){audioEls[s].pause();if(LIVE.on&&LIVE.bridge)LIVE.bridge.play(DECK_IDX[s],false);state.deck[s].playing=false}render();break;
  case 'engine-live':await toggleLive();break;
  case 'navigate':if(!pages.some(x=>x[0]===a.page))throw Error('Pantalla no encontrada');state.page=a.page;state.mobileNav=false;render();window.scrollTo(0,0);break;
  case 'mobile-nav':state.mobileNav=!state.mobileNav;render();break;
