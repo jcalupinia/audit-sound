@@ -50,9 +50,9 @@ Los tokens son las «llaves» que se pegan en la consola para conectarse al agen
 
 ## 3. Red compartida y despliegue del compose
 
-1. En el compose de streaming › **Settings**: activar **«Connect To Predefined Network»** (para que la consola,
-   que es otra aplicación, pueda llegar al agente). Coolify renombra los servicios a `<servicio>-<uuid>`:
-   anota el nombre que aparece para `dj-agent` (p. ej. `dj-agent-abc123…`) en la pestaña del servicio.
+1. En el compose de streaming › **Advanced** › **Docker compose** › **Predefined network**: elegir
+   **«Connect to predefined network»** (en vez de «Isolated network only»), para que la consola, que es otra
+   aplicación, pueda llegar al agente por la red `coolify`. Verificado en Coolify 4.6 (2026-11-08).
 2. **Deploy** (o Redeploy). La primera vez construye la imagen del agente (≈1 min) y la del motor con los
    cambios de las Fases 2–6.
 3. En **Logs** del servicio `dj-agent` debe aparecer `agente iniciado · motor=control_api`.
@@ -61,7 +61,12 @@ Los tokens son las «llaves» que se pegan en la consola para conectarse al agen
 
 | Variable | Valor |
 |---|---|
-| `DJ_AGENT_URL` | `http://<nombre del servicio dj-agent del paso 3>:8790` |
+| `DJ_AGENT_URL` | `http://dj-agent:8790` |
+
+Verificado en producción (2026-11-08): desde la consola el nombre que resuelve es el **corto** `dj-agent`. Los
+nombres largos `dj-agent-<uuid>` no resuelven (Coolify 4.6 genera nombres de contenedor con fecha). Para
+comprobarlo desde **Terminal** de la consola:
+`node -e "fetch('http://dj-agent:8790/api/v1/dj-agent/health').then(r=>r.text()).then(console.log)"`.
 
 **Redeploy** de la aplicación. En sus logs debe aparecer `config.js: agente DJ CONECTADO por proxy`.
 

@@ -146,3 +146,11 @@ con `DJ_AGENT_URL`) → agente (`DJ_AGENT_ENGINE=control_api`) → motor C++ (`e
 con DeepSeek real. `scripts/verificar_despliegue_agente.sh` → **RESULTADO: OK**; catálogo con metadatos y cola;
 «esta canción no me gusta nada» → SKIP_TRACK por DeepSeek, ejecutado y confirmado por el motor.
 **NO VERIFICADO:** la construcción con Docker y la red de Coolify (no disponibles en el entorno de desarrollo).
+
+## 15. Despliegue en producción (2026-11-08)
+
+Desplegado por el dueño en Coolify siguiendo `deploy/DESPLEGAR_AGENTE_DJ.md`. `scripts/verificar_despliegue_agente.sh
+https://sound.audit-ia.ec` → **RESULTADO: OK**: consola en línea y con el agente, agente vivo, motor C++ real
+alcanzable con cola, Qwen (`auditia-rutina`) y DeepSeek (`deepseek-flash`) configurados. Ajuste encontrado: la
+consola llega al agente por el nombre corto `dj-agent` (no por `dj-agent-<uuid>`). Pendiente: primera orden real
+desde el navegador (confirma Qwen por Tailscale) y prueba en teléfono.
