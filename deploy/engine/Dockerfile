@@ -56,6 +56,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=build /src/build/audit_sound_server /usr/local/bin/audit_sound_server
 COPY --from=build /demo-music /demo-music
 COPY --from=build /cc-music /cc-music
+# Biblioteca latina (salsa, merengue, cha-cha-chá, bachata) con licencia Creative Commons BY/BY-SA,
+# guardada en el repositorio para que el build no dependa de descargas. Créditos en MUSIC_CREDITS.md.
+COPY deploy/engine/cc-music-latina /cc-music-latina
 COPY deploy/engine/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 # La música se monta en /music (solo lectura); el entrypoint elige la fuente

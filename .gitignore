@@ -39,3 +39,6 @@ Thumbs.db
 web/pro/config.js
 config.js
 __pycache__/
+
+# Biblioteca latina libre (Creative Commons) que se copia a la imagen del motor.
+!deploy/engine/cc-music-latina/*.mp3

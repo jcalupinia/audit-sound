@@ -48,6 +48,8 @@ services:
       AUDIT_SOUND_SUBSONIC_USER: ${AUDIT_SOUND_SUBSONIC_USER:-}
       AUDIT_SOUND_SUBSONIC_PASS: ${AUDIT_SOUND_SUBSONIC_PASS:-}
       AUDIT_SOUND_SUBSONIC_PLAYLIST: ${AUDIT_SOUND_SUBSONIC_PLAYLIST:-}
+      # Biblioteca libre incluida en la imagen: latina (por defecto) | house | todas.
+      AUDIT_SOUND_BIBLIOTECA: ${AUDIT_SOUND_BIBLIOTECA:-latina}
       AUDIT_SOUND_TRANSITION: ${AUDIT_SOUND_TRANSITION:-8}
       AUDIT_SOUND_MIX_MODE: ${AUDIT_SOUND_MIX_MODE:-0}
       # Audio de DEMO: si /music está vacío y no hay Subsonic, suena una demo sintética
