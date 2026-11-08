@@ -38,3 +38,4 @@ Thumbs.db
 # Generado en runtime por deploy/pro/server.js (no versionar)
 web/pro/config.js
 config.js
+__pycache__/
