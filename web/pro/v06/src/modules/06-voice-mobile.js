@@ -94,6 +94,3 @@ setInterval(()=>{
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')agentResume()});
 window.addEventListener('online',agentResume);
 window.addEventListener('offline',()=>{if(agentLive()){AGENT.wsOk=false;toast('Sin conexión: el audio del servidor sigue con AutoMix; la consola se reconectará sola.',true);agentRender()}});
-
-render();
-})();

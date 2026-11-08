@@ -101,6 +101,8 @@ como prueba que requiere hardware).
 
 > Todo esto es 🔴 en el inventario: **no hay backend**. Es desarrollo, no cableado. Orden sugerido:
 
+> **Actualizado 2026-11-08:** este bloque se reemplaza por `PROPUESTA_BLOQUE2_VIDEO.md` (fases V1…V6).
+
 ### Fase 5 — Video/VJ básico
 Cargar y reproducir **video** en un deck de video; salida a un lienzo. Categoría «Videos» de la
 biblioteca. (Requiere definir el pipeline de video del navegador.)
