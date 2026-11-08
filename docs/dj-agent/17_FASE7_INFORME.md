@@ -1,7 +1,7 @@
 # 17 · Fase 7: informe de entrega (endurecimiento, estabilidad, runbook y candidato de despliegue)
 
-> **Estado:** en revisión, en la rama `claude/dj-agent-fase7`. No hay cambios en producción hasta que el dueño haga merge y cargue las dos variables
-> nuevas en Coolify (§4).
+> **Estado:** CERRADA EN PRODUCCIÓN (2026-11-08). Fusionada (PR 61) y desplegada por el dueño con `DJ_AGENT_CC_API` y
+> `DJ_AGENT_CC_ROLES` cargadas en Coolify. Verificación con la cuenta real en §7.
 
 ## 1. Alcance entregado
 
@@ -17,7 +17,7 @@
 | La IP del cliente sale de la última entrada de `X-Forwarded-For` (la que pone el proxy de Coolify), no de la que manda el navegador | **REAL** | código y prueba |
 | Dependencias: fastapi 0.115.6 → **0.162.2** (starlette 0.41.3 → 1.10.0). Se corrigen 14 avisos de seguridad; la imagen actualiza pip | **REAL** | `pip-audit` sin hallazgos |
 | Manual de operación (incidentes, rollback, respaldos, rotación de llaves, vigilancia) | **REAL** | `RUNBOOK_AGENTE_DJ.md` |
-| Prueba de estabilidad larga (4 h, motor real + Icecast + agente actualizado, con caída y reinicio del agente) | **EN CURSO** | §3 |
+| Prueba de estabilidad con motor real + Icecast + agente actualizado | **15 min OK (11/11, con caída y reinicio del agente)** · 4 h **incompleta** (el entorno se reinició a los 39 min) | §3 |
 | Login unificado contra el Command Center **real** | **NO VERIFICADO** | requiere el merge y las variables en Coolify |
 
 ## 2. Pruebas ejecutadas
@@ -32,13 +32,18 @@
 - Regresión de las 20 pantallas de la v0.6 en escritorio (1440 px) y teléfono (390 px): sin errores ni
   desplazamiento horizontal.
 
-## 3. Prueba de estabilidad de 4 h
+## 3. Prueba de estabilidad
 
-`DUR=14400 python scripts/soak_agente_fase2.py`, con el motor C++ real, Icecast, un oyente real y el agente en
-AUTOMÁTICO usando las dependencias nuevas. El agente se mata (`kill -9`) al 40 % y se reinicia al 55 %.
+Prueba: `scripts/soak_agente_fase2.py`, con el motor C++ real, Icecast, un oyente real y el agente en AUTOMÁTICO,
+usando las dependencias nuevas (fastapi 0.162.2).
 
-_Resultado: pendiente. Se anota aquí al terminar la corrida, con la evidencia en
-`evidencias/soak_fase7_4h.json`._
+| Corrida | Resultado | Evidencia |
+|---|---|---|
+| **4 h** (`DUR=14400`) | **INCOMPLETA: la cortó el entorno, no el agente.** El contenedor de desarrollo se reinició a los 39 min (se apaga por inactividad). Hasta ese momento: motor sin caídas, memoria estable (125 MB), hueco máximo del stream 0,29 s y 43 transiciones, todas desde la cola del agente. No llegó a la caída y el reinicio forzados del agente (previstos al 40 % y al 55 %) | `evidencias/soak_fase7_4h_parcial.log` |
+| **15 min** (`DUR=900`), con `kill -9` del agente y reinicio | **OK: 11/11 criterios**. Motor sin caídas, hueco máximo 0,24 s, sin silencios, 16 transiciones (16 desde la cola del agente), memoria +2,4 %. Con el agente caído siguieron el audio y el AutoMix. Tras el reinicio recuperó la sesión, comandó el motor y retomó la cola | `evidencias/soak_fase7_15min.json` |
+
+**Las 4 h continuas siguen sin verificar.** El entorno de desarrollo no sostiene corridas tan largas. Queda la
+prueba en producción del runbook (§8): un día de poca audiencia en AUTOMÁTICO.
 
 ## 4. Qué tiene que hacer el dueño tras el merge (candidato de despliegue)
 
@@ -59,10 +64,26 @@ _Resultado: pendiente. Se anota aquí al terminar la corrida, con la evidencia e
   algo raro, se vuelve atrás con «Redeploy» del despliegue anterior en Coolify (runbook §5).
 - El límite de peticiones se guarda en la memoria de la consola. Vale mientras haya una sola instancia.
 
+## 5b. Verificación en producción (2026-11-08, cuenta real del dueño)
+
+| Prueba | Resultado |
+|---|---|
+| `scripts/verificar_despliegue_agente.sh https://sound.audit-ia.ec` | **RESULTADO: OK** (agente, base, motor real con cola, Qwen y DeepSeek configurados) |
+| Login unificado: la consola v0.6 se conecta al agente con la sesión AUDIT-IA, sin llaves | **OK** |
+| Rol por correo (`jcalupinia@auditconsulting.ec:admin`): cambio a «DJ Automático 24/7» aplicado en el servidor | **OK** |
+| «salta la canción» → reglas → ejecutada y confirmada por el motor | **OK** |
+| «pon algo más tranquilo para la hora de la cena» → reglas → plan de 4 pistas confirmado por el motor | **OK** |
+| Orden ambigua («como en una boda cuando empieza la fiesta») → **Qwen** (`auditia-rutina`, por Tailscale) → plan confirmado | **OK** (primera evidencia de Qwen real desde producción) |
+
+Hallazgos durante la verificación (corregidos):
+1. `DJ_AGENT_CC_ROLES` tenía un correo distinto al de la cuenta AUDIT-IA: el dueño entraba como oyente. Corregido en Coolify.
+2. La sesión caducada (60 min) se reutilizaba sin avisar y la v0.6 tenía su propia entrada de demostración: PR 65.
+3. Durante el despliegue convivieron dos contenedores (versiones mezcladas) y el botón «Ingresar» quedó sin respuesta: PR 66.
+4. El mensaje del plan mostraba «Plan: 4 pistas ()» cuando el catálogo no trae géneros: ahora muestra los títulos (este PR).
+
 ## 6. Dictamen
 
-**EN REVISIÓN.** Login unificado, endurecimiento y runbook hechos y probados en local. Queda **NO VERIFICADO** lo
+**CERRADA EN PRODUCCIÓN.** Login unificado, endurecimiento y runbook hechos, probados y verificados con la cuenta real (§7). Queda **NO VERIFICADO** lo
 siguiente:
-- el login contra el Command Center real;
 - las pruebas en teléfonos físicos (pendiente desde la Fase 6);
-- la primera orden real desde el navegador de producción, que confirma que Qwen responde por Tailscale.
+- la prueba de estabilidad de 4 h continuas (ver §3: se hará en producción, runbook §8).
