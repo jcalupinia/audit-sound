@@ -8,7 +8,8 @@ function ccEnabled(){const d=window.AUDIT_SOUND_ALLOW_DEMO;return !!CC_CFG.api&&
 function ccClear(){try{for(const k of ['auditsound.cc.token','auditsound.cc.user','auditsound.cc.apps']){localStorage.removeItem(k);sessionStorage.removeItem(k)}}catch(e){}}
 function ccToLogin(reason){ccClear();location.replace('../login.html'+(reason?'?motivo='+encodeURIComponent(reason):''))}
 async function ccCheck(){const tok=agentCcToken();if(!tok)return {ok:false,reason:'sin_sesion'};
-  let r;try{r=await fetch(CC_CFG.api+CC_CFG.me,{headers:{Authorization:'Bearer '+tok},cache:'no-store'})}catch(e){return {ok:false,network:true}}
+  let r;const ac=typeof AbortController!=='undefined'?new AbortController():null,tm=ac?setTimeout(()=>ac.abort(),6000):null;
+  try{r=await fetch(CC_CFG.api+CC_CFG.me,{headers:{Authorization:'Bearer '+tok},cache:'no-store',signal:ac?ac.signal:undefined})}catch(e){return {ok:false,network:true}}finally{if(tm)clearTimeout(tm)}
   if(r.status===401||r.status===403)return {ok:false,reason:'caducada'};
   if(!r.ok)return {ok:false,network:true,status:r.status};
   let me={};try{me=await r.json()}catch(e){}

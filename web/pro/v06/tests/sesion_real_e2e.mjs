@@ -5,7 +5,7 @@
 // Uso: PYTHON=… node web/pro/v06/tests/sesion_real_e2e.mjs (desde la raíz del repo).
 import http from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,6 +41,7 @@ const cc = http.createServer((req, res) => {
   const json = (code, obj) => { res.writeHead(code, { ...cors, 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
   if (req.url.startsWith('/api/v1/apps/auth/login') && req.method === 'POST') return json(200, { access_token: 'cc-jorge', token_type: 'bearer', apps: ['audit_sound'], password_reset_required: false });
   if (req.url === '/api/v1/apps/auth/me') {
+    if ((req.headers.authorization || '') === 'Bearer cc-cuelga') return;   // el Command Center no responde
     if ((req.headers.authorization || '') === 'Bearer cc-jorge') return json(200, { email: 'jorge@firma.ec', display_name: 'Jorge', apps: ['audit_sound'], password_reset_required: false });
     return json(401, { detail: 'token inválido' });
   }
@@ -90,7 +91,9 @@ try {
   ok(await until(async () => p.url().includes('/login.html')), '«Salir» vuelve a login.html');
   ok(!(await token(p)), '«Salir» borra la sesión guardada');
 
-  // 5) Sesión caducada: la v0.6 vuelve al login con el motivo
+  // 5) Sesión caducada: la v0.6 vuelve al login con el motivo. (El token se planta desde una página
+  //    neutra: si se planta mientras carga login.html, el login lo comprueba y lo borra, que es lo correcto.)
+  await p.goto(BASE + '/healthz');
   await p.evaluate(() => localStorage.setItem('auditsound.cc.token', 'cc-caducado'));
   await p.goto(BASE + '/v06/');
   ok(await until(async () => p.url().includes('motivo=caducada')), 'sesión caducada en la v0.6 → login con motivo');
@@ -108,6 +111,20 @@ try {
   await p.evaluate(() => localStorage.setItem('auditsound.cc.token', 'cc-jorge'));
   await p.goto(BASE + '/login.html');
   ok(await until(async () => p.url().endsWith('/index.html')), 'con sesión vigente, login.html pasa directo a la portada');
+
+  // 7) Robustez del acceso (incidente del despliegue): con el Command Center colgado o con el
+  //    commandcenter.js de la versión anterior, el botón «Ingresar» sigue funcionando.
+  await p.evaluate(() => localStorage.setItem('auditsound.cc.token', 'cc-cuelga'));
+  await p.goto(BASE + '/login.html');
+  await p.locator('#user').fill('jorge@firma.ec'); await p.locator('#pass').fill('clave-de-prueba'); await p.locator('#go').click();
+  ok(await until(async () => p.url().endsWith('/index.html')), 'con el Command Center sin responder, «Ingresar» sigue funcionando');
+  const viejo = readFileSync(process.env.CC_VIEJO || join(HERE, 'fixtures_commandcenter_viejo.js'), 'utf-8');
+  await p.route('**/commandcenter.js', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: viejo }));
+  await p.evaluate(() => localStorage.setItem('auditsound.cc.token', 'cc-caducado'));
+  await p.goto(BASE + '/login.html?motivo=caducada');
+  await p.locator('#user').fill('jorge@firma.ec'); await p.locator('#pass').fill('clave-de-prueba'); await p.locator('#go').click();
+  ok(await until(async () => !p.url().includes('/login.html')), 'con el commandcenter.js anterior (despliegue a medias), el acceso no se traba');
+  await p.unroute('**/commandcenter.js');
   await ctx.close();
 } catch (e) {
   ok(false, 'excepción: ' + (e && e.stack || e));
