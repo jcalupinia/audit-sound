@@ -481,7 +481,7 @@ async function agentIntent(text,idx){
   try{const r=await agentFetch(`/sessions/${AGENT.sid}/intent`,{method:'POST',body:{text,channel:voiceChannelFor(text)}});
     const src={rules:'reglas',qwen:'Qwen',deepseek:'DeepSeek'}[r.source]||r.source;
     let msg=r.message||'';
-    if(r.plan&&r.plan.items&&r.plan.items.length)msg+=` Plan: ${r.plan.items.length} pistas (${[...new Set(r.plan.items.map(i=>i.genre).filter(Boolean))].join(' → ')}).`;
+    if(r.plan&&r.plan.items&&r.plan.items.length){const it=r.plan.items,gs=[...new Set(it.map(i=>i.genre).filter(Boolean))],ts=it.map(i=>i.title).filter(Boolean);const det=gs.length?gs.join(' → '):ts.slice(0,3).map(t=>'«'+t+'»').join(', ')+(ts.length>3?'…':'');msg+=` Plan: ${it.length} ${it.length===1?"pista":"pistas"}`+(det?` (${det})`:'')+'.'}
     state.chat[idx]={who:'system',label:'Agente DJ · '+src,text:msg.trim()||'Orden recibida.'};
     if(r.mode&&AGENT_MODE_UI[r.mode]){AGENT.mode=r.mode;state.mode=AGENT_MODE_UI[r.mode]}
     if(r.proposal)await agentSyncProposals();
