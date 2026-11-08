@@ -71,9 +71,11 @@ export async function verify() {
   if (!token) return { ok: false, reason: 'sin_sesion' };
   if (!configured()) return { ok: true, demo: true };
   let res;
+  const ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = ac ? setTimeout(() => ac.abort(), 6000) : null;
   try {
-    res = await fetch(apiBase() + mePath(), { headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store' });
-  } catch (e) { return { ok: false, network: true }; }
+    res = await fetch(apiBase() + mePath(), { headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store', signal: ac ? ac.signal : undefined });
+  } catch (e) { return { ok: false, network: true }; } finally { if (timer) clearTimeout(timer); }
   if (res.status === 401 || res.status === 403) { logout(); return { ok: false, reason: 'caducada' }; }
   if (!res.ok) return { ok: false, network: true, status: res.status };
   let me = {};

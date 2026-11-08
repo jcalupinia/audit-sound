@@ -37,9 +37,10 @@
 
 <script src="config.js" onerror="void 0"></script>
 <script type="module">
-  import { isAuthed, logout, verify } from './commandcenter.js';
+  import * as CC from './commandcenter.js';
+  const { isAuthed, logout } = CC;
   if (!isAuthed()) location.replace('./login.html');
-  else verify().then((v) => { if (!v.ok && !v.network) location.replace('./login.html?motivo=' + (v.reason || 'caducada')); });
+  else if (typeof CC.verify === 'function') CC.verify().then((v) => { if (!v.ok && !v.network) location.replace('./login.html?motivo=' + (v.reason || 'caducada')); }).catch(() => {});
   const u = document.getElementById('hotUser');
   if (u) u.addEventListener('click', (e) => { e.preventDefault(); if (confirm('¿Cerrar sesión?')) { logout(); location.replace('./login.html'); } });
 </script>

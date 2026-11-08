@@ -77,10 +77,6 @@
   const $ = (s) => document.querySelector(s);
   // Ya autenticado -> a la pantalla de elección
   const motivo = new URLSearchParams(location.search).get('motivo');
-  if (CC.isAuthed()) {
-    const v = await CC.verify();
-    if (v.ok || v.network) location.replace('./index.html');
-  }
 
   const msg = $('#msg');
   const MOTIVOS = { caducada: 'Tu sesión caducó. Vuelve a iniciar sesión.', sin_acceso: 'Tu cuenta no tiene acceso a AUDIT SOUND.',
@@ -122,6 +118,11 @@
     } else { msg.className = 'msg err'; msg.textContent = r.error || 'No se pudo iniciar sesión.'; }
   }
   $('#go').addEventListener('click', doLogin);
+  // Con una sesión guardada, se comprueba que siga vigente SIN bloquear el formulario: si la
+  // comprobación falla o tarda, el botón «Ingresar» sigue funcionando.
+  if (CC.isAuthed() && typeof CC.verify === 'function') {
+    CC.verify().then((v) => { if (v.ok || v.network) location.replace('./index.html'); }).catch(() => {});
+  }
   $('#pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
   $('#user').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#pass').focus(); });
 
