@@ -13,6 +13,8 @@ struct IByteSink {
   virtual bool open() = 0;
   virtual void write(const unsigned char* data, size_t n) = 0;
   virtual void close() = 0;
+  // Título de lo que suena ("Artista - Tema"); solo lo usan los destinos que lo publican (Icecast).
+  virtual void setTitle(const std::string&) {}
 };
 
 class FileByteSink : public IByteSink {

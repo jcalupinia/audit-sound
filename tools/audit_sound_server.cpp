@@ -28,6 +28,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -54,6 +55,20 @@ static int nextLocal(void* user, char* out, int cap) {
 }
 
 // ---- Proveedor: Navidrome/Subsonic (descarga a caché temporal) ----
+// Títulos para el stream: ruta del archivo -> «Artista - Tema». Para archivos locales se usa el
+// nombre del archivo (la biblioteca libre ya viene como «Artista - Tema.mp3»); para Subsonic, el
+// título que entrega el servidor (sus archivos temporales se llaman t0.mp3, t1.mp3…).
+static std::mutex gTitlesMu;
+static std::unordered_map<std::string, std::string> gTitles;
+static std::string titleFor(const std::string& path) {
+  {
+    std::lock_guard<std::mutex> lk(gTitlesMu);
+    auto it = gTitles.find(path);
+    if (it != gTitles.end()) return it->second;
+  }
+  return fs::path(path).stem().string();
+}
+
 struct SubsonicProvider {
   SubsonicClient* client = nullptr;
   std::string playlistId;  // vacío => random
@@ -78,6 +93,10 @@ static int nextSubsonic(void* user, char* out, int cap) {
   const std::string path = p->tmpDir + "/t" + std::to_string(p->counter++) + "." + suf;
   if (!p->client->download(s, path)) return 0;
   std::snprintf(out, (size_t)cap, "%s", path.c_str());
+  if (!s.title.empty()) {
+    std::lock_guard<std::mutex> lk(gTitlesMu);
+    gTitles[path] = s.title;
+  }
   p->recent.push_back(path);
   while (p->recent.size() > 4) {  // conserva las 4 últimas (decks activos + buffer)
     std::remove(p->recent.front().c_str());
@@ -186,6 +205,23 @@ int main(int argc, char** argv) {
   }
 
   automix_enable(am, 1);
+
+  // Vigilante del título: cuando el AutoMix termina una transición, la pista que suena cambia y se
+  // publica su título en el stream (los oyentes lo ven en el reproductor; Icecast, en status-json).
+  std::thread([e, am] {
+    std::string last;
+    char buf[2048];
+    for (;;) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      if (!automix_current_path(am, buf, sizeof buf)) continue;
+      const std::string t = titleFor(buf);
+      if (t.empty() || t == last) continue;
+      last = t;
+      dj_set_stream_title(e, t.c_str());
+      std::printf("en el aire: %s\n", t.c_str());
+      std::fflush(stdout);
+    }
+  }).detach();
 
   // Control API (M5): login + estado + comandos para el frontend.
   ControlApi api = nullptr;

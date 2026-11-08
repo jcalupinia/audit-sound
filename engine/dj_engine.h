@@ -38,6 +38,8 @@ void dj_set_filter(DjEngine engine, int deck, float amount);
 void dj_set_fader(DjEngine engine, int deck, float linear);
 void dj_set_xfader(DjEngine engine, float x);
 void dj_set_master(DjEngine engine, float linear);
+// Título de lo que suena ("Artista - Tema"): el sink de Icecast lo publica como metadato del stream.
+void dj_set_stream_title(DjEngine engine, const char* title);
 void dj_set_rate(DjEngine engine, int deck, float rate);
 void dj_set_keylock(DjEngine engine, int deck, int enabled);
 

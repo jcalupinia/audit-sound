@@ -41,11 +41,20 @@ class IcecastByteSink : public IByteSink {
       tryReconnect();
       if (!connected_) return;  // aún sin servidor: se descarta el bloque
     }
+    applyPendingTitle();
     if (shout_send(s_, data, n) != SHOUTERR_SUCCESS) {
       LOGE("shout_send: %s", shout_get_error(s_));
       connected_ = false;  // marcar caída; el próximo write intentará reconectar
     }
     // No llamamos shout_sync(): StreamSink ya pacea a ~tiempo real por bloque.
+  }
+
+  // Lo llama cualquier hilo (p. ej. el vigilante del servidor); se publica en el próximo write().
+  void setTitle(const std::string& t) override {
+    std::lock_guard<std::mutex> lk(titleMu_);
+    if (t == title_) return;
+    title_ = t;
+    titleDirty_ = true;
   }
 
   void close() override {
@@ -90,7 +99,32 @@ class IcecastByteSink : public IByteSink {
       return false;
     }
     connected_ = true;
+    {  // tras (re)conectar, volver a anunciar el título vigente
+      std::lock_guard<std::mutex> lk(titleMu_);
+      if (!title_.empty()) titleDirty_ = true;
+    }
     return true;
+  }
+
+  // Publica el título pendiente como metadato ICY "StreamTitle" (Icecast lo inserta en el stream
+  // y lo muestra en status-json). Solo desde el hilo de write().
+  void applyPendingTitle() {
+    std::string t;
+    {
+      std::lock_guard<std::mutex> lk(titleMu_);
+      if (!titleDirty_) return;
+      titleDirty_ = false;
+      t = title_;
+    }
+    shout_metadata_t* m = shout_metadata_new();
+    if (!m) return;
+    shout_metadata_add(m, "song", t.c_str());
+    if (shout_set_metadata(s_, m) != SHOUTERR_SUCCESS) {
+      LOGE("shout_set_metadata: %s", shout_get_error(s_));
+    } else {
+      LOGI("título del stream: %s", t.c_str());
+    }
+    shout_metadata_free(m);
   }
 
   // Reintenta la conexión, pero no más de una vez cada kReconnectCooldown para no
@@ -114,4 +148,7 @@ class IcecastByteSink : public IByteSink {
   shout_t* s_ = nullptr;
   bool connected_ = false;
   std::chrono::steady_clock::time_point lastAttempt_{};
+  std::mutex titleMu_;
+  std::string title_;
+  bool titleDirty_ = false;
 };
