@@ -45,3 +45,23 @@ ffmpeg y numpy.
 - Correr el medidor en producción con las 6 pistas reales (requiere este merge y el redeploy).
 - Revisar el hallazgo del tempo (§3).
 - El ensayo no está en CI: necesita Icecast y ~3 min; se corre a mano.
+
+## 6. Primera medición de producción (2026-11-08, 15 min, 6 pistas Creative Commons)
+
+`python3 scripts/medir_transiciones.py --segundos 900` contra `https://audit-sound.audit-ia.ec/stream.mp3`
+(evidencia: `evidencias/transiciones_prod_2026-11-08.{md,json}`). Sin silencios; nivel medio −12,6 dBFS. Solo hubo
+**2 cambios de canción** en 15 min porque las pistas son largas («Cielos» duró ~11,5 min).
+
+| # | De → A | Cambio audible | Bajón | BPM saliente → entrante | Veredicto |
+|---|---|---|---|---|---|
+| 1 | Sir Leaks - Espejismo → Paulo Olarte - Cielos | 6,0 s | 6,8 dB | 122,3 → 122,6 | bajón de volumen |
+| 2 | Paulo Olarte - Cielos → Velez - Down By Law | 8,5 s | 5,1 dB | 122,5 → 161,6 (a confirmar) | mezcla suave |
+
+Lectura:
+- **Tempo:** en la transición 1 las dos canciones quedaron a la par (0,2 %): el AutoMix iguala el tempo. El 161,6 de
+  la transición 2 puede ser un error del estimador (subdivisión del ritmo); hay que confirmarlo de oído.
+- **Bajón de 5–7 dB durante el cambio:** el crossfader del motor NO lo causa (curva de club: ambas a ganancia
+  plena en el centro). Viene de dónde mezcla el AutoMix: en modo 0 empieza el fundido al final de la saliente
+  (su cola, que ya baja) y entra con la intro de la otra, que suele ser suave. Un DJ mezclaría antes de que la
+  saliente decaiga. Mejora propuesta: elegir el punto de mezcla por energía (antes del decaimiento) o compensar
+  la ganancia durante el fundido.

@@ -1,0 +1,51 @@
+{
+  "duracion_s": 902.7,
+  "titulos": [
+    {
+      "t": 0.7,
+      "titulo": "Sir Leaks - Espejismo"
+    },
+    {
+      "t": 162.0,
+      "titulo": "Paulo Olarte - Cielos"
+    },
+    {
+      "t": 858.0,
+      "titulo": "Velez - Down By Law"
+    }
+  ],
+  "transiciones": [
+    {
+      "t": 162.0,
+      "medible": true,
+      "fundido_s": 6.0,
+      "fundido_desde_s": 155.0,
+      "fundido_hasta_s": 161.0,
+      "bajon_db": 6.8,
+      "nivel_base_dbfs": -11.5,
+      "bpm_saliente": 122.3,
+      "bpm_entrante": 122.6,
+      "diferencia_bpm_pct": 0.2,
+      "veredicto": "bajón de volumen",
+      "de": "Sir Leaks - Espejismo",
+      "a": "Paulo Olarte - Cielos"
+    },
+    {
+      "t": 858.0,
+      "medible": true,
+      "fundido_s": 8.5,
+      "fundido_desde_s": 846.5,
+      "fundido_hasta_s": 855.0,
+      "bajon_db": 5.1,
+      "nivel_base_dbfs": -9.6,
+      "bpm_saliente": 122.5,
+      "bpm_entrante": 161.6,
+      "diferencia_bpm_pct": 31.9,
+      "veredicto": "mezcla suave",
+      "de": "Paulo Olarte - Cielos",
+      "a": "Velez - Down By Law"
+    }
+  ],
+  "segundos_en_silencio": 0.0,
+  "nivel_medio_dbfs": -12.6
+}
