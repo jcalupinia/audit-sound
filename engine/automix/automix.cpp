@@ -3,12 +3,15 @@
 
 #include "automix.h"
 
+#include "mix_points.hpp"
 #include "platform_log.hpp"
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <string>
@@ -35,6 +38,15 @@ struct AutoMixImpl {
   // Estado por deck (sustituye DeckAttributes).
   double deckFirst[2] = {0.0, 0.0};
   double deckLast[2] = {-1.0, -1.0};
+  double deckLoudEnd[2] = {-1.0, -1.0};  // fin de la parte fuerte (punto de mezcla por energía)
+  float deckRate[2] = {1.0f, 1.0f};       // velocidad aplicada por syncTempo (1 = tempo propio)
+  // Mejoras del 2026-11-08 (medición en producción). Se pueden apagar por entorno:
+  //  AUDIT_SOUND_MIX_POINT=silence  → vuelve a terminar el fundido en el último sonido.
+  //  AUDIT_SOUND_TEMPO_RETURN=0     → la entrante se queda al tempo de la saliente (antes).
+  bool mixByEnergy = true;
+  bool tempoReturn = true;
+  bool rampActive = false;
+  std::chrono::steady_clock::time_point rampFrom{}, rampLast{};
   bool deckLoaded[2] = {false, false};
   std::string deckPath[2];
   std::string currentPath;  // pista que suena (bajo infoMu)
@@ -55,21 +67,31 @@ struct AutoMixImpl {
     dj_analyze_silence(path, &first, &last, &e);
     deckFirst[d] = first;
     deckLast[d] = last > 0 ? last : dj_duration(engine, d);
+    deckLoudEnd[d] = -1.0;
+    if (mixByEnergy) dj_analyze_loud_end(path, &deckLoudEnd[d]);
+    deckRate[d] = 1.0f;
+    dj_set_rate(engine, d, 1.0f);
     deckLoaded[d] = true;
     {
       std::lock_guard<std::mutex> lk(infoMu);
       deckPath[d] = path;
     }
     dj_seek(engine, d, first);  // cue al primer sonido
-    LOGI("automix: pista en deck %d (dur=%.1f first=%.2f last=%.2f bpm=%.1f)", d,
-         dj_duration(engine, d), first, deckLast[d], dj_get_bpm(engine, d));
+    LOGI("automix: pista en deck %d (dur=%.1f first=%.2f last=%.2f fuerte_hasta=%.2f bpm=%.1f)", d,
+         dj_duration(engine, d), first, deckLast[d], deckLoudEnd[d], dj_get_bpm(engine, d));
     return true;
   }
 
   void computeTransition() {
     const double dur = dj_duration(engine, fromDeck);
-    const double fadeEnd =
+    double fadeEnd =
         mode.load() == 1 ? dur : (deckLast[fromDeck] > 0 ? deckLast[fromDeck] : dur);
+    // Punto de mezcla por energía: si la pista decae claramente antes de su último sonido, el
+    // fundido termina 1 s después de su parte fuerte (la saliente aún suena llena al mezclar).
+    const double loud = deckLoudEnd[fromDeck];
+    if (mode.load() == 0 && mixByEnergy && loud > transitionTime.load() && loud + 1.0 < fadeEnd) {
+      fadeEnd = loud + 1.0;
+    }
     double fadeBegin = fadeEnd - transitionTime.load();
     if (fadeBegin < 0) fadeBegin = 0;
     fadeBeginSec = fadeBegin;
@@ -79,13 +101,41 @@ struct AutoMixImpl {
   }
 
   void syncTempo(int fromD, int toD) {
-    const float bf = dj_get_bpm(engine, fromD), bt = dj_get_bpm(engine, toD);
+    rampActive = false;  // durante el fundido no se toca el tempo de la saliente
+    // Tempo EFECTIVO de la saliente (puede estar aún volviendo a su tempo propio).
+    const float bf = dj_get_bpm(engine, fromD) * deckRate[fromD], bt = dj_get_bpm(engine, toD);
+    deckRate[toD] = 1.0f;
     if (bf > 0 && bt > 0) {
       const double r = (double)bf / bt;
       if (r >= 0.94 && r <= 1.06) {
         dj_set_keylock(engine, toD, 1);
         dj_set_rate(engine, toD, (float)r);
+        deckRate[toD] = (float)r;
       }
+    }
+  }
+
+  // Tras el fundido, la pista que quedó sonando vuelve gradualmente a su tempo propio
+  // (como un DJ que suelta el pitch): espera 4 s y avanza 0,3 % por segundo (6 % en ~20 s).
+  void startTempoReturn() {
+    rampActive = tempoReturn && std::fabs(deckRate[fromDeck] - 1.0f) > 1e-4f;
+    rampFrom = std::chrono::steady_clock::now() + std::chrono::seconds(4);
+    rampLast = rampFrom;
+  }
+  void stepTempoReturn() {
+    if (!rampActive) return;
+    const auto now = std::chrono::steady_clock::now();
+    if (now < rampFrom) return;
+    const double dt = std::chrono::duration<double>(now - rampLast).count();
+    rampLast = now;
+    const float r = mixpoints::rampToward(deckRate[fromDeck], 1.0f, dt, 0.003f);
+    if (r != deckRate[fromDeck]) {
+      deckRate[fromDeck] = r;
+      dj_set_rate(engine, fromDeck, r);
+    }
+    if (r == 1.0f) {
+      rampActive = false;
+      LOGI("automix: deck %d de vuelta a su tempo propio", fromDeck);
     }
   }
 
@@ -156,6 +206,7 @@ struct AutoMixImpl {
     }
 
     if (state.load() == ST_IDLE) {
+      stepTempoReturn();
       if (!playing || pos >= fadeBeginSec) {
         const int toDeck = 1 - fromDeck;
         if (!deckLoaded[toDeck]) {
@@ -194,6 +245,7 @@ struct AutoMixImpl {
         loadIntoRetry(oldFrom, 32);  // precarga la siguiente en el deck liberado
         computeTransition();
         LOGI("automix: fin transición; ahora suena deck %d", fromDeck);
+        startTempoReturn();
         state = ST_IDLE;
       }
     }
@@ -222,6 +274,10 @@ extern "C" {
 AutoMix automix_create(DjEngine engine) {
   auto* a = new AutoMixImpl();
   a->engine = engine;
+  if (const char* mp = std::getenv("AUDIT_SOUND_MIX_POINT"))
+    a->mixByEnergy = std::strcmp(mp, "silence") != 0;
+  if (const char* tr = std::getenv("AUDIT_SOUND_TEMPO_RETURN"))
+    a->tempoReturn = std::strcmp(tr, "0") != 0;
   return a;
 }
 

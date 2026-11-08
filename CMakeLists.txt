@@ -85,6 +85,8 @@ add_executable(audit_sound_server ${ROOT}/tools/audit_sound_server.cpp)
 target_link_libraries(audit_sound_server PRIVATE audit_sound_engine Threads::Threads)
 
 # Prueba del detector de silencio (-60 dB) + energía (M2).
+add_executable(mix_points_test ${ROOT}/tools/mix_points_test.cpp)
+target_link_libraries(mix_points_test PRIVATE audit_sound_engine Threads::Threads)
 add_executable(silence_test ${ROOT}/tools/silence_test.cpp)
 target_link_libraries(silence_test PRIVATE audit_sound_engine Threads::Threads)
 

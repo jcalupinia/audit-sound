@@ -4,6 +4,7 @@
 #include "biquad.hpp"
 #include "id3_meta.hpp"
 #include "last_error.hpp"
+#include "automix/mix_points.hpp"
 #include "silence.hpp"
 
 #include "signalsmith-stretch.h"
@@ -1189,6 +1190,27 @@ int dj_analyze_silence(const char* path, double* first_sound, double* last_sound
   }
   if (last_sound) *last_sound = lastSec;
   return 1;
+}
+
+int dj_analyze_loud_end(const char* path, double* loud_end_sec) {
+  if (loud_end_sec) *loud_end_sec = -1.0;
+  if (!path) return 0;
+  StreamingDecoder dec;
+  if (!dec.open(path) || dec.sampleRate < 1) return 0;
+  const uint64_t chunk = (uint64_t)dec.sampleRate;  // 1 s
+  std::vector<float> buf((size_t)chunk * 2);
+  std::vector<float> db;
+  dec.seek(0);
+  for (;;) {
+    const uint64_t n = dec.readStereo(buf.data(), chunk);
+    if (n == 0) break;
+    const float r = silence::rms(buf.data(), (int64_t)n, 2);
+    db.push_back(r > 1e-9f ? 20.0f * std::log10(r) : -120.0f);
+    if (n < chunk) break;
+  }
+  const double e = mixpoints::loudEndSec(db);
+  if (loud_end_sec) *loud_end_sec = e;
+  return e > 0 ? 1 : 0;
 }
 
 double dj_file_duration(const char* path) {
