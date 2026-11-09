@@ -70,7 +70,12 @@ function wvDraw(cv){
   }
 }
 
-function wvFrame(){for(const cv of document.querySelectorAll('canvas[data-wave-deck]'))if(cv.isConnected&&cv.clientWidth)wvDraw(cv);requestAnimationFrame(wvFrame)}
+// Contador «transcurrido / duración · BPM» del deck, al día en cada cuadro (antes solo cambiaba cuando la
+// pantalla se redibujaba, así que mientras sonaba la canción se quedaba en 00:00).
+function wvTime(el){const side=el.dataset.deckTime,{pos,dur}=wvPos(side),pk=WV.peaks.get(wvTrackId(side));
+  const t=`${fmt(pos)} / ${fmt(dur||(pk&&pk.dur)||NaN)} · ${state.deck[side].bpm} BPM`;if(el.textContent!==t)el.textContent=t}
+function wvFrame(){for(const cv of document.querySelectorAll('canvas[data-wave-deck]'))if(cv.isConnected&&cv.clientWidth)wvDraw(cv);
+  for(const el of document.querySelectorAll('[data-deck-time]'))wvTime(el);requestAnimationFrame(wvFrame)}
 requestAnimationFrame(wvFrame);
 
 // Clic sobre la onda: lleva la reproducción a ese punto.
@@ -84,8 +89,10 @@ document.addEventListener('click',e=>{const cv=e.target.closest&&e.target.closes
 // El deck dibuja un lienzo en lugar del dibujo decorativo.
 const wvDeckCardBase=deckCard;
 deckCard=function(side){const html=wvDeckCardBase(side),deco=wave(side==='B'?'b':'');
-  return html.replace(deco,`<canvas class="wave-real" data-wave-deck="${side}" title="Forma de onda: haz clic para ir a ese punto" aria-label="Forma de onda del deck ${side}"></canvas>`)};
+  return html.replace('<div class="right"><div class="micro">','<div class="right"><div class="micro" data-deck-name="'+side+'">')
+    .replace(/(<div class="micro" data-deck-name="[AB]">[\s\S]*?<\/div>)<small>/,`$1<small data-deck-time="${side}">`)
+    .replace(deco,`<canvas class="wave-real" data-wave-deck="${side}" title="Forma de onda: haz clic para ir a ese punto" aria-label="Forma de onda del deck ${side}"></canvas>`)};
 
 window.__ASWAVE={live:()=>LIVE.on,peaks:(side)=>{const p=WV.peaks.get(wvTrackId(side));return p?p.min.length:0},
   busy:(side)=>WV.busy.has(wvTrackId(side)),playhead:(side)=>{const cv=document.querySelector(`canvas[data-wave-deck="${side}"]`);return cv?Number(cv.dataset.playhead||-1):-1},
-  error:(side)=>WV.err.get(wvTrackId(side))||''};
+  error:(side)=>WV.err.get(wvTrackId(side))||'',time:(side)=>{const el=document.querySelector(`[data-deck-time="${side}"]`);return el?el.textContent:''}};

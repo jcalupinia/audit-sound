@@ -50,6 +50,10 @@ try {
   await sleep(1500);
   const x1 = await p.evaluate(() => window.__ASWAVE.playhead('A'));
   ok(x1 > x0 && x0 >= 0, `el cabezal avanza con la reproducción (${x0} → ${x1} px)`);
+  // El contador del deck avanza solo mientras suena (antes se quedaba en 00:00 hasta redibujar la pantalla).
+  await sleep(1200);
+  const reloj = (await p.locator('article.deck').first().locator('.trackhead .right small').textContent()).trim();
+  ok(/^00:0[2-4] \/ 00:08 · \d+ BPM$/.test(reloj), `el contador del deck avanza mientras suena («${reloj}»)`);
 
   const box = await p.locator('canvas[data-wave-deck="A"]').boundingBox();
   await p.mouse.click(box.x + box.width * 0.75, box.y + box.height / 2);
