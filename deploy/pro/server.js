@@ -133,10 +133,24 @@ function proxyAgentUpgrade(req, socket, head, pathWithQuery) {
   up.end();
 }
 
+// URL del stream: STREAM_URL explícita o, si no, LISTEN_URL + /stream.mp3. Solo http(s).
+function streamUrlFor(streamEnv, listenEnv) {
+  const ok = (u) => /^https?:\/\/[^\s"'<>]+$/i.test(u);
+  const s = String(streamEnv || '').trim();
+  if (s) return ok(s) ? s : '';
+  const l = String(listenEnv || '').trim().replace(/\/+$/, '');
+  return l && ok(l) ? l + '/stream.mp3' : '';
+}
+
 // config.js para la landing/mezclador: URL de streaming y banderas de fuentes libres.
 try {
   const listen = process.env.LISTEN_URL || '';
   let body = listen ? `window.AUDIT_SOUND_LISTEN=${JSON.stringify(listen)};\n` : '/* sin LISTEN_URL */\n';
+  // URL del stream de audio para los reproductores (escuchar.html y «Escuchar en vivo» de la v0.6).
+  // STREAM_URL manda; si falta, el stream vive en LISTEN_URL/stream.mp3 (el Icecast público). Sin
+  // esto los reproductores pedían «/stream.mp3» a ESTE servidor, que no lo sirve (404 → no suena).
+  const stream = streamUrlFor(process.env.STREAM_URL, listen);
+  if (stream) body += `window.AUDIT_SOUND_STREAM=${JSON.stringify(stream)};\n`;
   body += `window.AUDIT_SOUND_OPENMUSIC=${OM.clientId ? 'true' : 'false'};\n`;
   body += `window.AUDIT_SOUND_ARCHIVE=${IA.enabled ? 'true' : 'false'};\n`;
   // Enlace al Command Center (AuditBrain): el login de la consola reutiliza las
@@ -360,4 +374,4 @@ if (require.main === module) {
   server.listen(PORT, () => console.log(`AUDIT SOUND PRO en :${PORT} (root=${ROOT})`));
 }
 
-module.exports = { server, pickArchiveAudioFile, iaIsAudioFile };
+module.exports = { server, pickArchiveAudioFile, iaIsAudioFile, streamUrlFor };

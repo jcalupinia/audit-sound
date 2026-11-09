@@ -97,6 +97,8 @@ jobs:
         run: node deploy/pro/proxy_test.mjs
       - name: Prueba del proxy del agente DJ (HTTP + WebSocket, agente simulado)
         run: node deploy/pro/agent_proxy_test.mjs
+      - name: config.js publica la URL del stream para los reproductores
+        run: node deploy/pro/stream_url_test.mjs
       - name: Prueba del Generador de sets por IA (intérprete + orden, Fase 3C)
         run: node web/pro/setai_test.mjs
 
@@ -118,6 +120,8 @@ jobs:
         run: node web/pro/v06/tests/video_v2_pantalla2_e2e.mjs
       - name: Fotos, presentaciones (PDF), videoclips con sonido y cues de eventos
         run: node web/pro/v06/tests/video_v3_e2e.mjs
+      - name: «Escuchar en vivo» reproduce el stream del servidor (COEP + CORP)
+        run: node web/pro/v06/tests/escuchar_stream_e2e.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

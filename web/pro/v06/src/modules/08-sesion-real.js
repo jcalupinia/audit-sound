@@ -27,6 +27,15 @@ async function ccAgentRejected(){if(!CC_CFG.api)return;const c=await ccCheck();
   if(c.ok)toast('Tu sesión AUDIT-IA es válida, pero el agente no la aceptó: revisa DJ_AGENT_CC_API en el servidor del agente.',true)}
 function ccLogout(){for(const s of ['A','B']){try{audioEls[s].pause();if(LIVE.on&&LIVE.bridge)LIVE.bridge.play(DECK_IDX[s],false)}catch(e){}}ccToLogin('')}
 
+// «Escuchar en vivo»: el reproductor vive FUERA de la página (render() reconstruye el HTML y antes
+// destruía el <audio> que acababa de arrancar: nunca sonaba). Uno solo para toda la sesión.
+let LIVE_AUDIO=null;
+function liveAudio(){if(!LIVE_AUDIO){LIVE_AUDIO=new Audio();LIVE_AUDIO.preload='none';
+  LIVE_AUDIO.addEventListener('error',()=>{if(!LIVE_AUDIO.getAttribute('src'))return;state.streamConnected=false;if(state.page==='en-vivo')render();toast('La transmisión no responde. Revisa la URL o inténtalo de nuevo.',true)})}
+  return LIVE_AUDIO}
+window.__ASLIVE={time:()=>LIVE_AUDIO?LIVE_AUDIO.currentTime:0,paused:()=>!LIVE_AUDIO||LIVE_AUDIO.paused,src:()=>LIVE_AUDIO?LIVE_AUDIO.src:''};
+// «Escuchar en vivo»: sin URL guardada, se usa la del stream real del servidor (config.js).
+if(!state.streamUrl&&typeof window.AUDIT_SOUND_STREAM==='string'&&safeUrl(window.AUDIT_SOUND_STREAM))state.streamUrl=window.AUDIT_SOUND_STREAM;
 if(ccEnabled()){root.innerHTML='<main class="cc-gate" role="status">Comprobando tu sesión AUDIT-IA…</main>';ccEnter()}
 else render();
 })();

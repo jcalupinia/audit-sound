@@ -66,8 +66,8 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'fx-apply-preset':{let p=state.fxPresets.find(p=>p.id===id);if(!p)return;let f=state.fx.find(f=>f.id===p.bank);if(f)Object.assign(f,{type:p.type,channel:p.channel,wet:p.wet,parameter:p.parameter,bpmSync:p.bpmSync});command('fx.control',{preset:id},'LOCAL');save();render();if(f)fxChanged(f,true);break}
  case 'fx-remove-preset':state.fxPresets=state.fxPresets.filter(p=>p.id!==id);save();render();break;
  case 'fx-download-code':{let f=state.fxCustom.find(f=>f.id===id);if(f)exportText(f.name+'.js',effectTemplate(f),'text/javascript');break}
- case 'stream-play':{let src=safeUrl(state.streamUrl);if(!src){toast('Introduce una URL de audio HTTP(S) válida.',true);return}let p=document.getElementById('live-player');if(!p)return;p.src=src;await p.play();state.streamConnected=true;command('stream.status',{op:'listen',url:src},'LOCAL');render();break}
- case 'stream-stop':{let p=document.getElementById('live-player');p?.pause();state.streamConnected=false;render();break}
+ case 'stream-play':{let src=safeUrl(state.streamUrl);if(!src){toast('Introduce una URL de audio HTTP(S) válida.',true);return}const p=liveAudio();p.src=src;try{await p.play()}catch(e){state.streamConnected=false;render();toast('No se pudo reproducir la transmisión: '+(e.message||e),true);return}state.streamConnected=true;command('stream.status',{op:'listen',url:src},'LOCAL');render();break}
+ case 'stream-stop':{const p=liveAudio();p.pause();p.removeAttribute('src');p.load();state.streamConnected=false;render();break}
  case 'stream-copy':if(state.streamUrl&&navigator.clipboard)await navigator.clipboard.writeText(state.streamUrl);else toast('Sin URL configurada.',true);break;
  case 'event-delete':state.events=state.events.filter(e=>e.id!==id);save();render();break;
  case 'cue-prepare':{let c=state.cuesheets.find(c=>c.id===id);command('event.cue',{id,action:'prepare'},'MOCK');toast('Cue "'+c?.name+'" preparado en interfaz (mock).');break}
