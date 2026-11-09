@@ -70,6 +70,20 @@ int main() {
   ok(mixpoints::energyFadeEnd(79.5, 80, 8, 45) == 80, "sin decaimiento: último sonido");
   ok(mixpoints::energyFadeEnd(5, 80, 8, 45) == 80, "parte fuerte más corta que el fundido: último sonido");
 
+  // 2c) loudStartSec / introStartSec (caso real «Cuban Cigars»: 8 s de intro a −25 dB y luego −12 dB).
+  std::vector<float> intro;
+  for (int i = 0; i < 8; ++i) intro.push_back(i % 2 ? -29.0f : -22.0f);
+  for (int i = 0; i < 60; ++i) intro.push_back(-12.0f);
+  const double ls = mixpoints::loudStartSec(intro);
+  ok(ls == 8.0, ("parte fuerte empieza en 8 s tras la intro suave (dio " + std::to_string(ls) + ")").c_str());
+  ok(mixpoints::loudStartSec(plano) == 0.0, "sin intro suave, la parte fuerte empieza al inicio");
+  ok(mixpoints::loudStartSec(std::vector<float>(5, -12.0f)) < 0, "pocos segundos → -1");
+  ok(mixpoints::introStartSec(0, 8, 2, 30) == 6, "intro suave de 8 s: la entrante arranca 2 s antes de la parte fuerte");
+  ok(mixpoints::introStartSec(0, 1.5, 2, 30) == 0, "intro corta: arranca en el primer sonido");
+  ok(mixpoints::introStartSec(0.5, 70, 2, 30) == 30.5, "intro muy larga: nunca salta más de 30 s");
+  ok(mixpoints::introStartSec(0, -1, 2, 30) == 0, "sin dato de energía: primer sonido");
+  ok(mixpoints::introStartSec(0, 8, 2, 0) == 0, "desactivado (AUDIT_SOUND_INTRO_SALTO=0): primer sonido");
+
   // 3) dj_analyze_loud_end sobre un WAV real: 40 s a nivel pleno + 15 s de cola que se apaga.
   const int sr = 44100;
   std::vector<float> pcm;
@@ -83,6 +97,20 @@ int main() {
   double le = -1;
   dj_analyze_loud_end(wav.c_str(), &le);
   ok(le >= 40 && le <= 46, ("dj_analyze_loud_end ubica el fin de la parte fuerte (dio " + std::to_string(le) + " s)").c_str());
+  std::remove(wav.c_str());
+
+  // 3b) dj_analyze_loud_range sobre un WAV con 10 s de intro a −26 dB, 40 s pleno y cola.
+  std::vector<float> pcm2;
+  for (int i = 0; i < sr * 60; ++i) {
+    const double s = (double)i / sr;
+    const double g = s < 10 ? 0.05 : (s < 50 ? 1.0 : std::pow(10.0, -2.0 * (s - 50) / 10.0));
+    pcm2.push_back((float)(0.4 * g * std::sin(2 * M_PI * 220 * s)));
+  }
+  ok(writeWav(wav, pcm2, sr), "WAV con intro suave escrito");
+  double lst = -1, len = -1;
+  dj_analyze_loud_range(wav.c_str(), &lst, &len);
+  ok(lst >= 9 && lst <= 10, ("dj_analyze_loud_range ubica el comienzo de la parte fuerte (dio " + std::to_string(lst) + " s)").c_str());
+  ok(len >= 50 && len <= 56, ("dj_analyze_loud_range ubica el fin de la parte fuerte (dio " + std::to_string(len) + " s)").c_str());
   std::remove(wav.c_str());
 
   std::printf(fails ? "\n%d FALLA(S)\n" : "\nTODO OK\n", fails);

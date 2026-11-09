@@ -1,0 +1,9 @@
+# Género de cada pista (Título = nombre del archivo sin .mp3). Lo lee el motor y lo publica al agente,
+# que lo usa para órdenes como «pon merengue». Formato: Título|género
+Giovanny - Morena|merengue
+Los Cuban Boys - Reciclate, evaporate|salsa
+Danna Ruiz - Alentando ilusiones|salsa
+El Gran Proyecto - Latino Soy|salsa
+Juanitos - El Cha Cha Man|cha cha cha
+Xaviant Haze - Cuban Cigars|mambo
+Ronald Nunez - La Bachata Loca|bachata

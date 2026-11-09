@@ -34,6 +34,8 @@ GENRES: dict[str, list[str]] = {
     "cumbia": ["cumbia"],
     "bachata": ["bachata"],
     "merengue": ["merengue"],
+    "mambo": ["mambo"],
+    "cha cha cha": ["cha cha cha", "cha-cha-cha", "chachacha", "cha cha"],
 }
 
 

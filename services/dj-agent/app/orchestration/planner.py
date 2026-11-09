@@ -1,8 +1,10 @@
 """Planificador musical DETERMINISTA.
 
 Solo usa pistas del catálogo que entrega el motor (IDs verificados): nunca inventa títulos.
-Puntuación (misma lógica que el copiloto/selector): armonía Camelot 0.45, tempo 0.30,
-energía 0.25 hacia un objetivo que sube, baja o se mantiene. Sin metadatos (motor actual,
+Puntuación: tempo 0.40 (diferencia relativa; el doble o la mitad cuentan como cercanos), armonía
+Camelot 0.35 y energía 0.25 hacia un objetivo que sube, baja o se mantiene. El tempo pesa más desde
+2026-11-08: entre géneros de BPM muy distintos (bachata ~96, merengue ~135) el salto se oye más que un
+choque de tonalidad. Sin metadatos (motor actual,
 brecha B1) el plan se degrada: no filtra por género ni compatibilidad y lo declara con
 confianza baja.
 """
@@ -15,8 +17,8 @@ from app.adapters.engine_base import Track
 from app.domain.music import cam_num, camelot, keys_compatible, valid_key
 from app.orchestration.intent import normalize
 
-W_HARMONY, W_TEMPO, W_ENERGY = 0.45, 0.30, 0.25
-BPM_TOL = 8.0
+W_HARMONY, W_TEMPO, W_ENERGY = 0.35, 0.40, 0.25
+BPM_TOL_REL = 0.12   # 12 % de diferencia de tempo → puntaje de tempo 0
 ENERGY_STEP = {"up": 0.05, "down": -0.05, "steady": 0.0}
 
 
@@ -38,6 +40,13 @@ class PlanItem:
         return asdict(self)
 
 
+def _tempo_gap(a: float, b: float) -> float:
+    """Diferencia relativa de tempo; el doble o la mitad cuentan como el mismo pulso."""
+    if a <= 0 or b <= 0:
+        return 1.0
+    return min(abs(b - a) / a, abs(b - 2 * a) / (2 * a), abs(b - a / 2) / (a / 2))
+
+
 def _score(prev: Track | None, cand: Track, target_energy: float | None) -> tuple[float, str]:
     if prev is None or not prev.has_metadata or not cand.has_metadata:
         return 0.5, "inicio del bloque"
@@ -48,7 +57,7 @@ def _score(prev: Track | None, cand: Track, target_energy: float | None) -> tupl
     else:
         h, hr = 0.15, "tono a revisar"
     d_bpm = (cand.bpm or 0) - (prev.bpm or 0)
-    t = max(0.0, 1 - abs(d_bpm) / BPM_TOL)
+    t = max(0.0, 1 - _tempo_gap(prev.bpm or 0, cand.bpm or 0) / BPM_TOL_REL)
     tr = "mismo BPM" if abs(d_bpm) < 1 else f"Δ{abs(d_bpm):.0f} BPM"
     goal = target_energy if target_energy is not None else (prev.energy or 0)
     e = max(0.0, 1 - abs((cand.energy or 0) - goal) / 0.5)

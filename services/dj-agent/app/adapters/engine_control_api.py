@@ -164,7 +164,8 @@ class ControlApiAdapter:
                              bpm=float(t["bpm"]) if has else None,
                              key=int(t["key"]) if has else None,
                              energy=float(t["energy"]) if has else None,
-                             duration=float(t["duration"]) if t.get("duration") else None))
+                             duration=float(t["duration"]) if t.get("duration") else None,
+                             genre=str(t["genre"]).strip() or None if t.get("genre") else None))
         return out
 
     def execute(self, engine_action: str, params: dict[str, Any]) -> dict[str, Any]:

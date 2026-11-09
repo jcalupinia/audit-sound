@@ -163,3 +163,35 @@ def test_orden_por_voz_queda_registrada_con_su_canal(client):
                        headers=H("op1")).status_code == 422
     texto = client.post(f"{BASE}/sessions/{sid}/intent", json={"text": "salta la canción"}, headers=H("op1"))
     assert texto.status_code == 200
+
+
+def test_el_plan_no_repite_la_pista_que_el_motor_ya_preparo(settings, clock, tmp_path):
+    """Producción 2026-11-08: la pista cargada en el otro deck sonaba y luego el plan la repetía."""
+    import dataclasses
+
+    from fastapi.testclient import TestClient
+
+    from app.adapters.engine_fake import FakeEngine
+    from app.main import create_app
+
+    def primer_plan(cued_title: str | None):
+        cfg = dataclasses.replace(settings, db_path=str(tmp_path / f"cued_{bool(cued_title)}.db"))
+        class ConCued(FakeEngine):
+            def status(self):
+                snap = super().status()
+                if cued_title:
+                    on = next(d for d in snap.decks if d.playing)
+                    other = next(d for d in snap.decks if d.deck != on.deck)
+                    other.loaded, other.playing, other.title, other.track_id = True, False, cued_title, None
+                return snap
+
+        with TestClient(create_app(cfg, engine=ConCued(), clock=clock)) as c:
+            sid = new_session(c, mode="AUTOMATICO")["id"]
+            clock.advance(60)
+            c.app.state.manager.tick(sid)
+            return c.get(f"{BASE}/sessions/{sid}/plans/current", headers=H("op1")).json()
+
+    sin = primer_plan(None)
+    elegida = sin["items"][0]["title"]
+    con = primer_plan(elegida)
+    assert elegida not in [i["title"] for i in con["items"]]

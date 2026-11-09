@@ -39,6 +39,7 @@ struct AutoMixImpl {
   double deckFirst[2] = {0.0, 0.0};
   double deckLast[2] = {-1.0, -1.0};
   double deckLoudEnd[2] = {-1.0, -1.0};  // fin de la parte fuerte (punto de mezcla por energía)
+  double deckLoudStart[2] = {-1.0, -1.0};  // comienzo de la parte fuerte (entrada sin intro suave)
   float deckRate[2] = {1.0f, 1.0f};       // velocidad aplicada por syncTempo (1 = tempo propio)
   // Mejoras del 2026-11-08 (medición en producción). Se pueden apagar por entorno:
   //  AUDIT_SOUND_MIX_POINT=silence  → vuelve a terminar el fundido en el último sonido.
@@ -46,6 +47,9 @@ struct AutoMixImpl {
   bool mixByEnergy = true;
   bool tempoReturn = true;
   double maxAdvance = 45.0;  // s: lo más que se adelanta el final (AUDIT_SOUND_MIX_MAX_ADELANTO)
+  //  AUDIT_SOUND_INTRO_SALTO=0 → la entrante arranca siempre en su primer sonido (antes).
+  double introLead = 2.0;     // s antes de la parte fuerte en que entra la pista entrante
+  double introMaxSkip = 30.0; // s: lo más que se salta de una intro suave (AUDIT_SOUND_INTRO_MAX)
   bool rampActive = false;
   std::chrono::steady_clock::time_point rampFrom{}, rampLast{};
   bool deckLoaded[2] = {false, false};
@@ -69,7 +73,8 @@ struct AutoMixImpl {
     deckFirst[d] = first;
     deckLast[d] = last > 0 ? last : dj_duration(engine, d);
     deckLoudEnd[d] = -1.0;
-    if (mixByEnergy) dj_analyze_loud_end(path, &deckLoudEnd[d]);
+    deckLoudStart[d] = -1.0;
+    if (mixByEnergy) dj_analyze_loud_range(path, &deckLoudStart[d], &deckLoudEnd[d]);
     deckRate[d] = 1.0f;
     dj_set_rate(engine, d, 1.0f);
     deckLoaded[d] = true;
@@ -78,8 +83,9 @@ struct AutoMixImpl {
       deckPath[d] = path;
     }
     dj_seek(engine, d, first);  // cue al primer sonido
-    LOGI("automix: pista en deck %d (dur=%.1f first=%.2f last=%.2f fuerte_hasta=%.2f bpm=%.1f)", d,
-         dj_duration(engine, d), first, deckLast[d], deckLoudEnd[d], dj_get_bpm(engine, d));
+    LOGI("automix: pista en deck %d (dur=%.1f first=%.2f last=%.2f fuerte_desde=%.2f fuerte_hasta=%.2f "
+         "bpm=%.1f)", d, dj_duration(engine, d), first, deckLast[d], deckLoudStart[d], deckLoudEnd[d],
+         dj_get_bpm(engine, d));
     return true;
   }
 
@@ -99,6 +105,8 @@ struct AutoMixImpl {
     fadeEndSec = fadeEnd;
     const int toDeck = 1 - fromDeck;
     toStartSec = deckLoaded[toDeck] ? deckFirst[toDeck] : 0.0;
+    if (deckLoaded[toDeck] && mode.load() == 0 && mixByEnergy)
+      toStartSec = mixpoints::introStartSec(deckFirst[toDeck], deckLoudStart[toDeck], introLead, introMaxSkip);
   }
 
   void syncTempo(int fromD, int toD) {
@@ -217,8 +225,8 @@ struct AutoMixImpl {
         dj_seek(engine, toDeck, toStartSec);
         syncTempo(fromDeck, toDeck);
         dj_play(engine, toDeck, 1);
-        LOGI("automix: transición deck %d -> %d (fadeBegin=%.2f fadeEnd=%.2f)", fromDeck,
-             toDeck, fadeBeginSec, fadeEndSec);
+        LOGI("automix: transición deck %d -> %d (fadeBegin=%.2f fadeEnd=%.2f entra_en=%.2f)", fromDeck,
+             toDeck, fadeBeginSec, fadeEndSec, toStartSec);
         state = ST_FADING;
       }
     } else if (state.load() == ST_FADING) {
@@ -279,6 +287,10 @@ AutoMix automix_create(DjEngine engine) {
     a->mixByEnergy = std::strcmp(mp, "silence") != 0;
   if (const char* ma = std::getenv("AUDIT_SOUND_MIX_MAX_ADELANTO"))
     a->maxAdvance = std::atof(ma) > 0 ? std::atof(ma) : 45.0;
+  if (const char* is = std::getenv("AUDIT_SOUND_INTRO_SALTO"))
+    if (std::strcmp(is, "0") == 0) a->introMaxSkip = 0.0;
+  if (const char* im = std::getenv("AUDIT_SOUND_INTRO_MAX"))
+    if (im[0] && std::atof(im) >= 0 && a->introMaxSkip > 0) a->introMaxSkip = std::atof(im);
   if (const char* tr = std::getenv("AUDIT_SOUND_TEMPO_RETURN"))
     a->tempoReturn = std::strcmp(tr, "0") != 0;
   return a;

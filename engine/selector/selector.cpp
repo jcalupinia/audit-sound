@@ -132,9 +132,7 @@ struct Selector::Impl {
     return chosen;
   }
 
-  std::string next() {
-    const int idx = pickNext();
-    if (idx < 0) return "";
+  void remember(int idx) {
     refIdx = idx;
     const std::string& path = tracks[idx].path;
     timesPlayed[path]++;
@@ -142,7 +140,13 @@ struct Selector::Impl {
     const int cd = std::min(cfg.cooldown, (int)tracks.size() - 1);
     while ((int)recent.size() > cd && cd > 0) recent.pop_front();
     if (cd <= 0) recent.clear();
-    return path;
+  }
+
+  std::string next() {
+    const int idx = pickNext();
+    if (idx < 0) return "";
+    remember(idx);
+    return tracks[idx].path;
   }
 };
 
@@ -154,6 +158,10 @@ void Selector::addTrack(const std::string& path, float bpm, int key, float energ
 }
 std::size_t Selector::size() const { return p_->tracks.size(); }
 std::string Selector::next() { return p_->next(); }
+void Selector::notePlayed(const std::string& path) {
+  for (int i = 0; i < (int)p_->tracks.size(); ++i)
+    if (p_->tracks[i].path == path) { p_->remember(i); return; }
+}
 
 int Selector::nextTrackCb(void* user, char* out, int cap) {
   auto* s = static_cast<Selector*>(user);

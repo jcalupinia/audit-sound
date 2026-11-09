@@ -1,0 +1,51 @@
+{
+  "duracion_s": 602.7,
+  "titulos": [
+    {
+      "t": 0.7,
+      "titulo": "Los Cuban Boys - Reciclate, evaporate"
+    },
+    {
+      "t": 272.0,
+      "titulo": "Xaviant Haze - Cuban Cigars"
+    },
+    {
+      "t": 436.7,
+      "titulo": "Los Cuban Boys - Reciclate, evaporate"
+    }
+  ],
+  "transiciones": [
+    {
+      "t": 272.0,
+      "medible": true,
+      "fundido_s": 10.5,
+      "fundido_desde_s": 265.5,
+      "fundido_hasta_s": 276.0,
+      "bajon_db": 0.8,
+      "nivel_base_dbfs": -11.6,
+      "bpm_saliente": 99.6,
+      "bpm_entrante": 120.1,
+      "diferencia_bpm_pct": 20.6,
+      "veredicto": "mezcla suave",
+      "de": "Los Cuban Boys - Reciclate, evaporate",
+      "a": "Xaviant Haze - Cuban Cigars"
+    },
+    {
+      "t": 436.7,
+      "medible": true,
+      "fundido_s": 8.0,
+      "fundido_desde_s": 424.5,
+      "fundido_hasta_s": 432.5,
+      "bajon_db": 3.4,
+      "nivel_base_dbfs": -12.1,
+      "bpm_saliente": 119.0,
+      "bpm_entrante": 99.6,
+      "diferencia_bpm_pct": 16.3,
+      "veredicto": "mezcla suave",
+      "de": "Xaviant Haze - Cuban Cigars",
+      "a": "Los Cuban Boys - Reciclate, evaporate"
+    }
+  ],
+  "segundos_en_silencio": 1.5,
+  "nivel_medio_dbfs": -11.2
+}

@@ -55,6 +55,7 @@ struct Catalog {
   std::vector<int> key;
   std::vector<double> dur;
   std::vector<char> meta;
+  std::vector<std::string> genre;  // "" = sin género (generos.txt de la carpeta de música)
 };
 
 constexpr size_t AGENT_QUEUE_MAX = 50;
@@ -423,6 +424,7 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
       } else {
         all = false;
       }
+      if (i < k.genre.size() && !k.genre[i].empty()) out += ",\"genre\":\"" + jsonEsc(k.genre[i]) + "\"";
       out += "}";
     }
     out += std::string("],\"metadata\":") + (all ? "true" : "false") + "}";
@@ -684,6 +686,16 @@ void control_api_add_track_meta(ControlApi h, const char* title, const char* pat
   k.energy.push_back(known ? energy : 0.0f);
   k.dur.push_back(duration > 0 ? duration : 0.0);
   k.meta.push_back(known ? 1 : 0);
+  k.genre.emplace_back();
+}
+
+void control_api_set_track_genre(ControlApi h, int index, const char* genre) {
+  auto* api = static_cast<Api*>(h);
+  if (!api || !genre || index < 0) return;
+  std::lock_guard<std::mutex> lk(api->mu);
+  std::lock_guard<std::mutex> lq(api->queueMu);
+  Catalog& k = api->cat;
+  if ((size_t)index < k.genre.size()) k.genre[(size_t)index] = genre;
 }
 
 int control_api_next_queued(ControlApi h, char* path_out, int cap) {
