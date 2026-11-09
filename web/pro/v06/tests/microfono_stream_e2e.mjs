@@ -178,7 +178,12 @@ try {
 } catch (e) {
   ok(false, 'excepción: ' + (e && e.stack || e));
 } finally {
-  if (fails && globalThis.__engLog) console.log('--- registro del motor (últimas líneas) ---\n' + globalThis.__engLog.join('').split('\n').slice(-80).join('\n'));
+  if (fails && globalThis.__engLog) {
+    const all = globalThis.__engLog.join('').split('\n');
+    console.log('--- motor: líneas sobre Icecast ---\n' + all.filter((l) => /cecast|shout|StreamSink|reconect/i.test(l)).slice(-30).join('\n'));
+    console.log('--- registro del motor (últimas líneas) ---\n' + all.slice(-60).join('\n'));
+    try { console.log('--- Icecast error.log ---\n' + require('node:fs').readFileSync(join(logs, 'error.log'), 'utf8').split('\n').slice(-30).join('\n')); } catch (e) { /* sin registro */ }
+  }
   if (browser) await browser.close().catch(() => {});
   for (const p of procs.reverse()) { try { p.kill('SIGTERM'); } catch (e) { /* ya terminó */ } }
 }
