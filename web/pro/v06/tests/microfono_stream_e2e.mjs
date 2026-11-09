@@ -99,9 +99,12 @@ try {
   await start('icecast2', ['-c', join(tmp, 'icecast.xml')], {}, tmp, null);
   const engLog = [];
   globalThis.__engLog = engLog;
-  await start(SRV, [], { AUDIT_SOUND_MUSIC_DIR: music, AUDIT_SOUND_ICECAST_HOST: '127.0.0.1', AUDIT_SOUND_ICECAST_PORT: String(ICE),
+  // Con GDB=1 (CI) el motor corre bajo gdb: si se cae, la traza queda en el registro.
+  const useGdb = process.env.GDB === '1' && have('gdb');
+  const engProc = start(useGdb ? 'gdb' : SRV, useGdb ? ['-q', '-batch', '-ex', 'run', '-ex', 'bt', '-ex', 'thread apply all bt 8', SRV] : [], { AUDIT_SOUND_MUSIC_DIR: music, AUDIT_SOUND_ICECAST_HOST: '127.0.0.1', AUDIT_SOUND_ICECAST_PORT: String(ICE),
     AUDIT_SOUND_ICECAST_MOUNT: '/stream.mp3', AUDIT_SOUND_ICECAST_USER: 'source', AUDIT_SOUND_ICECAST_PASSWORD: srcpw,
     AUDIT_SOUND_API_USER: 'motor', AUDIT_SOUND_API_PASS: 'clave-motor', AUDIT_SOUND_API_PORT: String(ENG) }, REPO, 'Control API en el puerto', engLog);
+  (await engProc).on('exit', (code, sig) => engLog.push(`\n[prueba] el motor terminó: código ${code}, señal ${sig}\n`));
   await start(PY, ['-m', 'uvicorn', '--factory', 'app.main:create_app', '--host', '127.0.0.1', '--port', String(AG)],
     { DJ_AGENT_DB_PATH: db, DJ_AGENT_ENGINE: 'control_api', DJ_AGENT_ENGINE_URL: `http://127.0.0.1:${ENG}`,
       DJ_AGENT_ENGINE_USER: 'motor', DJ_AGENT_ENGINE_PASS: 'clave-motor', DJ_AGENT_DEV_TOKENS: `${TOK}:dj:operator:org1` },
@@ -175,7 +178,7 @@ try {
 } catch (e) {
   ok(false, 'excepción: ' + (e && e.stack || e));
 } finally {
-  if (fails && globalThis.__engLog) console.log('--- registro del motor (últimas líneas) ---\n' + globalThis.__engLog.join('').split('\n').slice(-40).join('\n'));
+  if (fails && globalThis.__engLog) console.log('--- registro del motor (últimas líneas) ---\n' + globalThis.__engLog.join('').split('\n').slice(-80).join('\n'));
   if (browser) await browser.close().catch(() => {});
   for (const p of procs.reverse()) { try { p.kill('SIGTERM'); } catch (e) { /* ya terminó */ } }
 }
