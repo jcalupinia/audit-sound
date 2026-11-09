@@ -5,6 +5,7 @@
 #include "id3_meta.hpp"
 #include "last_error.hpp"
 #include "automix/mix_points.hpp"
+#include "voice/voice_mixer.hpp"
 #include "silence.hpp"
 
 #include "signalsmith-stretch.h"
@@ -452,6 +453,7 @@ struct Engine : public IAudioRenderer
   std::atomic<bool> reconnecting{false};
   std::atomic<bool> managingStream{false};
   std::vector<float> mixAL, mixAR, mixBL, mixBR;
+  VoiceMixer voice;  // micrófonos del DJ en vivo + talkover (solo salida estéreo)
 
   Engine() {
     mixAL.assign(kMaxCallbackFrames, 0.0f);
@@ -847,11 +849,17 @@ struct Engine : public IAudioRenderer
         }
       }
     } else {
+      // Música en mixAL/mixAR; luego la voz en vivo (atenúa la música si hay talkover) y recorte.
       for (int i = 0; i < n; ++i) {
-        const float l = (mixAL[i] * gainA + mixBL[i] * gainB) * m;
-        const float r = (mixAR[i] * gainA + mixBR[i] * gainB) * m;
-        out[i * channels + 0] = std::max(-1.0f, std::min(1.0f, l));
-        out[i * channels + 1] = std::max(-1.0f, std::min(1.0f, r));
+        mixAL[i] = (mixAL[i] * gainA + mixBL[i] * gainB) * m;
+        mixAR[i] = (mixAR[i] * gainA + mixBR[i] * gainB) * m;
+      }
+      const int sr = engineSampleRate.load();
+      if (voice.engineRate() != sr) voice.setEngineRate(sr);
+      voice.process(mixAL.data(), mixAR.data(), n);
+      for (int i = 0; i < n; ++i) {
+        out[i * channels + 0] = std::max(-1.0f, std::min(1.0f, mixAL[i]));
+        out[i * channels + 1] = std::max(-1.0f, std::min(1.0f, mixAR[i]));
         for (int c = 2; c < channels; ++c) {
           out[i * channels + c] = 0.0f;
         }
@@ -1384,6 +1392,31 @@ void dj_set_stream_title(DjEngine engine, const char* title) {
   (void)engine;
   (void)title;
 #endif
+}
+
+int dj_voice_push(DjEngine engine, const short* pcm16, int frames, int sample_rate) {
+  if (!engine) return 0;
+  return asEngine(engine)->voice.push(reinterpret_cast<const int16_t*>(pcm16), frames, sample_rate);
+}
+
+void dj_set_talkover(DjEngine engine, int mode, float voice_gain, float duck_db) {
+  if (!engine) return;
+  VoiceMixer& v = asEngine(engine)->voice;
+  v.talkover.store(mode < 0 || mode > 2 ? 2 : mode);
+  if (voice_gain >= 0) v.voiceGain.store(std::min(4.0f, voice_gain));
+  if (duck_db <= 0 && duck_db >= -60) v.duckDb.store(duck_db);
+}
+
+void dj_voice_status(DjEngine engine, DjVoiceStatus* st) {
+  if (!engine || !st) return;
+  const VoiceMixer& v = asEngine(engine)->voice;
+  st->active = v.active() ? 1 : 0;
+  st->talkover = v.talkover.load();
+  st->level_db = v.levelDb();
+  st->music_gain = v.musicGain();
+  st->buffered_ms = v.bufferedMs();
+  st->received_seconds = (double)v.receivedSamples() / (double)std::max(1, v.engineRate());
+  st->underruns = (unsigned)v.underruns();
 }
 
 void dj_set_master(DjEngine engine, float linear) {

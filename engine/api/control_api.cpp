@@ -68,7 +68,9 @@ struct Session {
 // Buffer del cuerpo de la petición (POST). Se libera en el callback de término.
 struct ReqCtx {
   std::string body;
+  bool tooBig = false;  // cuerpo por encima de kMaxBody: se descarta y se responde 413
 };
+constexpr size_t kMaxBody = 256 * 1024;  // 256 KB: ~2,7 s de voz a 48 kHz por petición
 
 struct Api {
   struct MHD_Daemon* daemon = nullptr;
@@ -301,10 +303,12 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
 
   // Acumular el cuerpo del POST entre invocaciones.
   if (0 == std::strcmp(method, "POST") && *upload_size != 0) {
-    ctx->body.append(upload_data, *upload_size);
+    if (ctx->body.size() + *upload_size > kMaxBody) ctx->tooBig = true;
+    else ctx->body.append(upload_data, *upload_size);
     *upload_size = 0;
     return MHD_YES;
   }
+  if (ctx->tooBig) return reply(c, 413, "{\"error\":\"cuerpo demasiado grande\"}");
 
   const std::string path = url;
   if (0 == std::strcmp(method, "OPTIONS")) return reply(c, 200, "{}");
@@ -460,12 +464,41 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
     std::string out = head;
     out += deckJson(api, 0) + "," + deckJson(api, 1) + "]";
     {
+      DjVoiceStatus vs{};
+      dj_voice_status(api->engine, &vs);
+      char vb[256];
+      std::snprintf(vb, sizeof(vb),
+                    ",\"voice\":{\"active\":%s,\"talkover\":%d,\"level_db\":%.1f,\"music_gain\":%.3f,"
+                    "\"buffered_ms\":%d,\"received_s\":%.1f,\"underruns\":%u}",
+                    vs.active ? "true" : "false", vs.talkover, vs.level_db, vs.music_gain, vs.buffered_ms,
+                    vs.received_seconds, vs.underruns);
+      out += vb;
+    }
+    {
       std::lock_guard<std::mutex> lq(api->queueMu);
       out += ",\"queue\":" + api->queueJsonLocked() + ",\"next_source\":\"" +
              (api->agentQueue.empty() ? "selector" : "agent") + "\"";
     }
     out += "}";
     return reply(c, 200, out);
+  }
+
+  // Micrófonos del DJ en vivo: PCM 16 bits mono little-endian en el cuerpo, frecuencia en ?sr=.
+  // Solo el controlador (el agente) puede enviar voz: nadie más mete audio en el stream.
+  if (path == "/api/voice" && 0 == std::strcmp(method, "POST")) {
+    if (api->controller != tok)
+      return reply(c, 409,
+                   "{\"error\":\"control_held\",\"controller\":\"" + api->controllerName() + "\"}");
+    const int sr = argi(c, "sr", 48000);
+    if (sr < 8000 || sr > 96000) return reply(c, 400, "{\"error\":\"sr inválido\"}");
+    if (ctx->body.size() < 2 || ctx->body.size() % 2) return reply(c, 400, "{\"error\":\"PCM 16 bits mono\"}");
+    std::vector<short> pcm(ctx->body.size() / 2);
+    std::memcpy(pcm.data(), ctx->body.data(), pcm.size() * 2);
+    const int n = dj_voice_push(api->engine, pcm.data(), (int)pcm.size(), sr);
+    DjVoiceStatus st{};
+    dj_voice_status(api->engine, &st);
+    return reply(c, 200, "{\"ok\":true,\"accepted\":" + std::to_string(n) + ",\"buffered_ms\":" +
+                             std::to_string(st.buffered_ms) + "}");
   }
 
   if (path == "/api/command" && 0 == std::strcmp(method, "POST")) {
@@ -533,6 +566,9 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
       dj_set_rate(e, d, (float)argf(c, "value", 1.0));
     } else if (0 == std::strcmp(action, "gain")) {
       dj_set_gain(e, d, (float)argf(c, "value", 1.0));
+    } else if (0 == std::strcmp(action, "talkover")) {
+      // value: 0 sin atenuar · 1 atenuar siempre · 2 automático; gain (voz, lineal) y duck (dB).
+      dj_set_talkover(e, argi(c, "value", 2), (float)argf(c, "gain", -1.0), (float)argf(c, "duck", 1.0));
     } else if (0 == std::strcmp(action, "skip")) {
       automix_skip(api->automix);
     } else if (0 == std::strcmp(action, "set_transition")) {

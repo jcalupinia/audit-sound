@@ -18,7 +18,9 @@ function changeControl(el){const d=el.dataset,k=d.change;if(!k)return;let n=Numb
  case 'autonomy':state.agentAutonomy=n;command('agent.policy',{autonomy:n});break;
  case 'agent-model':state.agentModel=el.value;command('agent.policy',{model:el.value});break;
  case 'agent-approval':state.agentApproval=el.value==='true';command('agent.policy',{approval:state.agentApproval});break;
- case 'mic-gain':case 'mic-hi':case 'mic-low':{let m=state.mics.find(m=>m.id===Number(d.id));if(m)m[k.split('-')[1]]=n;command('mic.channel',{id:d.id,field:k.split('-')[1],value:n});break}
+ case 'mic-gain':case 'mic-hi':case 'mic-low':micAction('mic-param',d.id,{field:k.split('-')[1],n});command('mic.channel',{id:d.id,field:k.split('-')[1],value:n},'LOCAL');break;
+ case 'mic-device':micAction('mic-device',d.id,el.value);break;
+ case 'talkover-mode':micAction('talkover',null,el.value);break;
  case 'fx-type':case 'fx-channel':case 'fx-wet':case 'fx-param':case 'fx-sync':{let f=state.fx.find(f=>f.id===Number(d.id));if(!f)return;let key=({ 'fx-type':'type','fx-channel':'channel','fx-wet':'wet','fx-param':'parameter','fx-sync':'bpmSync'})[k];f[key]=key==='bpmSync'?el.checked:['wet','parameter'].includes(key)?n:el.value;command('fx.control',{bank:d.id,field:key,value:f[key]});break}
  case 'permission':updateRole(d.role,d.permission,el.checked);break;
  default:console.warn('UNHANDLED_CHANGE',k)

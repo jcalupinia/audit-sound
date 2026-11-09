@@ -97,3 +97,42 @@ def test_motor_antiguo_se_degrada_sin_fallar():
     assert not ad.tracks()[0].has_metadata
     with pytest.raises(EngineCapabilityError):
         ad.execute("queue_set", {"track_ids": [0]})
+
+
+def test_voz_se_envia_como_pcm_al_motor_y_talkover_como_comando():
+    vistos: list[httpx.Request] = []
+
+    def motor(req: httpx.Request) -> httpx.Response:
+        vistos.append(req)
+        if req.url.path == "/api/login":
+            return httpx.Response(200, json={"token": "t1", "youAreController": True})
+        if req.url.path == "/api/voice":
+            return httpx.Response(200, json={"ok": True, "accepted": len(req.content) // 2, "buffered_ms": 140})
+        if req.url.path == "/api/command":
+            return httpx.Response(200, json={"ok": True})
+        if req.url.path == "/api/status":
+            return httpx.Response(200, json={"mode": "auto", "decks": [], "queue": [], "voice": {"active": False}})
+        return httpx.Response(404)
+
+    a = ControlApiAdapter("http://engine:8787", "agente", "clave", transport=httpx.MockTransport(motor))
+    r = a.voice_push(b"\x01\x00" * 480, 48000)
+    voz = next(q for q in vistos if q.url.path == "/api/voice")
+    assert r["accepted"] == 480 and voz.url.params["sr"] == "48000" and voz.content == b"\x01\x00" * 480
+    assert voz.headers["content-type"] == "application/octet-stream"
+    a.talkover(1, 1.2, -18)
+    cmd = next(q for q in vistos if q.url.path == "/api/command")
+    assert dict(cmd.url.params) == {"action": "talkover", "value": "1", "gain": "1.2", "duck": "-18.0"}
+    a.status()
+    assert "voice" in a.capabilities()
+
+
+def test_motor_antiguo_sin_voz():
+    def motor(req: httpx.Request) -> httpx.Response:
+        if req.url.path == "/api/login":
+            return httpx.Response(200, json={"token": "t1", "youAreController": True})
+        return httpx.Response(404, json={"error": "no encontrado"})
+
+    a = ControlApiAdapter("http://engine:8787", "agente", "clave", transport=httpx.MockTransport(motor))
+    with pytest.raises(EngineCapabilityError) as e:
+        a.voice_push(b"\x00\x00", 48000)
+    assert e.value.code == "voice_unsupported"

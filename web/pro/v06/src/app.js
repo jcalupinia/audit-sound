@@ -139,7 +139,7 @@ function deckCard(side){let d=state.deck[side],track=state.tracks.find(t=>t.id==
 function mixerCard(){return `<article class="panel mixer"><h2>MEZCLADORA</h2><div class="mixercols">${['A','B'].map(side=>{let eq=state.deck[side].eq;return `<div class="mixercol"><strong style="font-size:11px;color:${side==='A'?'#8cf873':'#69c9ff'}">CH ${side}</strong>${[['gain','GAIN',0,200],['hi','HI',-12,12],['mid','MID',-12,12],['low','LOW',-12,12],['fader','VOL',0,100]].map(([k,l,min,max])=>`<label>${l}<input type="range" name="${k}" min="${min}" max="${max}" value="${eq[k]}" data-change="eq" data-deck="${side}"></label>`).join('')}${button(state.deck[side].cue?'🎧 ON':'🎧 CUE','deck-monitor',{deck:side},state.deck[side].cue?'active':'')}</div>`}).join('')}</div><div class="vu" aria-label="Medidor decorativo, pendiente de señal real">${Array.from({length:12},(_,i)=>`<i style="height:${16+(i*17%52)}%"></i>`).join('')}</div>${slider('cross','A / B',state.audioCross,0,100,'data-change="audio-cross"')}${slider('master','MASTER',state.master,0,100,'data-change="master"')}<small>EQ/Fader local mediante Web Audio. Medidor VU real y salida CUE separada requieren integración.</small></article>`}
 function programPreview(){return `<div class="video-trio"><article class="panel"><div class="panel-head"><h2>◉ Previsualización · Preparar</h2>${tag('MEZCLA A/B','blue')}</div><div class="monitor-picture"><div class="vj-slot" data-vslot="preview"></div></div><div class="flex between spaced"><small>Video A/B · ${state.videoMix}% hacia B</small>${button('Abrir mezcladora de video','navigate',{page:'video'})}</div></article><article class="panel"><div class="panel-head"><h2>⦿ Salida en vivo · Programa</h2>${tag(state.videoLive?'PROGRAMA LOCAL':'SIN TRANSMISIÓN',state.videoLive?'ok':'pending')}</div><div class="monitor-picture" id="console-program"><div class="vj-slot" data-vslot="program"></div></div><div class="flex between spaced"><small>No está transmitiendo a espectadores.</small>${button('Enviar a programa','video-take',{},'primary')}</div></article></div>`}
 function agentCompact(){return `<aside class="panel console-agent"><div class="assist-top"><div class="avatar" role="img" aria-label="DJ IA Copiloto"></div><div><h2>IA Copiloto</h2><small>Sugerencias y decisiones</small>${tag('QWEN / DEEPSEEK OFFLINE','pending')}</div></div><div class="statuslist"><div>Qwen (operativo) ${tag('NO CONECTADO','pending')}</div><div>DeepSeek API ${tag('NO CONECTADO','pending')}</div><div>Motor C++ ${tag('NO CONECTADO','pending')}</div></div><div class="assist-chat" id="compact-chat">${state.chat.slice(-6).map(m=>`<div class="bubble ${m.who==='user'?'user':'system'}">${esc(m.text)}</div>`).join('')}</div><form data-form="agent" class="stack-sm"><textarea class="assist-text" name="message" placeholder="Escribe una instrucción al DJ…" required></textarea><div class="flex wrap">${button('🎙 Dictar','agent-voice') }<button type="submit" class="primary grow">Enviar orden</button></div></form><div class="pillbar spaced">${button('Sesión 4 horas','agent-suggestion',{prompt:'Planifica una sesión de cuatro horas'})}${button('Subir energía','agent-suggestion',{prompt:'Aumenta progresivamente la energía'})}${button('Evitar repetidas','agent-suggestion',{prompt:'Evita repetir pistas recientes'})}</div><div class="divider"></div><h3>Resiliencia</h3>${Object.entries(state.agentRules).slice(0,3).map(([key,val])=>`<label class="toggle" style="display:flex;margin:6px 0"><input type="checkbox" data-change="rule" data-rule="${key}" ${val?'checked':''}>${({fallback:'AutoMix de respaldo',silence:'Detector de silencio',noRepeat:'Evitar repetidas'})[key]}</label>`).join('')}${button('Administrar agente','navigate',{page:'agente'})}</aside>`}
-function consolePage(){return `${screenHero()}${modes()}<div class="console-grid"><div class="console-main">${programPreview()}<div class="audiorow">${deckCard('A')}${mixerCard()}${deckCard('B')}</div>${card('Micrófonos, auxiliares y efectos',`<div class="grid2"><div><h3>Canales de micrófono</h3>${state.mics.map(m=>`<div class="flex between wrap compact" style="margin-bottom:8px"><span>${esc(m.name)}</span>${button(m.mute?'MUTE':'ACTIVO','mic-mute',{id:m.id},m.mute?'':'active')}${slider('gain','Ganancia',m.gain,0,100,`data-change="mic-gain" data-id="${m.id}"`)}</div>`).join('')}${button(state.talkover?'Talkover ON':'Talkover OFF','talkover',{},state.talkover?'active':'')}${button('Más controles','navigate',{page:'microfonos'})}</div><div><h3>Bancos FX</h3>${state.fx.map(f=>`<div class="flex between wrap" style="margin:9px 0"><strong>FX${f.id} ${esc(f.type)}</strong>${button(f.on?'ENCENDIDO':'APAGADO','fx-toggle',{id:f.id},f.on?'active':'')}${slider('wet','Dry/Wet',f.wet,0,100,`data-change="fx-wet" data-id="${f.id}"`)}</div>`).join('')}${button('Editor de efectos','navigate',{page:'efectos'})}</div></div>`)}${card('Biblioteca y lista de reproducción',`<div class="flex between wrap"><span>${state.tracks.length} archivos / referencias · ${state.queue.length} en cola</span><label class="btn">+ Importar audio, video e imágenes<input type="file" accept="audio/*,video/*,image/*" data-file="library" multiple hidden></label>${button('Abrir biblioteca','navigate',{page:'biblioteca'})}</div><div class="stack-sm spaced">${state.queue.slice(0,4).map((id,i)=>{let t=state.tracks.find(t=>t.id===id);return `<div class="listrow"><strong>${i+1}. ${esc(t?.name||'Archivo eliminado')}</strong>${button('Quitar','queue-remove',{index:i})}</div>`}).join('')||'<p class="muted">Cola vacía</p>'}</div>`)}${statusBar()}</div>${agentCompact()}</div>`}
+function consolePage(){return `${screenHero()}${modes()}<div class="console-grid"><div class="console-main">${programPreview()}<div class="audiorow">${deckCard('A')}${mixerCard()}${deckCard('B')}</div>${card('Micrófonos, auxiliares y efectos',`<div class="grid2"><div><h3>Canales de micrófono</h3>${state.mics.map(m=>`<div class="flex between wrap compact" style="margin-bottom:8px"><span>${esc(m.name)}</span>${button(m.mute?'MUTE':'ACTIVO','mic-mute',{id:m.id},m.mute?'':'active')}${slider('gain','Ganancia',m.gain,0,100,`data-change="mic-gain" data-id="${m.id}"`)}</div>`).join('')}${button('Talkover: '+({auto:'AUTO',on:'SIEMPRE',off:'APAGADO'}[state.talkover]||'AUTO'),'talkover',{},state.talkover!=='off'?'active':'')}${button('Abrir micrófonos','navigate',{page:'microfonos'})}</div><div><h3>Bancos FX</h3>${state.fx.map(f=>`<div class="flex between wrap" style="margin:9px 0"><strong>FX${f.id} ${esc(f.type)}</strong>${button(f.on?'ENCENDIDO':'APAGADO','fx-toggle',{id:f.id},f.on?'active':'')}${slider('wet','Dry/Wet',f.wet,0,100,`data-change="fx-wet" data-id="${f.id}"`)}</div>`).join('')}${button('Editor de efectos','navigate',{page:'efectos'})}</div></div>`)}${card('Biblioteca y lista de reproducción',`<div class="flex between wrap"><span>${state.tracks.length} archivos / referencias · ${state.queue.length} en cola</span><label class="btn">+ Importar audio, video e imágenes<input type="file" accept="audio/*,video/*,image/*" data-file="library" multiple hidden></label>${button('Abrir biblioteca','navigate',{page:'biblioteca'})}</div><div class="stack-sm spaced">${state.queue.slice(0,4).map((id,i)=>{let t=state.tracks.find(t=>t.id===id);return `<div class="listrow"><strong>${i+1}. ${esc(t?.name||'Archivo eliminado')}</strong>${button('Quitar','queue-remove',{index:i})}</div>`}).join('')||'<p class="muted">Cola vacía</p>'}</div>`)}${statusBar()}</div>${agentCompact()}</div>`}
 
 function homePage(){return `${pageTitle('Audit Sound Command Center','Elige tu experiencia de trabajo. Componentes reales, integración backend pendiente.')}<div class="grid2"><section class="panel" style="min-height:215px;background:linear-gradient(135deg,#0e3727,#0a1925)"><div class="micro green">MEZCLADORA PROFESIONAL</div><h1 style="margin:17px 0">🎛 Mezclar</h1><p>Decks musicales, FX, micrófonos, video A/B, agente DJ y programa audiovisual.</p>${button('Entrar a la consola profesional','navigate',{page:'consola'},'primary')}</section><section class="panel" style="min-height:215px;background:linear-gradient(135deg,#102943,#122225)"><div class="micro blue">AUDIT SOUND 24/7</div><h1 style="margin:17px 0">◉ Escuchar en vivo</h1><p>Reproductor de emisoras HTTP(S). No habilita una transmisión desde la demo.</p>${button('Abrir reproductor','navigate',{page:'en-vivo'},'primary')}</section></div><div class="grid3 spaced">${[['Agente DJ','agente','✧'],['Biblioteca','biblioteca','♫'],['Eventos','eventos','▤']].map(([t,p,i])=>`<div class="panel"><h2>${i} ${t}</h2><p class="muted">Abrir módulo y configurar comandos.</p>${button('Abrir','navigate',{page:p})}</div>`).join('')}</div>`}
 function simplePage(){return `${pageTitle('Consola sencilla','Control esencial con los mismos decks y estado que la consola profesional.',button('Vista profesional','navigate',{page:'consola'},'primary'))}${modes()}<div class="grid2">${['A','B'].map(x=>{let d=state.deck[x],track=state.tracks.find(t=>t.id===d.track);return card('DECK '+x,`<div class="center"><div class="jog" style="margin:0 auto 15px">${x}</div><h2>${esc(track?.name||'Sin pista')}</h2><p class="muted">${esc(track?.artist||'Cargar un archivo de audio')}</p>${button(d.playing?'❚❚ PAUSA':'▶ PLAY','deck-play',{deck:x},'primary')}${button('CUE','deck-cue',{deck:x})}<div class="spaced">${slider('volume','Volumen',d.eq.fader,0,100,`data-change="eq" data-deck="${x}" data-field="fader"`)}</div><label class="btn">+ Cargar pista<input type="file" accept="audio/*" data-file="audio-${x}" hidden></label></div>`) }).join('')}</div><div class="panel spaced">${slider('cross','Crossfader',state.audioCross,0,100,'data-change="audio-cross"')}${slider('master','Master',state.master,0,100,'data-change="master"')}</div>`}
@@ -227,11 +227,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'video-stop':state.videoLive=false;command('video.program',{op:'stop'},'LOCAL');render();break;
  case 'video-sync':{let a=vjVideo('A'),b=vjVideo('B');if(a&&b&&a.duration&&b.duration)b.currentTime=Math.min(a.currentTime,b.duration);command('video.transport',{op:'sync-local'},'LOCAL');toast('Sincronización aproximada de reproductores HTML5; sin precisión de cuadros.');break}
  case 'video-fullscreen':{let el=VJ.program&&VJ.program.isConnected?VJ.program:document.querySelector('[data-output=program]');if(el?.requestFullscreen)await el.requestFullscreen();else toast('La pantalla completa no está disponible.',true);break}
- case 'mic-enable':{let m=state.mics.find(m=>m.id===Number(id));if(m)m.enabled=!m.enabled;command('mic.channel',{id,enabled:m?.enabled});save();render();break}
- case 'mic-mute':{let m=state.mics.find(m=>m.id===Number(id));if(m)m.mute=!m.mute;command('mic.channel',{id,mute:m?.mute});save();render();break}
- case 'talkover':state.talkover=!state.talkover;command('mic.talkover',{enabled:state.talkover});save();render();toast('Talkover UI actualizado. Ducking de micrófono requiere motor backend.');break;
- case 'mic-permission':{if(!navigator.mediaDevices?.getUserMedia){toast('Micrófono requiere HTTPS/localhost y permiso explícito.',true);return}microphoneStream=await navigator.mediaDevices.getUserMedia({audio:true});toast('Permiso concedido. La captura no se envía ni se monitorea.');microphoneStream.getTracks().forEach(t=>t.stop());microphoneStream=null;break}
- case 'devices-list':{if(!navigator.mediaDevices?.enumerateDevices){toast('Enumeración no disponible en este contexto.',true);return}let devices=await navigator.mediaDevices.enumerateDevices();let el=document.getElementById('device-list');if(el)el.innerHTML=devices.filter(x=>x.kind==='audioinput'||x.kind==='audiooutput').map((d,i)=>`<div class="listrow">${esc(d.label||d.kind+' '+(i+1))} (${esc(d.kind)})</div>`).join('')||'<p>Sin dispositivos detectados.</p>';break}
+ case 'mic-enable':case 'mic-mute':case 'talkover':case 'mic-permission':case 'devices-list':case 'mic-monitor':case 'mic-stream':case 'mic-processing':await micAction(n,id);break;
  case 'fx-toggle':{let f=state.fx.find(f=>f.id===Number(id));if(f)f.on=!f.on;command('fx.control',{bank:id,enabled:f?.on});save();render();break}
  case 'fx-save-preset':{let f=state.fx.find(f=>f.id===Number(id));if(!f)return;let name=window.prompt('Nombre del preset',f.type+' FX'+id);if(!name?.trim())return;state.fxPresets.push({id:uid('preset'),name:name.trim(),bank:f.id,type:f.type,channel:f.channel,wet:f.wet,parameter:f.parameter,bpmSync:f.bpmSync});command('fx.preset',{bank:f.id,name});save();render();break}
  case 'fx-apply-preset':{let p=state.fxPresets.find(p=>p.id===id);if(!p)return;let f=state.fx.find(f=>f.id===p.bank);if(f)Object.assign(f,{type:p.type,channel:p.channel,wet:p.wet,parameter:p.parameter,bpmSync:p.bpmSync});command('fx.control',{preset:id});save();render();break}
@@ -284,7 +280,9 @@ function changeControl(el){const d=el.dataset,k=d.change;if(!k)return;let n=Numb
  case 'autonomy':state.agentAutonomy=n;command('agent.policy',{autonomy:n});break;
  case 'agent-model':state.agentModel=el.value;command('agent.policy',{model:el.value});break;
  case 'agent-approval':state.agentApproval=el.value==='true';command('agent.policy',{approval:state.agentApproval});break;
- case 'mic-gain':case 'mic-hi':case 'mic-low':{let m=state.mics.find(m=>m.id===Number(d.id));if(m)m[k.split('-')[1]]=n;command('mic.channel',{id:d.id,field:k.split('-')[1],value:n});break}
+ case 'mic-gain':case 'mic-hi':case 'mic-low':micAction('mic-param',d.id,{field:k.split('-')[1],n});command('mic.channel',{id:d.id,field:k.split('-')[1],value:n},'LOCAL');break;
+ case 'mic-device':micAction('mic-device',d.id,el.value);break;
+ case 'talkover-mode':micAction('talkover',null,el.value);break;
  case 'fx-type':case 'fx-channel':case 'fx-wet':case 'fx-param':case 'fx-sync':{let f=state.fx.find(f=>f.id===Number(d.id));if(!f)return;let key=({ 'fx-type':'type','fx-channel':'channel','fx-wet':'wet','fx-param':'parameter','fx-sync':'bpmSync'})[k];f[key]=key==='bpmSync'?el.checked:['wet','parameter'].includes(key)?n:el.value;command('fx.control',{bank:d.id,field:key,value:f[key]});break}
  case 'permission':updateRole(d.role,d.permission,el.checked);break;
  default:console.warn('UNHANDLED_CHANGE',k)
@@ -784,6 +782,252 @@ window.__ASVJ={get mode(){return VJ.mode},get fps(){return VJ.fps},get drawn(){r
     const g=t.getContext('2d');g.drawImage(c,0,0);return Array.from(g.getImageData(Math.round(x*c.width),Math.round(y*c.height),1,1).data)},
   video(deck){const v=VJ.el[deck];return v?{src:!!v.getAttribute('src'),paused:v.paused,time:v.currentTime,ready:v.readyState,connected:v.isConnected}:null}};
 
+
+// ===== 07b · Micrófonos reales y talkover =====
+// Hasta ahora los canales de micrófono eran solo controles. Aquí se conectan de verdad:
+//  - cada canal habilitado abre su micrófono (getUserMedia) con su ganancia, EQ (graves/agudos) y MUTE;
+//  - medidor de nivel en vivo; «Escuchar en la sala» envía la voz a la salida de este equipo (apagado
+//    por defecto para evitar acople/feedback);
+//  - talkover: Automático (la música baja al hablar), Siempre o Apagado. En este equipo atenúa la música
+//    del navegador; en el stream lo aplica el motor del servidor;
+//  - «Enviar al stream»: la voz viaja por el agente (/sessions/{id}/voice, solo operador/admin) al motor,
+//    que la mezcla con la música antes de Icecast. La música nunca depende de la voz: si se corta, sigue.
+const MIC={ctx:null,bus:null,analyser:null,monitor:null,duck:null,ch:{},ws:null,wsOpen:false,node:null,
+  pend:[],pendLen:0,level:-120,hold:0,stats:null,error:'',raf:0,sending:false,ducked:false};
+const MIC_TALK={auto:2,on:1,off:0};
+const MIC_TALK_LABEL={auto:'Automático (baja al hablar)',on:'Siempre (música atenuada)',off:'Apagado'};
+// Migración del estado anterior (talkover booleano).
+if(typeof state.talkover==='boolean')state.talkover=state.talkover?'on':'auto';
+if(!state.talkover)state.talkover='auto';
+if(state.micMonitor===undefined)state.micMonitor=false;
+if(state.micToStream===undefined)state.micToStream=false;
+if(state.micProcessing===undefined)state.micProcessing=true;   // cancelación de eco y supresión de ruido
+for(const m of state.mics){if(m.device===undefined)m.device='';m.enabled=false}  // el permiso no persiste entre recargas
+
+function micCtx(){
+  if(MIC.ctx)return MIC.ctx;
+  const g=initAudio();             // mismo AudioContext que la música del navegador (para el talkover local)
+  const ctx=g.ctx;
+  MIC.ctx=ctx;
+  MIC.bus=ctx.createGain();
+  MIC.analyser=ctx.createAnalyser();MIC.analyser.fftSize=1024;
+  MIC.monitor=ctx.createGain();MIC.monitor.gain.value=state.micMonitor?1:0;
+  MIC.bus.connect(MIC.analyser);MIC.bus.connect(MIC.monitor);MIC.monitor.connect(ctx.destination);
+  // Talkover local: la música del navegador pasa por un nodo de atenuación antes de la salida.
+  MIC.duck=ctx.createGain();
+  try{g.master.disconnect()}catch(e){}
+  g.master.connect(MIC.duck);MIC.duck.connect(ctx.destination);
+  micLoop();
+  return ctx;
+}
+
+function micApply(m){
+  const c=MIC.ch[m.id];if(!c)return;
+  const t=MIC.ctx.currentTime;
+  c.gain.gain.setTargetAtTime((m.gain/100)*1.5,t,0.02);   // 0..150 %
+  c.low.gain.setTargetAtTime(m.low,t,0.02);
+  c.hi.gain.setTargetAtTime(m.hi,t,0.02);
+  c.mute.gain.setTargetAtTime(m.mute?0:1,t,0.01);
+}
+
+async function micOpen(m){
+  if(!navigator.mediaDevices?.getUserMedia)throw Error('El micrófono necesita HTTPS (o localhost) y permiso del navegador.');
+  const ctx=micCtx();
+  if(ctx.state==='suspended')try{await ctx.resume()}catch(e){}
+  const stream=await navigator.mediaDevices.getUserMedia({audio:{deviceId:m.device?{exact:m.device}:undefined,
+    echoCancellation:state.micProcessing,noiseSuppression:state.micProcessing,autoGainControl:false}});
+  const src=ctx.createMediaStreamSource(stream);
+  const low=ctx.createBiquadFilter();low.type='lowshelf';low.frequency.value=180;
+  const hi=ctx.createBiquadFilter();hi.type='highshelf';hi.frequency.value=5000;
+  const gain=ctx.createGain(),mute=ctx.createGain();
+  src.connect(low);low.connect(hi);hi.connect(gain);gain.connect(mute);mute.connect(MIC.bus);
+  MIC.ch[m.id]={stream,src,low,hi,gain,mute,label:stream.getAudioTracks()[0]?.label||''};
+  micApply(m);
+}
+
+function micClose(id){
+  const c=MIC.ch[id];if(!c)return;
+  try{c.mute.disconnect()}catch(e){}
+  c.stream.getTracks().forEach(t=>t.stop());
+  delete MIC.ch[id];
+}
+
+function micAnyOpen(){return Object.keys(MIC.ch).length>0}
+
+// Nivel, talkover local y medidores, sin redibujar la página.
+function micLoop(){
+  const buf=new Float32Array(1024);
+  const tick=()=>{
+    MIC.raf=requestAnimationFrame(tick);
+    if(!MIC.analyser)return;
+    MIC.analyser.getFloatTimeDomainData(buf);
+    let s=0;for(let i=0;i<buf.length;i++)s+=buf[i]*buf[i];
+    const rms=Math.sqrt(s/buf.length),db=rms>1e-6?20*Math.log10(rms):-120;
+    MIC.level=db;
+    const now=performance.now();
+    if(db>-42)MIC.hold=now+600;
+    const duck=micAnyOpen()&&(state.talkover==='on'||(state.talkover==='auto'&&now<MIC.hold));
+    if(duck!==MIC.ducked&&MIC.duck){
+      MIC.ducked=duck;
+      MIC.duck.gain.setTargetAtTime(duck?0.2:1,MIC.ctx.currentTime,duck?0.03:0.12);   // −14 dB
+    }
+    const pct=Math.max(0,Math.min(100,(db+60)/60*100));
+    document.querySelectorAll('[data-mic-vu]').forEach(el=>{el.style.width=pct.toFixed(0)+'%';el.dataset.db=db.toFixed(1)});
+    document.querySelectorAll('[data-mic-duck]').forEach(el=>{el.textContent=MIC.ducked?'MÚSICA ATENUADA':'música a volumen normal'});
+  };
+  tick();
+}
+
+// ---------- envío al stream (por el agente) ----------
+const MIC_WORKLET=`class AsMicTap extends AudioWorkletProcessor{process(i){const c=i[0]&&i[0][0];if(c)this.port.postMessage(c.slice(0));return true}}registerProcessor('as-mic-tap',AsMicTap)`;
+
+async function micTap(){
+  if(MIC.node)return;
+  const ctx=micCtx();
+  const onBlock=(f32)=>{
+    if(!MIC.wsOpen)return;
+    MIC.pend.push(f32);MIC.pendLen+=f32.length;
+    if(MIC.pendLen<ctx.sampleRate/10)return;   // bloques de ~100 ms
+    const out=new Int16Array(MIC.pendLen);let o=0;
+    for(const b of MIC.pend)for(let i=0;i<b.length;i++){const v=Math.max(-1,Math.min(1,b[i]));out[o++]=v<0?v*32768:v*32767}
+    MIC.pend=[];MIC.pendLen=0;
+    if(MIC.ws&&MIC.ws.readyState===1&&MIC.ws.bufferedAmount<512*1024)MIC.ws.send(out.buffer);
+  };
+  if(ctx.audioWorklet){
+    const url=URL.createObjectURL(new Blob([MIC_WORKLET],{type:'application/javascript'}));
+    try{await ctx.audioWorklet.addModule(url)}finally{URL.revokeObjectURL(url)}
+    const n=new AudioWorkletNode(ctx,'as-mic-tap',{numberOfInputs:1,numberOfOutputs:0,channelCount:1,channelCountMode:'explicit'});
+    n.port.onmessage=(e)=>onBlock(e.data);
+    MIC.bus.connect(n);MIC.node=n;
+  }else{
+    const n=ctx.createScriptProcessor(2048,1,1);
+    n.onaudioprocess=(e)=>onBlock(e.inputBuffer.getChannelData(0).slice(0));
+    const sink=ctx.createGain();sink.gain.value=0;n.connect(sink);sink.connect(ctx.destination);
+    MIC.bus.connect(n);MIC.node=n;
+  }
+}
+
+function micSendTalkover(){
+  if(MIC.ws&&MIC.ws.readyState===1)MIC.ws.send(JSON.stringify({type:'talkover',mode:MIC_TALK[state.talkover]??2}));
+}
+
+async function micStreamStart(){
+  if(!agentLive())throw Error('Conecta primero el Agente DJ: la voz viaja al stream a través del agente.');
+  if(!micAnyOpen())throw Error('Habilita al menos un micrófono antes de enviarlo al stream.');
+  await micTap();
+  micStreamStop(true);
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+`${AGENT_BASE}/sessions/${AGENT.sid}/voice`;
+  const ws=new WebSocket(url);ws.binaryType='arraybuffer';
+  MIC.ws=ws;MIC.sending=true;MIC.error='';MIC.stats=null;
+  ws.onopen=()=>ws.send(JSON.stringify({type:'auth',token:agentGetToken(),sample_rate:Math.round(MIC.ctx.sampleRate)}));
+  ws.onmessage=(m)=>{let ev;try{ev=JSON.parse(m.data)}catch(e){return}
+    if(ev.type==='voice.ready'){MIC.wsOpen=true;micSendTalkover();toast('Micrófono al aire: tu voz se mezcla en el stream.');micPaint()}
+    else if(ev.type==='voice.stats'){MIC.stats=ev;MIC.error=ev.error||'';micPaint()}
+    else if(ev.type==='voice.error'){MIC.error=ev.code;micPaint()}};
+  ws.onclose=(e)=>{MIC.wsOpen=false;const was=MIC.sending;MIC.sending=false;MIC.ws=null;
+    const why={4401:'el agente no reconoció tu sesión',4403:'tu rol no permite hablar al stream (pide rol operador)',
+      4404:'la sesión del agente cambió; vuelve a conectar',4409:'este motor no admite micrófonos en vivo'}[e.code];
+    if(was&&why){MIC.error=why;toast('Micrófono fuera del stream: '+why+'.',true)}
+    state.micToStream=false;save();micPaint()};
+}
+
+function micStreamStop(silent){
+  const ws=MIC.ws;MIC.ws=null;MIC.wsOpen=false;MIC.sending=false;MIC.pend=[];MIC.pendLen=0;
+  if(ws)try{ws.close(1000)}catch(e){}
+  if(!silent)toast('Micrófono fuera del stream.');
+}
+
+// Repinta solo la tarjeta de estado del micrófono (no toda la página) para no perder el foco.
+function micPaint(){
+  const el=document.getElementById('mic-status');
+  if(el)el.innerHTML=micStatusHtml();
+  else if(state.page==='microfonos')render();
+}
+
+function micStatusHtml(){
+  const sending=MIC.sending&&MIC.wsOpen;
+  const st=MIC.stats;
+  const parts=[];
+  parts.push(sending?tag('AL AIRE EN EL STREAM','ok'):tag(agentLive()?'SOLO EN ESTE EQUIPO':'AGENTE NO CONECTADO',agentLive()?'pending':'demo'));
+  if(sending&&st)parts.push(`<small>${st.sent_s.toFixed(1)} s enviados · búfer del motor ${st.engine_buffer_ms} ms${st.dropped_s?` · ${st.dropped_s} s descartados por retraso`:''}</small>`);
+  if(MIC.error)parts.push(`<small class="red">Aviso: ${esc(MIC.error)}</small>`);
+  return parts.join(' ');
+}
+
+// ---------- acciones (las llama el despachador de 03/04) ----------
+async function micAction(action,id,value){
+  const m=id!=null?state.mics.find(x=>x.id===Number(id)):null;
+  switch(action){
+    case 'mic-enable':{
+      if(!m)return;
+      if(m.enabled){micClose(m.id);m.enabled=false;if(!micAnyOpen()&&MIC.sending)micStreamStop()}
+      else{try{await micOpen(m);m.enabled=true;m.mute=false;micApply(m)}catch(e){toast(micErr(e),true)}}
+      command('mic.channel',{id:m.id,enabled:m.enabled},'LOCAL');save();render();break}
+    case 'mic-mute':{if(!m)return;m.mute=!m.mute;micApply(m);command('mic.channel',{id:m.id,mute:m.mute},'LOCAL');save();render();break}
+    case 'mic-param':{if(!m)return;m[value.field]=value.n;micApply(m);save();break}
+    case 'mic-device':{if(!m)return;m.device=value||'';if(m.enabled){micClose(m.id);try{await micOpen(m)}catch(e){m.enabled=false;toast(micErr(e),true)}}save();render();break}
+    case 'talkover':{const order=['auto','on','off'];state.talkover=value&&MIC_TALK[value]!==undefined?value:order[(order.indexOf(state.talkover)+1)%3];
+      micSendTalkover();command('mic.talkover',{mode:state.talkover},'LOCAL');save();render();break}
+    case 'mic-monitor':{state.micMonitor=!state.micMonitor;if(MIC.monitor)MIC.monitor.gain.setTargetAtTime(state.micMonitor?1:0,MIC.ctx.currentTime,0.02);
+      if(state.micMonitor)toast('Escucha en la sala activada: si hay parlantes cerca del micrófono puede acoplarse (pitido).');save();render();break}
+    case 'mic-stream':{
+      if(MIC.sending){micStreamStop();state.micToStream=false}
+      else{try{await micStreamStart();state.micToStream=true}catch(e){toast(e.message,true)}}
+      save();render();break}
+    case 'mic-processing':{state.micProcessing=!state.micProcessing;
+      for(const x of state.mics)if(x.enabled){micClose(x.id);try{await micOpen(x)}catch(e){x.enabled=false;toast(micErr(e),true)}}
+      save();render();break}
+    case 'mic-permission':case 'devices-list':{await micListDevices(action==='mic-permission');break}
+  }
+}
+
+function micErr(e){
+  const n=e&&e.name;
+  if(n==='NotAllowedError')return 'El navegador bloqueó el micrófono: permite el acceso en el candado de la barra de direcciones.';
+  if(n==='NotFoundError'||n==='OverconstrainedError')return 'No se encontró ese micrófono. Conéctalo o elige otro.';
+  if(n==='NotReadableError')return 'Otro programa está usando el micrófono.';
+  return e&&e.message||'No se pudo abrir el micrófono.';
+}
+
+let MIC_DEVICES=[];
+async function micListDevices(ask){
+  if(!navigator.mediaDevices?.enumerateDevices){toast('Este navegador no permite listar micrófonos (necesita HTTPS).',true);return}
+  if(ask){try{const s=await navigator.mediaDevices.getUserMedia({audio:true});s.getTracks().forEach(t=>t.stop())}catch(e){toast(micErr(e),true);return}}
+  MIC_DEVICES=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
+  toast(MIC_DEVICES.length?`${MIC_DEVICES.length} micrófono(s) detectado(s).`:'No hay micrófonos conectados.');
+  render();
+}
+
+// ---------- pantalla ----------
+microphonesPage=function(){
+  const devs=[['','Micrófono predeterminado'],...MIC_DEVICES.map((d,i)=>[d.deviceId,d.label||('Micrófono '+(i+1))])];
+  const live=agentLive();
+  return `${pageTitle('Micrófonos y talkover','Tu voz entra a la mezcla: en este equipo y, si quieres, en el stream en vivo.')}
+  <section class="panel"><div class="panel-head"><h2>Nivel de voz</h2><span data-mic-duck class="micro muted">música a volumen normal</span></div>
+    <div class="micvu"><div class="micvu-bar" data-mic-vu style="width:0%"></div></div>
+    <div class="pillbar spaced">
+      ${button(MIC.sending?'⏹ Quitar del stream':'📡 Enviar al stream','mic-stream',{},MIC.sending?'active':'primary')}
+      ${button(state.micMonitor?'🔊 Escuchar en la sala: SÍ':'🔈 Escuchar en la sala: NO','mic-monitor',{},state.micMonitor?'active':'')}
+      ${button(state.micProcessing?'Procesamiento de voz: SÍ':'Procesamiento de voz: NO','mic-processing',{},state.micProcessing?'active':'')}
+      <label class="field compact">Talkover${sel('talkover',Object.entries(MIC_TALK_LABEL),state.talkover,'data-change="talkover-mode"')}</label>
+    </div>
+    <div id="mic-status" class="spaced">${micStatusHtml()}</div>
+    ${live?'':'<div class="callout spaced">Para que tu voz salga en el stream conecta primero el <strong>Agente DJ</strong> (con tu sesión AUDIT-IA). Sin agente, el micrófono funciona solo en este equipo.</div>'}
+  </section>
+  <div class="grid2 spaced">${state.mics.map(m=>`<section class="panel"><div class="panel-head"><h2>🎙 ${esc(m.name)}</h2>${tag(m.enabled?(m.mute?'ABIERTO · MUTE':'ABIERTO'):'CERRADO',m.enabled&&!m.mute?'ok':'pending')}</div>
+    <div class="stack-sm">
+      <label class="field">Entrada${sel('device',devs,m.device,`data-change="mic-device" data-id="${m.id}"`)}</label>
+      ${slider('gain','Ganancia',m.gain,0,100,`data-change="mic-gain" data-id="${m.id}"`)}
+      ${slider('hi','Agudos (dB)',m.hi,-12,12,`data-change="mic-hi" data-id="${m.id}"`)}
+      ${slider('low','Graves (dB)',m.low,-12,12,`data-change="mic-low" data-id="${m.id}"`)}
+      <div class="pillbar">${button(m.enabled?'Cerrar micrófono':'Abrir micrófono','mic-enable',{id:m.id},m.enabled?'active':'primary')}${button(m.mute?'MUTE ACTIVO':'MUTE OFF','mic-mute',{id:m.id},m.mute?'':'active')}</div>
+      ${MIC.ch[m.id]?.label?`<small class="muted">${esc(MIC.ch[m.id].label)}</small>`:''}
+    </div></section>`).join('')}</div>
+  <section class="panel spaced"><h2>Dispositivos</h2><div class="pillbar">${button('Detectar micrófonos','mic-permission',{},'primary')}</div>
+    <p class="muted spaced">El navegador pide permiso la primera vez. «Procesamiento de voz» aplica cancelación de eco y supresión de ruido; apágalo si tu micrófono ya pasa por una mezcladora. «Escuchar en la sala» queda apagado por defecto para evitar acoples con los parlantes.</p></section>`;
+};
+
+window.__ASMIC={state:()=>({open:Object.keys(MIC.ch).map(Number),level:MIC.level,ducked:MIC.ducked,sending:MIC.sending,wsOpen:MIC.wsOpen,stats:MIC.stats,error:MIC.error,talkover:state.talkover})};
 
 // --- Sesión real del Command Center (AUDIT-IA) para la consola v0.6 ---
 // Con AUDIT_SOUND_CC_API configurado (producción), la v0.6 NO ofrece la entrada de demostración:

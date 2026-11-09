@@ -38,6 +38,24 @@ void dj_set_filter(DjEngine engine, int deck, float amount);
 void dj_set_fader(DjEngine engine, int deck, float linear);
 void dj_set_xfader(DjEngine engine, float x);
 void dj_set_master(DjEngine engine, float linear);
+
+/* Micrófonos del DJ en vivo (servidor). La voz llega en bloques PCM 16 bits mono a cualquier
+ * frecuencia; el motor la remuestrea, la suma a la mezcla estéreo y, con talkover, atenúa la
+ * música mientras se habla. Devuelve las muestras aceptadas. */
+int dj_voice_push(DjEngine engine, const short* pcm16, int frames, int sample_rate);
+/* mode: 0 sin atenuar · 1 atenuar siempre · 2 automático (al hablar). voice_gain lineal (0..4,
+ * negativo = no cambia). duck_db: atenuación de la música (−60..0; positivo = no cambia). */
+void dj_set_talkover(DjEngine engine, int mode, float voice_gain, float duck_db);
+typedef struct {
+  int active;              /* la voz está sonando */
+  int talkover;            /* modo vigente */
+  float level_db;          /* nivel de la voz (dBFS) */
+  float music_gain;        /* ganancia aplicada a la música (1 = sin atenuar) */
+  int buffered_ms;         /* voz en el búfer */
+  double received_seconds; /* voz recibida en total */
+  unsigned underruns;      /* veces que el búfer se vació hablando */
+} DjVoiceStatus;
+void dj_voice_status(DjEngine engine, DjVoiceStatus* st);
 // Título de lo que suena ("Artista - Tema"): el sink de Icecast lo publica como metadato del stream.
 void dj_set_stream_title(DjEngine engine, const char* title);
 void dj_set_rate(DjEngine engine, int deck, float rate);

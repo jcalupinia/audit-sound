@@ -8,6 +8,7 @@
 //   S-04  logout con revocación server-side (token no reutilizable) y rate limit.
 #include <curl/curl.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -21,6 +22,27 @@ namespace {
 
 struct Resp { long code = 0; std::string body, headers; };
 size_t wbody(char* p, size_t s, size_t n, void* u) { ((std::string*)u)->append(p, s * n); return s * n; }
+
+// POST con cuerpo binario (PCM): no se puede usar strlen.
+Resp reqBin(const std::string& url, const char* bearer, const std::string& body) {
+  Resp r;
+  CURL* h = curl_easy_init();
+  curl_easy_setopt(h, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(h, CURLOPT_POST, 1L);
+  curl_easy_setopt(h, CURLOPT_POSTFIELDS, body.data());
+  curl_easy_setopt(h, CURLOPT_POSTFIELDSIZE, (long)body.size());
+  curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, wbody);
+  curl_easy_setopt(h, CURLOPT_WRITEDATA, &r.body);
+  curl_easy_setopt(h, CURLOPT_TIMEOUT, 5L);
+  struct curl_slist* hs = curl_slist_append(nullptr, "Content-Type: application/octet-stream");
+  if (bearer) hs = curl_slist_append(hs, (std::string("Authorization: Bearer ") + bearer).c_str());
+  curl_easy_setopt(h, CURLOPT_HTTPHEADER, hs);
+  curl_easy_perform(h);
+  curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &r.code);
+  curl_slist_free_all(hs);
+  curl_easy_cleanup(h);
+  return r;
+}
 
 Resp req(const std::string& url, const std::string& method, const char* bearer = nullptr,
          const char* origin = nullptr, const char* postBody = nullptr) {
@@ -203,6 +225,26 @@ int main() {
   check(cmd("action=queue_clear", T5).body.find("\"queue\":[]") != std::string::npos, "B2 queue_clear vacía la cola");
   const std::string O5 = field(req(B5 + "/api/login", "POST", nullptr, nullptr, "user=dj&pass=secreto&name=otro").body, "token");
   check(cmd("action=queue_set&tracks=0", O5).code == 409, "B2 la cola solo la controla el controlador (409)");
+  // Micrófonos en vivo: /api/voice (solo el controlador) y talkover.
+  std::string pcm(9600, '\0');  // 100 ms de voz a 48 kHz (4800 muestras de 16 bits)
+  for (size_t i = 0; i < 4800; ++i) {
+    const short v = (short)(8000 * std::sin(2 * M_PI * 440.0 * (double)i / 48000.0));
+    std::memcpy(&pcm[i * 2], &v, 2);
+  }
+  Resp vz = reqBin(B5 + "/api/voice?sr=48000", T5.c_str(), pcm);
+  check(vz.code == 200 && vz.body.find("\"accepted\":4800") != std::string::npos, "voz: el controlador envía 100 ms de PCM");
+  check(reqBin(B5 + "/api/voice?sr=48000", O5.c_str(), pcm).code == 409, "voz: otra sesión no puede meter audio (409)");
+  check(reqBin(B5 + "/api/voice?sr=48000", nullptr, pcm).code == 401, "voz: sin sesión → 401");
+  check(reqBin(B5 + "/api/voice?sr=48000", T5.c_str(), pcm.substr(0, 9599)).code == 400, "voz: PCM impar → 400");
+  check(reqBin(B5 + "/api/voice?sr=1000", T5.c_str(), pcm).code == 400, "voz: frecuencia inválida → 400");
+  check(reqBin(B5 + "/api/voice?sr=48000", T5.c_str(), std::string(300 * 1024, '\0')).code == 413,
+        "voz: cuerpo de más de 256 KB → 413");
+  check(cmd("action=talkover&value=1&gain=1.2&duck=-18", T5).code == 200, "talkover: modo siempre");
+  Resp sv = req(B5 + "/api/status", "GET", T5.c_str());
+  check(sv.body.find("\"voice\":{") != std::string::npos && sv.body.find("\"talkover\":1") != std::string::npos &&
+            sv.body.find("\"received_s\":0.") != std::string::npos,
+        "/api/status informa la voz (modo, voz recibida)");
+  check(cmd("action=talkover&value=0", O5).code == 409, "talkover: solo el controlador");
   control_api_add_track(api5, "Sin analizar", f0.c_str());
   check(req(B5 + "/api/tracks", "GET", T5.c_str()).body.find("\"metadata\":false") != std::string::npos,
         "B1 con una pista sin análisis → metadata=false");

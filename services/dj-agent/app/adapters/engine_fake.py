@@ -84,6 +84,10 @@ class FakeEngine:
         self.silence_seconds = 0.0
         self.transitions = 0
         self._fade: tuple[int, int, float, float] | None = None  # (de, a, restantes, total)
+        self.voice_bytes = 0          # micrófonos en vivo: PCM recibido
+        self.voice_blocks = 0
+        self.voice_rates: set[int] = set()
+        self.talkover_mode = 2
         if autostart and self.catalog:
             self._load(0, self.catalog[0].id)
             self.decks[0].playing = True
@@ -106,7 +110,7 @@ class FakeEngine:
     def capabilities(self) -> set[str]:
         caps = {"status", "tracks", "commands"}
         if not self.emulate_current:
-            caps |= {"metadata", "queue"}
+            caps |= {"metadata", "queue", "voice"}
         return caps
 
     def tracks(self) -> list[Track]:
@@ -150,6 +154,25 @@ class FakeEngine:
                 if not any(d.playing for d in self.decks):
                     self.xfader = 0.5
                 self._fade = None
+            return {"ok": True}
+
+    def voice_push(self, pcm: bytes, sample_rate: int) -> dict[str, Any]:
+        with self._lock:
+            self._check()
+            if self.emulate_current:
+                raise EngineCapabilityError("voice_unsupported", "Este motor no admite micrófonos en vivo")
+            if len(pcm) % 2:
+                raise EngineError("engine_rejected", "PCM 16 bits mono")
+            self.voice_bytes += len(pcm)
+            self.voice_blocks += 1
+            self.voice_rates.add(int(sample_rate))
+            return {"ok": True, "accepted": len(pcm) // 2, "buffered_ms": 120}
+
+    def talkover(self, mode: int, gain: float | None = None, duck_db: float | None = None) -> dict[str, Any]:
+        with self._lock:
+            self._check()
+            self.calls.append(("talkover", {"value": mode, "gain": gain, "duck": duck_db}))
+            self.talkover_mode = mode if mode in (0, 1, 2) else 2
             return {"ok": True}
 
     def execute(self, engine_action: str, params: dict[str, Any]) -> dict[str, Any]:
