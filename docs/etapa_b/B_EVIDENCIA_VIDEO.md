@@ -1,5 +1,27 @@
 # Evidencia · Bloque 2 de video
 
+## V1b · Videoclips con sonido y V3 · Fotos, presentaciones y cues (2026-11-09)
+
+> **Estado:** en revisión, en la rama `claude/videoclips-presentaciones`. Funciona en la consola del DJ (navegador). El video
+> se ve en este equipo y en la pantalla 2; no se transmite por internet (eso es V5).
+
+| Elemento | Estado | Evidencia |
+|---|---|---|
+| **Fotos** en los decks de video: se mezclan, con transiciones y efectos, igual que un video | **REAL** | E2E: la foto verde se ve en la mezcla |
+| **Presentaciones desde PDF**: el PDF se convierte en diapositivas dentro del navegador (pdf.js 6.4.299 incluido en `web/pro/vendor/pdfjs`, Apache-2.0, sin internet); también varias fotos a la vez forman una presentación | **REAL** | E2E: PDF de 2 páginas → 2 diapositivas (roja y azul) |
+| ◀ ▶ y avance automático (5/10/20/30 s); al final vuelve a la primera | **REAL** | E2E píxel a píxel |
+| Las presentaciones se guardan: siguen tras recargar; la biblioteca las muestra («PRESENTACIÓN · 2») y al quitarlas se borran | **REAL** | E2E |
+| **Videoclips con sonido (V1b)**: el mismo archivo va al deck de audio (sonido) y al de video (imagen); la imagen sigue al audio en PLAY/pausa, posición (saltos, CUE) y velocidad (pitch) | **REAL** | E2E: diferencia imagen-sonido 0,05 s; pitch 110 % → imagen ×1,1; salto a 4 s → la imagen salta |
+| **Crossfader compartido**: el crossfader de audio mueve también la mezcla de video (se puede desvincular) | **REAL** | E2E |
+| **Cues de eventos reales**: cada cue elige un video, foto o presentación; «Ejecutar» lo carga en el deck que no está al aire y lo pasa a programa con la transición elegida; con «Automático: SÍ» se ejecuta solo a su hora (con la pestaña abierta) | **REAL** | E2E: cue manual (presentación al aire) y automático (foto a su hora) |
+| Videoclips con sonido en modo «motor profesional» (WASM) o en el stream del servidor | **NO INCLUIDO** | El sonido del videoclip usa el audio del navegador; la consola lo avisa |
+| Formato .mp4 (H.264) | **NO VERIFICADO EN CI** | Chromium de Playwright no trae H.264; las pruebas usan WebM. Chrome/Edge reproducen .mp4 |
+
+Pruebas: `video_v3_e2e.mjs` **TODO OK (2 corridas)**, agregada al CI. `video_v1_e2e` ajustada (las opciones de la
+biblioteca llevan el tipo delante: ▷ video · ▣ foto · ▤ presentación). Regresión: `video_v2_pantalla2`, `agent_live`,
+`voice_mobile`, `sesion_real`, `cc_login`, `microfono_stream` y `efectos_stream`: OK.
+
+
 ## V2 · Pantalla 2 (proyector) y programa con transición (2026-11-09)
 
 > **Estado:** en revisión, en la rama `claude/video-v2-pantalla2`, apilada sobre la de micrófonos. Funciona en el

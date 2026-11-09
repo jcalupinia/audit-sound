@@ -25,6 +25,11 @@ Third-party software bundled in this distribution
 (Their licenses remain in force.)
 --------------------------------------------------------------------------------
 
+pdf.js 6.4.299 — pdfjs-dist (Apache License 2.0)
+  web/pro/vendor/pdfjs — https://github.com/mozilla/pdf.js
+  Copyright Mozilla Foundation. Unmodified build files; license in web/pro/vendor/pdfjs/LICENSE.
+  Converts PDF presentations to slides in the web console.
+
 dr_libs — dr_mp3 / dr_wav / dr_flac (public domain / MIT-0)
   third_party/dr_libs — https://github.com/mackron/dr_libs
   MP3, WAV, and FLAC decode.

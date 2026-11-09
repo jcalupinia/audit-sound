@@ -12,6 +12,7 @@ function changeControl(el){const d=el.dataset,k=d.change;if(!k)return;let n=Numb
  case 'video-fx-amount':state.videoFxAmount=n;command('video.transition',{fx:state.videoFx,amount:n});break;
  case 'video-logo':state.videoLogo=el.value;command('video.transition',{logo:el.value||null});break;
  case 'video-pick':if(el.value)loadToDeck(el.value,d.deck);return;
+ case 'vx-auto':vxAuto(d.deck,Number(el.value)||0);return;
  case 'caption':state.videoCaption=el.value.slice(0,80);command('video.transition',{caption:state.videoCaption});break;
  case 'library-kind':state.libraryKind=el.value;break;
  case 'rule':state.agentRules[d.rule]=el.checked;command('agent.policy',{rule:d.rule,enabled:el.checked});break;
@@ -31,7 +32,7 @@ function onSubmit(form){const type=form.dataset.form;const o=Object.fromEntries(
  case 'agent':{const text=String(o.message||'').trim();if(text.length<2||text.length>1500)throw Error('La instrucción debe tener entre 2 y 1500 caracteres');addChat(text);return}
  case 'segment':{if(String(o.end)<=String(o.start))throw Error('La hora final debe ser posterior a la inicial');let energy=Number(o.energy);if(!Number.isFinite(energy)||energy<0||energy>100)throw Error('Energía fuera de rango');state.segments.push({id:uid('segment'),start:o.start,end:o.end,genre:String(o.genre).slice(0,60),energy});command('agent.plan',{op:'append-segment',start:o.start,end:o.end});break}
  case 'event':state.events.push({id:uid('event'),name:String(o.name).slice(0,100),date:o.date,venue:String(o.venue).slice(0,100),start:o.start});command('event.cue',{op:'create-event',name:o.name});break;
- case 'cue':state.cuesheets.push({id:uid('cue'),time:o.time,name:String(o.name).slice(0,100),kind:o.kind});command('event.cue',{op:'create-cue'});break;
+ case 'cue':{const it=trackFor(o.item);state.cuesheets.push({id:uid('cue'),time:o.time,name:String(o.name).slice(0,100),item:it?it.id:'',kind:it?({video:'Video',image:'Imagen',presentation:'Presentación'}[it.kind]):'Video'});command('event.cue',{op:'create-cue'},'LOCAL');break}
  case 'fx-generator':{let name=String(o.name||'').trim();if(!/^[A-Za-z][A-Za-z0-9_]{2,35}$/.test(name))throw Error('Nombre: 3–36 caracteres alfanuméricos');state.fxCustom.push({id:uid('fxcode'),name,type:o.type});toast('Plantilla creada. Descárgala para desarrollar el algoritmo DSP.');break}
  case 'stream':{let url=safeUrl(o.streamUrl);if(!url)throw Error('La URL debe comenzar por https:// o http://');state.streamUrl=url;state.streamConnected=false;command('stream.configure',{url,mode:'local-player'});break}
  case 'config':{let url=String(o.apiUrl||'').trim();if(url&&!safeUrl(url))throw Error('Endpoint HTTP(S) no válido');state.settings.apiUrl=url;state.settings.language=o.language||'es';state.settings.audioDevice=o.audioDevice||'default';state.settings.telemetry=!!o.telemetry;state.apiStatus='Sin comprobar';command('system.health',{op:'update-endpoint',configured:!!url},'LOCAL');break}

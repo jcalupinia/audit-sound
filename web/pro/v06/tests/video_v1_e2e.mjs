@@ -128,7 +128,8 @@ try {
   ok(await until(() => p.evaluate(() => document.querySelectorAll('select[data-change="video-pick"] option').length >= 3)), 'tras recargar, los videos siguen en la biblioteca');
   ok(await p.evaluate(() => document.querySelector('input[data-change="caption"]').value) === 'Gala AuditConsulting 2026', 'el texto de superposición se conserva');
   const ids = await p.evaluate(() => [...document.querySelectorAll('select[data-change="video-pick"][data-deck=A] option')].map((o) => [o.value, o.textContent]));
-  const rojo = ids.find((x) => x[1] === 'video_rojo'), azul = ids.find((x) => x[1] === 'video_azul');
+  // Las opciones llevan el tipo delante (▷ video · ▣ foto · ▤ presentación).
+  const rojo = ids.find((x) => x[1].endsWith('video_rojo')), azul = ids.find((x) => x[1].endsWith('video_azul'));
   await setSelect(p, 'video-pick', rojo[0]);
   ok(await until(() => p.evaluate(() => window.__ASVJ.video('A').ready >= 2)), 'elegir un video de la biblioteca lo carga en el deck');
   await p.locator('button[data-action=video-loop][data-deck=A]').click();   // el video de prueba dura 6 s
@@ -159,7 +160,7 @@ try {
   await p.locator(`button[data-action=track-delete][data-id="${azul[0]}"]`).click();
   await sleep(300); await p.reload(); await enter(p, 'video'); await sleep(600);
   const left = await p.evaluate(() => [...document.querySelectorAll('select[data-change="video-pick"][data-deck=A] option')].map((o) => o.textContent));
-  ok(!left.includes('video_azul') && left.includes('video_rojo'), 'quitar un video lo borra de la biblioteca guardada');
+  ok(!left.some((t) => t.endsWith('video_azul')) && left.some((t) => t.endsWith('video_rojo')), 'quitar un video lo borra de la biblioteca guardada');
   await ctx.close();
 
   // Teléfono: sin desplazamiento horizontal
