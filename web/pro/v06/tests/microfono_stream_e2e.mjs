@@ -17,7 +17,7 @@ const { chromium } = require('playwright');
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '../../../..');
 const PY = process.env.PYTHON || 'python3';
-const SRV = join(REPO, 'build/audit_sound_server');
+const SRV = process.env.AUDIT_SOUND_SERVER || join(REPO, 'build/audit_sound_server');
 const TOK = 'tok-operador-mic-e2e';
 const ICE = 18600 + Math.floor(Math.random() * 300), ENG = ICE + 1, AG = ICE + 2, WEB = ICE + 3;
 let fails = 0;
@@ -98,6 +98,7 @@ let browser;
 try {
   await start('icecast2', ['-c', join(tmp, 'icecast.xml')], {}, tmp, null);
   const engLog = [];
+  globalThis.__engLog = engLog;
   await start(SRV, [], { AUDIT_SOUND_MUSIC_DIR: music, AUDIT_SOUND_ICECAST_HOST: '127.0.0.1', AUDIT_SOUND_ICECAST_PORT: String(ICE),
     AUDIT_SOUND_ICECAST_MOUNT: '/stream.mp3', AUDIT_SOUND_ICECAST_USER: 'source', AUDIT_SOUND_ICECAST_PASSWORD: srcpw,
     AUDIT_SOUND_API_USER: 'motor', AUDIT_SOUND_API_PASS: 'clave-motor', AUDIT_SOUND_API_PORT: String(ENG) }, REPO, 'Control API en el puerto', engLog);
@@ -174,6 +175,7 @@ try {
 } catch (e) {
   ok(false, 'excepción: ' + (e && e.stack || e));
 } finally {
+  if (fails && globalThis.__engLog) console.log('--- registro del motor (últimas líneas) ---\n' + globalThis.__engLog.join('').split('\n').slice(-40).join('\n'));
   if (browser) await browser.close().catch(() => {});
   for (const p of procs.reverse()) { try { p.kill('SIGTERM'); } catch (e) { /* ya terminó */ } }
 }
