@@ -39,7 +39,7 @@ motor C++  VoiceMixer: búfer anti-cortes, remuestreo, talkover ─► mezcla �
 
 | Prueba | Resultado |
 |---|---|
-| `voice_test` (motor, nueva): remuestreo 48→44,1 kHz, talkover en los tres modos, recuperación, ráfagas, cortes de red, entradas inválidas, API C | **TODO OK** (16) |
+| `voice_test` (motor, nueva): remuestreo 48→44,1 kHz, talkover en los tres modos, recuperación, ráfagas, cortes de red, entradas inválidas, API C | **TODO OK** (18) |
 | `control_api_test`: `/api/voice` (controlador 200, otra sesión 409, sin sesión 401, PCM impar 400, frecuencia 400, >256 KB 413), talkover, estado | **51 OK** (9 nuevas) |
 | Agente `pytest`: WebSocket de voz (orden, frecuencia, talkover, permisos por rol y organización, bloques inválidos, motor caído) y contrato del adaptador | **256 pasan**, 5 omitidas; `ruff` limpio |
 | **E2E con servicios reales** `microfono_stream_e2e.mjs`: Chromium con micrófono simulado → consola → proxy → agente → **motor real** → **Icecast** → un oyente graba el stream | **TODO OK, en 2 corridas seguidas** |
@@ -53,6 +53,17 @@ Lo que mide el oyente en el E2E (amplitud de la música en 220 Hz y de la «voz�
 | Antes de hablar | 0,229 | 0,000 |
 | Hablando (talkover automático) | **0,046** (−14 dB) | **0,449** |
 | Después de quitar la voz | 0,229 | 0,000 |
+
+## 3b. Fallo encontrado por el CI y corregido
+
+En CI la conexión del motor con Icecast se cayó. Mientras el motor reconectaba no consumía la voz y el búfer se llenó.
+Al llenarse, `VoiceMixer::push` cortaba el bloque pero restaba el bloque entero a su posición de remuestreo; el bloque siguiente
+leía fuera del PCM y **el motor se caía** (traza de `gdb` en CI). Ahora lo que no cabe se descarta sin perder la posición.
+La prueba de regresión de `voice_test` falla con el código anterior (70.561 muestras en lugar de 4.410) y pasa con el nuevo.
+
+El trabajo de CI corre en `ubuntu-24.04`, igual que la imagen del motor en producción. En `ubuntu-latest` (más nuevo),
+libshout e Icecast no se entienden: Icecast rechaza «!POKE» y se cae el montaje. **Riesgo a futuro:** al actualizar la imagen
+del motor a un Ubuntu nuevo hay que probar antes la conexión con Icecast.
 
 ## 4. Pendiente y límites
 
