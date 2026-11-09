@@ -39,7 +39,7 @@ motor C++  VoiceMixer: búfer anti-cortes, remuestreo, talkover ─► mezcla �
 
 | Prueba | Resultado |
 |---|---|
-| `voice_test` (motor, nueva): remuestreo 48→44,1 kHz, talkover en los tres modos, recuperación, ráfagas, cortes de red, entradas inválidas, API C | **TODO OK** (17) |
+| `voice_test` (motor, nueva): remuestreo 48→44,1 kHz, talkover en los tres modos, recuperación, ráfagas, cortes de red, entradas inválidas, API C | **TODO OK** (16) |
 | `control_api_test`: `/api/voice` (controlador 200, otra sesión 409, sin sesión 401, PCM impar 400, frecuencia 400, >256 KB 413), talkover, estado | **51 OK** (9 nuevas) |
 | Agente `pytest`: WebSocket de voz (orden, frecuencia, talkover, permisos por rol y organización, bloques inválidos, motor caído) y contrato del adaptador | **256 pasan**, 5 omitidas; `ruff` limpio |
 | **E2E con servicios reales** `microfono_stream_e2e.mjs`: Chromium con micrófono simulado → consola → proxy → agente → **motor real** → **Icecast** → un oyente graba el stream | **TODO OK, en 2 corridas seguidas** |
