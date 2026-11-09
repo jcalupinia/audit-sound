@@ -1,0 +1,108 @@
+{
+  "duracion_s": 1262.7,
+  "titulos": [
+    {
+      "t": 0.7,
+      "titulo": "Juanitos - El Cha Cha Man"
+    },
+    {
+      "t": 168.0,
+      "titulo": "Ronald Nunez - La Bachata Loca"
+    },
+    {
+      "t": 420.0,
+      "titulo": "Danna Ruiz - Alentando ilusiones"
+    },
+    {
+      "t": 612.7,
+      "titulo": "Juanitos - El Cha Cha Man"
+    },
+    {
+      "t": 820.7,
+      "titulo": "Giovanny - Morena"
+    },
+    {
+      "t": 1028.0,
+      "titulo": "Los Cuban Boys - Reciclate, evaporate"
+    }
+  ],
+  "transiciones": [
+    {
+      "t": 168.0,
+      "medible": true,
+      "fundido_s": 10.0,
+      "fundido_desde_s": 156.5,
+      "fundido_hasta_s": 166.5,
+      "bajon_db": 1.0,
+      "nivel_base_dbfs": -15.6,
+      "bpm_saliente": 136.2,
+      "bpm_entrante": 145.4,
+      "diferencia_bpm_pct": 6.8,
+      "veredicto": "mezcla suave",
+      "de": "Juanitos - El Cha Cha Man",
+      "a": "Ronald Nunez - La Bachata Loca"
+    },
+    {
+      "t": 420.0,
+      "medible": true,
+      "fundido_s": 12.0,
+      "fundido_desde_s": 408.5,
+      "fundido_hasta_s": 420.5,
+      "bajon_db": 7.3,
+      "nivel_base_dbfs": -15.3,
+      "bpm_saliente": 145.1,
+      "bpm_entrante": 99.3,
+      "diferencia_bpm_pct": 31.6,
+      "veredicto": "bajón de volumen",
+      "de": "Ronald Nunez - La Bachata Loca",
+      "a": "Danna Ruiz - Alentando ilusiones"
+    },
+    {
+      "t": 612.7,
+      "medible": true,
+      "fundido_s": 7.0,
+      "fundido_desde_s": 602.0,
+      "fundido_hasta_s": 609.0,
+      "bajon_db": 2.0,
+      "nivel_base_dbfs": -15.0,
+      "bpm_saliente": 99.1,
+      "bpm_entrante": 136.0,
+      "diferencia_bpm_pct": 37.2,
+      "veredicto": "mezcla suave",
+      "de": "Danna Ruiz - Alentando ilusiones",
+      "a": "Juanitos - El Cha Cha Man"
+    },
+    {
+      "t": 820.7,
+      "medible": true,
+      "fundido_s": 4.0,
+      "fundido_desde_s": 817.0,
+      "fundido_hasta_s": 821.0,
+      "bajon_db": -1.5,
+      "nivel_base_dbfs": -14.8,
+      "bpm_saliente": 136.2,
+      "bpm_entrante": 135.7,
+      "diferencia_bpm_pct": 0.4,
+      "veredicto": "mezcla suave",
+      "de": "Juanitos - El Cha Cha Man",
+      "a": "Giovanny - Morena"
+    },
+    {
+      "t": 1028.0,
+      "medible": true,
+      "fundido_s": 2.0,
+      "fundido_desde_s": 1021.5,
+      "fundido_hasta_s": 1023.5,
+      "bajon_db": 1.1,
+      "nivel_base_dbfs": -11.2,
+      "bpm_saliente": 135.5,
+      "bpm_entrante": 99.8,
+      "diferencia_bpm_pct": 26.3,
+      "veredicto": "fundido corto",
+      "de": "Giovanny - Morena",
+      "a": "Los Cuban Boys - Reciclate, evaporate"
+    }
+  ],
+  "segundos_en_silencio": 0.0,
+  "nivel_medio_dbfs": -13.6
+}

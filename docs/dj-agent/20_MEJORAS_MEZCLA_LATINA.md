@@ -1,6 +1,6 @@
 # 20 · Mezcla de la biblioteca latina: entrada en la parte fuerte, sin repeticiones, tempo y géneros
 
-> **Estado:** implementado y probado en local con el motor real (2026-11-08). Pendiente de merge y despliegue.
+> **Estado:** en producción desde el 2026-11-09 (PR 72). Medición en producción en §2b.
 
 Tras poner la biblioteca latina en producción (PR 71) se midieron las transiciones en el stream real y en un
 ensayo local. Salieron tres problemas, que este cambio corrige.
@@ -47,6 +47,13 @@ ahora pasan por el compose, así que se pueden cambiar en Coolify. Dejarlas vac�
   - Con el motor anterior hubo 4 de 5 en el ensayo y 3 de 4 en producción. La que fallaba, en ambos casos, era «Cuban Boys → Cuban Cigars».
   - Ninguna canción se repitió.
 - Medición de producción con el motor anterior (línea base): [`transiciones_prod_latina_2026-11-08.md`](evidencias/transiciones_prod_latina_2026-11-08.md).
+
+## 2b. Medición en producción (2026-11-09, 21 min tras el despliegue)
+
+[`transiciones_prod_latina_v72_2026-11-09.md`](evidencias/transiciones_prod_latina_v72_2026-11-09.md):
+- 5 transiciones, sin silencios. Ninguna canción sonó dos veces seguidas.
+- **4 de 5 suaves**, con bajón de −1,5 a 2 dB.
+- **Una con bajón de 7,3 dB:** Bachata Loca (~145 BPM) → Danna Ruiz (~99 BPM). No es el caso de la intro suave: el salto de tempo es del 32 % y el ritmo cambia de golpe. Queda por estudiar.
 
 ## 3. Límites conocidos
 

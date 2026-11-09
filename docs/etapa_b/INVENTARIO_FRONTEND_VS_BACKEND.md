@@ -76,8 +76,8 @@ para decidir qué se puede **cablear** (ya hay backend) y qué está **pendiente
 | «Enviar a vivo» (Preview→Programa) | 🔴 | `console.js` stub |
 | Transición (Desvanecer…) de video | 🔴 | stub |
 | Generar con IA: Video / Imagen / Presentación | 🔴 | stub «motor de IA próximamente» |
-| Micrófono | 🔴 | `console.js`: «entrada de micro próximamente» |
-| Talkover | 🔴 | `console.js`: «atenuación automática próximamente» |
+| Micrófono | 🟢 | v0.6 `07b-microfonos.js` → agente → motor (`/api/voice`). Ver `docs/dj-agent/21_MICROFONOS_TALKOVER.md` |
+| Talkover | 🟢 | Automático / Siempre / Apagado, en la consola y en el motor (stream) |
 | Salidas de video (Pantalla 1 / 2) | 🔴 | sin backend de pantallas |
 | Pantalla completa | 🟡 | `requestFullscreen` (trivial) |
 | Barra «En vivo / BPM / 8A / tiempo» | 🟡 | estado del motor |
