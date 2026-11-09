@@ -21,6 +21,7 @@ PERMISSIONS: dict[str, frozenset[Role]] = {
     "session:mode": frozenset({Role.ADMIN, Role.OPERATOR}),
     "command:execute": frozenset({Role.ADMIN, Role.OPERATOR}),
     "control:take": frozenset({Role.ADMIN, Role.OPERATOR}),
+    "voice:broadcast": frozenset({Role.ADMIN, Role.OPERATOR}),   # hablar por el micrófono al stream
     "control:force": frozenset({Role.ADMIN}),
     "intent:submit": frozenset({Role.ADMIN, Role.OPERATOR, Role.SUPERVISOR}),
     "plan:request": frozenset({Role.ADMIN, Role.OPERATOR, Role.SUPERVISOR}),

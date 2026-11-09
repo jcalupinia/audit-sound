@@ -117,11 +117,15 @@ class ControlApiAdapter:
         if r.status_code == 409:
             raise EngineError("control_held", "Otro dispositivo controla el motor; no se arrebata el control")
 
-    def _request(self, method: str, path: str, params: dict[str, Any] | None = None) -> httpx.Response:
+    def _request(self, method: str, path: str, params: dict[str, Any] | None = None,
+                 content: bytes | None = None) -> httpx.Response:
         for attempt in (1, 2):
             token = self._ensure_token()
+            headers = {"Authorization": f"Bearer {token}"}
+            if content is not None:
+                headers["Content-Type"] = "application/octet-stream"
             try:
-                r = self._client.request(method, path, params=params, headers={"Authorization": f"Bearer {token}"})
+                r = self._client.request(method, path, params=params, content=content, headers=headers)
             except httpx.TimeoutException as exc:
                 raise EngineError("engine_timeout", "El motor no respondió a tiempo") from exc
             except httpx.TransportError as exc:
@@ -142,6 +146,7 @@ class ControlApiAdapter:
             raise EngineError("engine_error", f"/api/status HTTP {r.status_code}")
         j = r.json()
         self._learn("queue", "queue" in j)
+        self._learn("voice", "voice" in j)
         decks = [DeckOut(deck=i, title=str(d.get("title", "")), loaded=bool(d.get("loaded")),
                          playing=bool(d.get("playing")), pos=float(d.get("pos", 0)), dur=float(d.get("dur", 0)),
                          bpm=float(d.get("bpm", 0)), key=int(d.get("key", -1)))
@@ -180,6 +185,30 @@ class ControlApiAdapter:
         query = {"action": engine_action}
         query.update({k: v for k, v in params.items() if k in _QUERY_KEYS})
         return self._command(query)
+
+    # ---------- micrófonos del DJ en vivo ----------
+    def voice_push(self, pcm: bytes, sample_rate: int) -> dict[str, Any]:
+        """Envía un bloque de voz (PCM 16 bits mono LE) al motor, que lo mezcla en el stream."""
+        r = self._request("POST", "/api/voice", params={"sr": int(sample_rate)}, content=pcm)
+        if r.status_code == 409 and self._request("POST", "/api/control/take").status_code == 200:
+            r = self._request("POST", "/api/voice", params={"sr": int(sample_rate)}, content=pcm)
+        if r.status_code == 200:
+            return r.json()
+        if r.status_code == 404:
+            raise EngineCapabilityError("voice_unsupported", "Este motor no admite micrófonos en vivo")
+        if r.status_code == 409:
+            raise EngineError("control_held", "El motor está controlado por otro dispositivo")
+        if r.status_code in (400, 413):
+            raise EngineError("engine_rejected", r.json().get("error", "voz rechazada"))
+        raise EngineError("engine_error", f"/api/voice HTTP {r.status_code}")
+
+    def talkover(self, mode: int, gain: float | None = None, duck_db: float | None = None) -> dict[str, Any]:
+        q: dict[str, Any] = {"action": "talkover", "value": int(mode)}
+        if gain is not None:
+            q["gain"] = float(gain)
+        if duck_db is not None:
+            q["duck"] = float(duck_db)
+        return self._command(q)
 
     def set_engine_mode(self, mode: str) -> dict[str, Any]:
         return self._command({"action": "set_mode_dj", "value": mode})
