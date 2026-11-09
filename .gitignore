@@ -42,3 +42,4 @@ __pycache__/
 
 # Biblioteca latina libre (Creative Commons) que se copia a la imagen del motor.
 !deploy/engine/cc-music-latina/*.mp3
+!web/pro/v06/tests/stream_prueba.mp3

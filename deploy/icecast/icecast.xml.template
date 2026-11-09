@@ -15,6 +15,13 @@
     <admin-user>admin</admin-user>
     <admin-password>${ICECAST_ADMIN_PASSWORD}</admin-password>
   </authentication>
+  <!-- La consola (sound.audit-ia.ec) se sirve con COEP require-corp (SharedArrayBuffer del motor WASM):
+       el navegador solo deja reproducir audio de OTRO dominio si este lo permite. Sin estas cabeceras
+       «Escuchar en vivo» fallaba con MEDIA_ERR_SRC_NOT_SUPPORTED (código 4) y no sonaba nada. -->
+  <http-headers>
+    <header name="Cross-Origin-Resource-Policy" value="cross-origin" />
+    <header name="Access-Control-Allow-Origin" value="*" />
+  </http-headers>
   <hostname>${ICECAST_HOSTNAME}</hostname>
   <listen-socket><port>8000</port></listen-socket>
   <paths>
