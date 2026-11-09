@@ -54,6 +54,8 @@ jobs:
         run: ./build/playback_recovery_test
       - name: Punto de mezcla por energía y regreso al tempo (funciones del AutoMix)
         run: ./build/mix_points_test
+      - name: Mezclador de voz (micrófonos + talkover)
+        run: ./build/voice_test
 
   wasm:
     name: Build WASM del motor (emscripten) + autoprueba de enlace
