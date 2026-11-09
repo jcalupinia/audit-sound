@@ -45,7 +45,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'playlist-to-queue':{let p=state.playlists.find(p=>p.id===state.playlistSelected);if(p){state.queue.push(...p.tracks);command('catalog.queue',{op:'append-playlist',playlist:p.id,count:p.tracks.length});render();toast('Playlist añadida a la cola')}break}
  case 'segment-delete':state.segments=state.segments.filter(s=>s.id!==id);save();render();break;
  case 'agent-suggestion':addChat(a.prompt);break;
- case 'agent-clear':state.chat=[{who:'system',text:'Conversación reiniciada. Modelo sin conexión.'}];save();render();break;
+ case 'agent-clear':state.chat=[{who:'system',text:agentLive()?'Conversación reiniciada. El agente sigue conectado.':'Conversación reiniciada. Modelo sin conexión.'}];save();render();break;
  case 'agent-voice':voiceToggle();break;
  case 'agent-disconnect':agentDisconnect();break;
  case 'agent-connect-cc':agentConnect();break;

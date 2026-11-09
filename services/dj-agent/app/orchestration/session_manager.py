@@ -492,7 +492,8 @@ class SessionManager:
         return CommandOut(id=c["id"], session_id=c["session_id"], action=c["action"], params=c["params_json"],
                           origin=Origin(c["origin"]), actor_id=c["actor_id"], status=c["status"],
                           error_code=c["error_code"], error_message=c["error_message"],
-                          correlation_id=c["correlation_id"], created_at=c["created_at"]).model_dump(mode="json")
+                          correlation_id=c["correlation_id"], proposal_id=c.get("proposal_id"),
+                          created_at=c["created_at"]).model_dump(mode="json")
 
     # ------------------------------------------------------------------ autoridad del agente
     def _agent_try(self, row: dict[str, Any], action: str, params: dict[str, Any], *, corr: str, summary: str,
@@ -783,25 +784,33 @@ class SessionManager:
                                                            "desde la consola o cambia a HÍBRIDO."}
         on = _on_air(snap) if snap.reachable else None
         if name == "SKIP_TRACK":
-            r = self._agent_try(row, "skip", {}, corr=corr, summary="Saltar a la siguiente pista")
+            nxt = _cued(snap) if snap.reachable else None
+            what = "Saltar a la siguiente pista"
+            if on is not None and on.title:
+                what += f": sale «{on.title}»"
+                if nxt is not None:
+                    what += f" y entra «{nxt.title}»"
+            r = self._agent_try(row, "skip", {}, corr=corr, summary=what)
         elif name == "SET_TRANSITION":
             seconds = p.get("seconds") or max(1.0, min(30.0, snap.transition_seconds + float(p.get("delta", 0))))
-            r = self._agent_try(row, "set_transition", {"value": float(seconds)}, corr=corr,
-                                summary=f"Transiciones de {float(seconds):.0f} s")
+            what = f"Transiciones de {float(seconds):.0f} s"
+            r = self._agent_try(row, "set_transition", {"value": float(seconds)}, corr=corr, summary=what)
         elif name == "PAUSE":
             if on is None:
                 return {"outcome": "informational", "message": "No hay ninguna pista sonando."}
-            r = self._agent_try(row, "deck_pause", {"deck": on.deck}, corr=corr,
-                                summary=f"Pausar el plato {'AB'[on.deck]} (detiene el audio al aire)")
+            what = f"Pausar el plato {'AB'[on.deck]} (detiene el audio al aire)"
+            r = self._agent_try(row, "deck_pause", {"deck": on.deck}, corr=corr, summary=what)
         elif name == "RESUME":
             deck = next((d for d in snap.decks if d.loaded and not d.playing), None)
             if deck is None:
                 return {"outcome": "informational", "message": "No hay un plato cargado y detenido para reanudar."}
-            r = self._agent_try(row, "deck_play", {"deck": deck.deck}, corr=corr,
-                                summary=f"Reproducir el plato {'AB'[deck.deck]}")
+            what = f"Reproducir el plato {'AB'[deck.deck]}"
+            r = self._agent_try(row, "deck_play", {"deck": deck.deck}, corr=corr, summary=what)
         else:
             return {"outcome": "informational", "message": "Intención reconocida sin acción asociada."}
-        return {**r, "message": _msg(r, "la acción"), "commands": [r["command"]] if r.get("command") else []}
+        # El mensaje dice QUÉ hizo (antes: «Hecho: la acción…», sin decir cuál ni con qué pistas).
+        return {**r, "message": _msg(r, what),
+                "commands": [r["command"]] if r.get("command") else []}
 
     # ------------------------------------------------------------------ preferencias
     def get_prefs(self, sid: str, principal: Principal) -> dict[str, Any]:
@@ -975,13 +984,13 @@ def _msg(r: dict[str, Any], what: str) -> str:
         cmd = r.get("command") or {}
         status = cmd.get("status")
         if status and status != "ACKNOWLEDGED":
-            return f"El agente envió {what}, pero el motor no la confirmó ({cmd.get('error_code')})."
-        return f"Hecho: {what} ejecutada y confirmada por el motor."
+            return f"El agente lo envió, pero el motor no lo confirmó — {what} ({cmd.get('error_code')})."
+        return f"Hecho — {what}. Ejecutado y confirmado por el motor."
     if outcome == "proposal":
-        return f"Propuesta creada: {what} espera tu aprobación ({r.get('reason')})."
+        return f"Propuesta creada — {what}. Espera tu aprobación ({r.get('reason')})."
     if outcome == "rejected":
-        return f"No se ejecutó {what} ({r.get('reason')})."
-    return f"El agente no ejecuta {what} en este modo ({r.get('reason')})."
+        return f"No se ejecutó — {what} ({r.get('reason')})."
+    return f"El agente no ejecuta esto en este modo — {what} ({r.get('reason')})."
 
 
 def _jsonable(r: dict[str, Any]) -> dict[str, Any]:
