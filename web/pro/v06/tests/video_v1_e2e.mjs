@@ -140,9 +140,9 @@ try {
   // Programa
   await p.locator('button[data-action=video-take]').first().click(); await settle();
   ok(await pxIs(p, 0.5, 0.5, [255, 0, 0], 40, 'program'), '«Enviar a programa» muestra la mezcla en la salida');
-  await p.locator('button[data-action=video-stop]').click(); await settle();
-  const off = await px(p, 0.1, 0.1, 'program');
-  ok(off[0] < 30 && off[2] < 30, '«Detener» deja el programa en negro');
+  // V2: «Detener» también usa la transición elegida (hasta ~0,9 s), así que se espera a que termine.
+  await p.locator('button[data-action=video-stop]').click();
+  ok(await pxIs(p, 0.1, 0.1, [3, 7, 11], 30, 'program'), '«Detener» deja el programa en negro');
 
   // Consola: el video sigue sonando al cambiar de pantalla y la previsualización muestra la mezcla
   await p.locator('button.navbtn[data-page=consola]').first().click(); await settle();

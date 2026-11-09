@@ -95,14 +95,35 @@ function vjDraw2D(){const g=VJ.ctx2d,m=state.videoMix/100,tr=state.videoTrans;g.
     if(clip!=null){g.beginPath();g.rect(0,0,VJ_W*clip,VJ_H);g.clip()}g.drawImage(s.src,ox*s.w,oy*s.h,sx*s.w,sy*s.h,0,0,VJ_W,VJ_H);g.restore()};
   if(tr==='cut')draw(m<.5?'A':'B',1);else if(tr==='wipe'){draw('A',1);draw('B',1,m)}else{draw('A',1);draw('B',m)}
   g.filter='none';vjOverlay();if(vjHasOverlay())g.drawImage(VJ.overlay,0,0)}
-function vjDrawProgram(){const g=VJ.programCtx;if(state.videoLive){g.drawImage(VJ.glCanvas,0,0);return}
-  if(VJ.programIdle)return;VJ.programIdle=true;g.fillStyle='#03070b';g.fillRect(0,0,VJ_W,VJ_H);g.fillStyle='#91a7b4';g.font='600 34px Inter, sans-serif';
-  g.textAlign='center';g.textBaseline='middle';g.fillText('PROGRAMA DETENIDO',VJ_W/2,VJ_H/2);g.textAlign='start'}
+// Programa (lo que ve el público). V2: pasa de lo que estaba al aire a lo nuevo con la transición
+// elegida (Desvanecer, Barrido o Corte) al «Enviar a programa» y al «Detener»; «Pánico» muestra el logo
+// fijo al instante, sin importar la mezcla.
+const PGM={live:false,from:null,t0:0,ms:900,panic:false,idleKey:''};
+function vjProgramIdle(g){g.fillStyle='#03070b';g.fillRect(0,0,VJ_W,VJ_H)}
+function vjProgramPanic(g){g.fillStyle='#000';g.fillRect(0,0,VJ_W,VJ_H);const im=VJ.logo.img;
+  if(im&&im.complete&&im.naturalWidth){const h=Math.round(VJ_H*.42),w=Math.round(h*im.naturalWidth/im.naturalHeight);g.drawImage(im,(VJ_W-w)/2,(VJ_H-h)/2,w,h)}
+  else{g.fillStyle='#83f14d';g.font='800 72px Inter, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('AUDIT SOUND',VJ_W/2,VJ_H/2);g.textAlign='start'}}
+function vjDrawProgram(){const g=VJ.programCtx;
+  if(state.programPanic){vjProgramPanic(g);PGM.from=null;VJ.programIdle=false;return}
+  if(state.videoLive!==PGM.live){   // cambio de estado: congelar lo que había para la transición
+    PGM.live=state.videoLive;
+    if(state.videoTrans!=='cut'){const c=document.createElement('canvas');c.width=VJ_W;c.height=VJ_H;c.getContext('2d').drawImage(VJ.program,0,0);PGM.from=c;PGM.t0=performance.now()}
+    else PGM.from=null;
+    VJ.programIdle=false}
+  const target=()=>{if(state.videoLive)g.drawImage(VJ.glCanvas,0,0);else vjProgramIdle(g)};
+  if(PGM.from){const p=Math.min(1,(performance.now()-PGM.t0)/PGM.ms);
+    if(state.videoTrans==='wipe'){g.drawImage(PGM.from,0,0);g.save();g.beginPath();g.rect(0,0,VJ_W*p,VJ_H);g.clip();target();g.restore()}
+    else{target();g.globalAlpha=1-p;g.drawImage(PGM.from,0,0);g.globalAlpha=1}
+    if(p>=1)PGM.from=null;return}
+  if(state.videoLive){g.drawImage(VJ.glCanvas,0,0);return}
+  // Con la pantalla 2 abierta se redibuja siempre: el video de esa ventana solo recibe cuadros cuando el
+  // lienzo cambia, y una imagen quieta (negro, pánico) no llegaría.
+  if(VJ.programIdle&&!(window.__ASP2&&window.__ASP2.open()))return;VJ.programIdle=true;vjProgramIdle(g)}
 function vjFrame(t){VJ.raf=requestAnimationFrame(vjFrame);
   const visible=VJ.glCanvas.isConnected&&VJ.glCanvas.parentElement!==VJ.host;
-  if(!visible&&!state.videoLive)return;
+  if(!visible&&!state.videoLive&&!(window.__ASP2&&window.__ASP2.open())&&!PGM.from)return;
   if(VJ.gl)vjDrawGL(t);else vjDraw2D();
-  if(state.videoLive)VJ.programIdle=false;vjDrawProgram();
+  if(state.videoLive||PGM.from)VJ.programIdle=false;vjDrawProgram();
   VJ.frames++;VJ.drawn++;if(t-VJ.fpsT>=1000){VJ.fps=Math.round(VJ.frames*1000/(t-VJ.fpsT||1000));VJ.frames=0;VJ.fpsT=t;
     const e=document.getElementById('vj-fps');if(e)e.textContent=VJ.fps+' cuadros/s'}}
 function vjStart(){if(VJ.glCanvas)return;vjInitGL();vjVideo('A');vjVideo('B');VJ.fpsT=performance.now();VJ.raf=requestAnimationFrame(vjFrame)}
