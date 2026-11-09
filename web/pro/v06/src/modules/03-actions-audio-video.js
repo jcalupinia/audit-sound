@@ -33,7 +33,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'load-deck':await loadToDeck(id,deck);break;
  case 'web-load':await loadWebResult(a.src,a.rid,a.deck);break;
  case 'favorite':state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];save();render();break;
- case 'track-delete':{let t=trackFor(id);if(!t)return;videoLibDelete(id);for(const dk of ['A','B'])if(state.video[dk].track===id){state.video[dk].track=null;state.video[dk].playing=false;vjLoad(dk,null)}if(state.videoLogo===id)state.videoLogo='';if(mediaUrls.has(id))URL.revokeObjectURL(mediaUrls.get(id));mediaUrls.delete(id);state.tracks=state.tracks.filter(t=>t.id!==id);state.queue=state.queue.filter(x=>x!==id);state.favorites=state.favorites.filter(x=>x!==id);for(const p of state.playlists)p.tracks=p.tracks.filter(x=>x!==id);render();break}
+ case 'track-delete':{let t=trackFor(id);if(!t)return;videoLibDelete(id);for(const dk of ['A','B'])if(state.video[dk].pres===id){state.video[dk].pres=null;state.video[dk].kind='video'}for(const dk of ['A','B'])if(state.video[dk].track===id){state.video[dk].track=null;state.video[dk].playing=false;vjLoad(dk,null)}if(state.videoLogo===id)state.videoLogo='';if(mediaUrls.has(id))URL.revokeObjectURL(mediaUrls.get(id));mediaUrls.delete(id);state.tracks=state.tracks.filter(t=>t.id!==id);state.queue=state.queue.filter(x=>x!==id);state.favorites=state.favorites.filter(x=>x!==id);for(const p of state.playlists)p.tracks=p.tracks.filter(x=>x!==id);if(t.kind==='presentation')vxPresSave();render();break}
  case 'playlist-new':{let name=window.prompt('Nombre de la playlist');if(!name?.trim())return;let p={id:uid('pl'),name:name.trim().slice(0,80),tracks:[]};state.playlists.push(p);state.playlistSelected=p.id;save();render();break}
  case 'playlist-select':state.playlistSelected=id;save();render();break;
  case 'playlist-rename':{let p=state.playlists.find(x=>x.id===id);if(!p)return;let name=window.prompt('Nuevo nombre',p.name);if(name?.trim())p.name=name.trim().slice(0,80);save();render();break}
@@ -71,7 +71,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'stream-copy':if(state.streamUrl&&navigator.clipboard)await navigator.clipboard.writeText(state.streamUrl);else toast('Sin URL configurada.',true);break;
  case 'event-delete':state.events=state.events.filter(e=>e.id!==id);save();render();break;
  case 'cue-prepare':{let c=state.cuesheets.find(c=>c.id===id);command('event.cue',{id,action:'prepare'},'MOCK');toast('Cue "'+c?.name+'" preparado en interfaz (mock).');break}
- case 'cue-execute':{let c=state.cuesheets.find(c=>c.id===id);command('event.cue',{id,action:'execute'},'MOCK');toast('Cue "'+c?.name+'" NO ejecutado realmente: falta backend.',true);break}
+ case 'cue-execute':case 'vx-clip':case 'vx-xlink':case 'vx-prev':case 'vx-next':case 'vx-cue-auto':await vxAction(n,a);break;
  case 'cue-delete':state.cuesheets=state.cuesheets.filter(c=>c.id!==id);save();render();break;
  case 'user-toggle':{let u=state.users.find(x=>x.id===id);if(u)u.enabled=!u.enabled;command('iam.users',{op:'toggle',id});save();render();break}
  case 'user-delete':{if(id==='u1'){toast('La cuenta administrativa demo es obligatoria.',true);return}state.users=state.users.filter(u=>u.id!==id);command('iam.users',{op:'delete',id});save();render();break}

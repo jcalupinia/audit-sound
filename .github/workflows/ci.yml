@@ -116,6 +116,8 @@ jobs:
         run: node web/pro/v06/tests/video_v1_e2e.mjs
       - name: Pantalla 2 (proyector), transiciones al enviar a programa y botón de pánico
         run: node web/pro/v06/tests/video_v2_pantalla2_e2e.mjs
+      - name: Fotos, presentaciones (PDF), videoclips con sonido y cues de eventos
+        run: node web/pro/v06/tests/video_v3_e2e.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
