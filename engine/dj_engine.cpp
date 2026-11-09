@@ -1210,27 +1210,50 @@ int dj_analyze_silence(const char* path, double* first_sound, double* last_sound
   return 1;
 }
 
-int dj_analyze_loud_range(const char* path, double* loud_start_sec, double* loud_end_sec) {
+int dj_analyze_mix_profile(const char* path, double* loud_start_sec, double* loud_end_sec,
+                           float* levels, int max_levels, int* n_levels) {
   if (loud_start_sec) *loud_start_sec = -1.0;
   if (loud_end_sec) *loud_end_sec = -1.0;
+  if (n_levels) *n_levels = 0;
   if (!path) return 0;
   StreamingDecoder dec;
   if (!dec.open(path) || dec.sampleRate < 1) return 0;
-  const uint64_t chunk = (uint64_t)dec.sampleRate;  // 1 s
-  std::vector<float> buf((size_t)chunk * 2);
+  // Bloques de 0,25 s; el nivel por segundo combina 4 bloques (mismo resultado que medir 1 s).
+  const uint64_t sec = (uint64_t)dec.sampleRate;
+  const uint64_t quarter = std::max<uint64_t>(1, sec / 4);
+  std::vector<float> buf((size_t)quarter * 2);
   std::vector<float> db;
+  auto toDb = [](double ms) { return ms > 1e-18 ? (float)(10.0 * std::log10(ms)) : -120.0f; };
+  double secSq = 0.0;
+  uint64_t secFrames = 0;
+  int nq = 0;
   dec.seek(0);
   for (;;) {
-    const uint64_t n = dec.readStereo(buf.data(), chunk);
-    if (n == 0) break;
-    const float r = silence::rms(buf.data(), (int64_t)n, 2);
-    db.push_back(r > 1e-9f ? 20.0f * std::log10(r) : -120.0f);
-    if (n < chunk) break;
+    const uint64_t want = std::min<uint64_t>(quarter, sec - secFrames);
+    const uint64_t n = dec.readStereo(buf.data(), want);
+    if (n > 0) {
+      const double r = silence::rms(buf.data(), (int64_t)n, 2);
+      const double ms = r * r;
+      if (levels && nq < max_levels) levels[nq++] = toDb(ms);
+      secSq += ms * (double)n;
+      secFrames += n;
+    }
+    if (secFrames >= sec || (n < want && secFrames > 0)) {
+      db.push_back(toDb(secSq / (double)secFrames));
+      secSq = 0.0;
+      secFrames = 0;
+    }
+    if (n < want) break;
   }
+  if (n_levels) *n_levels = nq;
   const double e = mixpoints::loudEndSec(db);
   if (loud_end_sec) *loud_end_sec = e;
   if (loud_start_sec) *loud_start_sec = mixpoints::loudStartSec(db);
   return e > 0 ? 1 : 0;
+}
+
+int dj_analyze_loud_range(const char* path, double* loud_start_sec, double* loud_end_sec) {
+  return dj_analyze_mix_profile(path, loud_start_sec, loud_end_sec, nullptr, 0, nullptr);
 }
 
 int dj_analyze_loud_end(const char* path, double* loud_end_sec) {

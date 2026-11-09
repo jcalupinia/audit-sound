@@ -1,0 +1,51 @@
+{
+ "duracion_s": 520.0,
+ "titulos": [
+  {
+   "t": 0.7,
+   "titulo": "Danna Ruiz - Alentando ilusiones"
+  },
+  {
+   "t": 197.3,
+   "titulo": "Ronald Nunez - La Bachata Loca"
+  },
+  {
+   "t": 449.3,
+   "titulo": "Danna Ruiz - Alentando ilusiones"
+  }
+ ],
+ "transiciones": [
+  {
+   "t": 197.3,
+   "medible": true,
+   "fundido_s": 8.5,
+   "fundido_desde_s": 186.5,
+   "fundido_hasta_s": 195.0,
+   "bajon_db": 2.4,
+   "nivel_base_dbfs": -15.0,
+   "bpm_saliente": 99.0,
+   "bpm_entrante": 96.1,
+   "diferencia_bpm_pct": 2.9,
+   "veredicto": "mezcla suave",
+   "de": "Danna Ruiz - Alentando ilusiones",
+   "a": "Ronald Nunez - La Bachata Loca"
+  },
+  {
+   "t": 449.3,
+   "medible": true,
+   "fundido_s": 13.0,
+   "fundido_desde_s": 437.5,
+   "fundido_hasta_s": 450.5,
+   "bajon_db": 6.6,
+   "nivel_base_dbfs": -15.2,
+   "bpm_saliente": 145.5,
+   "bpm_entrante": 99.3,
+   "diferencia_bpm_pct": 31.8,
+   "veredicto": "bajón de volumen",
+   "de": "Ronald Nunez - La Bachata Loca",
+   "a": "Danna Ruiz - Alentando ilusiones"
+  }
+ ],
+ "segundos_en_silencio": 0.0,
+ "nivel_medio_dbfs": -14.5
+}

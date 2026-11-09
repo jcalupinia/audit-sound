@@ -111,6 +111,12 @@ int dj_analyze_loud_end(const char* path, double* loud_end_sec);
 // Igual, y además dónde EMPIEZA la parte fuerte (loud_start_sec = -1 si no se encuentra).
 // Una sola decodificación del archivo para ambos valores.
 int dj_analyze_loud_range(const char* path, double* loud_start_sec, double* loud_end_sec);
+// Igual que dj_analyze_loud_range y además el nivel (dBFS) cada 0,25 s en `levels` (hasta
+// `max_levels` valores; `n_levels` = cuántos se escribieron). Una sola decodificación. Lo usa el
+// AutoMix para no mezclar sobre un break de la pista saliente (mixpoints::breakFadeEnd).
+#define DJ_LEVEL_HOP_SEC 0.25
+int dj_analyze_mix_profile(const char* path, double* loud_start_sec, double* loud_end_sec,
+                           float* levels, int max_levels, int* n_levels);
 
 /** Load PCM and apply previously cached analysis (skips BPM/key). bpm<=0 runs a full analyze. */
 int dj_load_with_analysis(DjEngine engine, int deck, const char* path, float bpm, int key,

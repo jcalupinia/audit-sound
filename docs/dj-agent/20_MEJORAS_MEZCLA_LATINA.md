@@ -53,7 +53,40 @@ ahora pasan por el compose, así que se pueden cambiar en Coolify. Dejarlas vac�
 [`transiciones_prod_latina_v72_2026-11-09.md`](evidencias/transiciones_prod_latina_v72_2026-11-09.md):
 - 5 transiciones, sin silencios. Ninguna canción sonó dos veces seguidas.
 - **4 de 5 suaves**, con bajón de −1,5 a 2 dB.
-- **Una con bajón de 7,3 dB:** Bachata Loca (~145 BPM) → Danna Ruiz (~99 BPM). No es el caso de la intro suave: el salto de tempo es del 32 % y el ritmo cambia de golpe. Queda por estudiar.
+- **Una con bajón de 7,3 dB:** Bachata Loca (~145 BPM) → Danna Ruiz (~99 BPM). Estudiada y corregida en §2c: no era el salto de tempo.
+
+## 2c. El bajón de «La Bachata Loca → Alentando ilusiones»: un break de la saliente (2026-11-09)
+
+**Causa (medida, no supuesta).**
+- La Bachata Loca tiene un **break**: un corte musical de 1,5 s casi en silencio (−26 a −29 dBFS) entre los segundos 253,3 y 255,0. Después la música vuelve hasta el final.
+- El fundido iba de 252 a 260 s, así que el break caía entre 1 y 3 s después de empezar, cuando la entrante sonaba aún al 25–60 % (curva del crossfader). Por eso se oía el hueco.
+- En la grabación del ensayo, el mínimo del stream (−23,4 dBFS) cae exactamente en el break.
+- El salto de tempo no influye en el volumen.
+- Ninguna de las dos canciones tiene un tramo suave propio: el bajón aparece solo al mezclarlas.
+
+**Corrección.** `mixpoints::breakFadeEnd` (`engine/automix/mix_points.hpp`).
+- El motor mide el nivel de la pista cada 0,25 s, en la misma decodificación de siempre (`dj_analyze_mix_profile`).
+- Si dentro del fundido hay un break, el fundido termina justo donde el break empieza.
+  - Break: al menos 0,75 s a más de 9 dB bajo el nivel habitual, tras el cual la música vuelve antes de 4 s.
+  - Así lo hace un DJ: suelta la saliente en su corte.
+- Si el tramo nuevo del fundido tiene otro break, también lo esquiva (hasta 4 veces).
+- Nunca adelanta más que el tope `AUDIT_SOUND_MIX_MAX_ADELANTO`.
+- La caída final de la pista no cuenta como break: ahí la música no vuelve, y ese caso ya lo resuelve `energyFadeEnd`.
+- Se apaga con `AUDIT_SOUND_BREAK_SALTO=0`.
+- El registro del motor lo anota: `automix: break de la saliente en 254.00 s: el fundido termina ahí (antes 260.00)`.
+
+**Resultado** ([evidencia](evidencias/transiciones_break_bachata_2026-11-09.md), motor real + Icecast):
+
+| Transición | Antes | Después |
+|---|---|---|
+| Bachata Loca → Alentando ilusiones | **6,6 dB** (producción: 7,3 dB), «bajón de volumen» | **2,5 dB**, «mezcla suave» |
+| Alentando ilusiones → Bachata Loca | 2,4 dB | 2,9 dB (sin cambio de lógica; variación de la medición) |
+
+**Efecto en el resto de la biblioteca.** Comprobado sobre las 7 pistas latinas con el mismo análisis y con umbrales de 8, 9 y 10 dB: solo cambia el punto de mezcla de la Bachata Loca (de 260 s a 254 s). Las otras 6 quedan igual.
+
+**Pruebas.** `mix_points_test` cubre:
+- 8 casos de `breakFadeEnd`: break dentro y fuera del fundido, golpe seco de 0,5 s, caída final, tope de adelanto, dos breaks seguidos y sin datos.
+- 4 casos de `dj_analyze_mix_profile` sobre un WAV con un break de 1,5 s, incluido el punto de mezcla resultante.
 
 ## 3. Límites conocidos
 

@@ -45,6 +45,12 @@ const nav = (p, page) => p.evaluate((pg) => document.querySelector(`button.navbt
 try {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const p = await ctx.newPage();
+  // Biblioteca lenta a propósito (IndexedDB entrega 1,5 s tarde), como en una máquina cargada: tras
+  // recargar, las diapositivas llegan DESPUÉS de elegir la presentación. Antes quedaban en blanco
+  // (fallo intermitente del CI, 2026-11-09).
+  await ctx.addInitScript(() => { const d = Object.getOwnPropertyDescriptor(IDBTransaction.prototype, 'oncomplete');
+    Object.defineProperty(IDBTransaction.prototype, 'oncomplete', { configurable: true, get() { return d.get.call(this); },
+      set(fn) { d.set.call(this, fn ? (ev) => setTimeout(() => fn.call(this, ev), 1500) : fn); } }); });
   p.on('pageerror', (e) => errors.push(String(e)));
   await p.goto(`http://127.0.0.1:${WEB}/v06/`);
   await p.locator('button[data-action=guest]').click();
