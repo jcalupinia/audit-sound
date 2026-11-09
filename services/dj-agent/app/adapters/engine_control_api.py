@@ -147,6 +147,7 @@ class ControlApiAdapter:
         j = r.json()
         self._learn("queue", "queue" in j)
         self._learn("voice", "voice" in j)
+        self._learn("fx", "fx" in j)
         decks = [DeckOut(deck=i, title=str(d.get("title", "")), loaded=bool(d.get("loaded")),
                          playing=bool(d.get("playing")), pos=float(d.get("pos", 0)), dur=float(d.get("dur", 0)),
                          bpm=float(d.get("bpm", 0)), key=int(d.get("key", -1)))
@@ -182,6 +183,15 @@ class ControlApiAdapter:
             if engine_action == "queue_set":
                 query["tracks"] = ",".join(str(int(t)) for t in params["track_ids"])
             return self._command(query)
+        if engine_action == "fx":
+            if "fx" not in self.capabilities():
+                raise EngineCapabilityError("fx_unsupported", "Este motor no tiene efectos de audio (versión anterior)")
+            q: dict[str, Any] = {"action": "fx"}
+            for k, v in params.items():
+                if v is None:
+                    continue
+                q[k] = int(v) if isinstance(v, bool) else v
+            return self._command(q)
         query = {"action": engine_action}
         query.update({k: v for k, v in params.items() if k in _QUERY_KEYS})
         return self._command(query)

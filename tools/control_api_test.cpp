@@ -245,6 +245,20 @@ int main() {
             sv.body.find("\"received_s\":0.") != std::string::npos,
         "/api/status informa la voz (modo, voz recibida)");
   check(cmd("action=talkover&value=0", O5).code == 409, "talkover: solo el controlador");
+  // Efectos de audio.
+  check(cmd("action=fx&bank=1&type=echo&target=A&on=1&wet=0.5&param=0.3&sync=1", T5).code == 200, "fx: eco en el deck A");
+  Resp sf = req(B5 + "/api/status", "GET", T5.c_str());
+  check(sf.body.find("{\"bank\":1,\"type\":\"echo\",\"target\":\"A\",\"on\":true,\"wet\":0.500,\"param\":0.300,\"sync\":true") !=
+            std::string::npos && sf.body.find("{\"bank\":2,\"type\":\"none\"") != std::string::npos,
+        "/api/status informa los dos bancos de efectos");
+  check(cmd("action=fx&bank=1&on=0", T5).code == 200 &&
+            req(B5 + "/api/status", "GET", T5.c_str()).body.find("\"bank\":1,\"type\":\"echo\",\"target\":\"A\",\"on\":false") !=
+                std::string::npos,
+        "fx: apagar conserva tipo y destino");
+  check(cmd("action=fx&bank=3&type=echo", T5).code == 400 && cmd("action=fx&bank=1&type=distorsion", T5).code == 400 &&
+            cmd("action=fx&bank=1&target=C", T5).code == 400,
+        "fx: banco, tipo o destino inválidos → 400");
+  check(cmd("action=fx&bank=1&on=1", O5).code == 409, "fx: solo el controlador");
   control_api_add_track(api5, "Sin analizar", f0.c_str());
   check(req(B5 + "/api/tracks", "GET", T5.c_str()).body.find("\"metadata\":false") != std::string::npos,
         "B1 con una pista sin análisis → metadata=false");

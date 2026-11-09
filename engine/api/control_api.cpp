@@ -473,6 +473,19 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
                     vs.active ? "true" : "false", vs.talkover, vs.level_db, vs.music_gain, vs.buffered_ms,
                     vs.received_seconds, vs.underruns);
       out += vb;
+      out += ",\"fx\":[";
+      for (int b = 0; b < 2; ++b) {
+        DjFxState fs{};
+        dj_get_fx(api->engine, b, &fs);
+        char fb[256];
+        std::snprintf(fb, sizeof(fb),
+                      "%s{\"bank\":%d,\"type\":\"%s\",\"target\":\"%s\",\"on\":%s,\"wet\":%.3f,\"param\":%.3f,"
+                      "\"sync\":%s,\"active_wet\":%.3f}",
+                      b ? "," : "", b + 1, fs.type, fs.target, fs.on ? "true" : "false", fs.wet, fs.param,
+                      fs.sync ? "true" : "false", fs.active_wet);
+        out += fb;
+      }
+      out += "]";
     }
     {
       std::lock_guard<std::mutex> lq(api->queueMu);
@@ -569,6 +582,18 @@ MHD_Result handler(void* cls, struct MHD_Connection* c, const char* url, const c
     } else if (0 == std::strcmp(action, "talkover")) {
       // value: 0 sin atenuar · 1 atenuar siempre · 2 automático; gain (voz, lineal) y duck (dB).
       dj_set_talkover(e, argi(c, "value", 2), (float)argf(c, "gain", -1.0), (float)argf(c, "duck", 1.0));
+    } else if (0 == std::strcmp(action, "fx")) {
+      // Banco de efectos: bank=1|2, type, target=A|B|master, on, wet, param, sync (todo opcional salvo bank).
+      const int bank = argi(c, "bank", 0) - 1;
+      const char* type = arg(c, "type");
+      const char* target = arg(c, "target");
+      const char* on = arg(c, "on");
+      const char* sync = arg(c, "sync");
+      const char* wet = arg(c, "wet");
+      const char* param = arg(c, "param");
+      if (!dj_set_fx(e, bank, type, target, on ? (std::atoi(on) != 0) : -1, wet ? (float)std::atof(wet) : -1.0f,
+                     param ? (float)std::atof(param) : -1.0f, sync ? (std::atoi(sync) != 0) : -1))
+        return reply(c, 400, "{\"error\":\"fx inválido (bank 1-2, type, target A|B|master)\"}");
     } else if (0 == std::strcmp(action, "skip")) {
       automix_skip(api->automix);
     } else if (0 == std::strcmp(action, "set_transition")) {

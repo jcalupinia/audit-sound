@@ -6,6 +6,7 @@
 #include "last_error.hpp"
 #include "automix/mix_points.hpp"
 #include "voice/voice_mixer.hpp"
+#include "fx/fx_rack.hpp"
 #include "silence.hpp"
 
 #include "signalsmith-stretch.h"
@@ -454,6 +455,7 @@ struct Engine : public IAudioRenderer
   std::atomic<bool> managingStream{false};
   std::vector<float> mixAL, mixAR, mixBL, mixBR;
   VoiceMixer voice;  // micrófonos del DJ en vivo + talkover (solo salida estéreo)
+  fx::Rack fxRack;   // bancos de efectos (deck A, deck B o salida general)
 
   Engine() {
     mixAL.assign(kMaxCallbackFrames, 0.0f);
@@ -829,6 +831,12 @@ struct Engine : public IAudioRenderer
     const int n = std::min(frames, kMaxCallbackFrames);
     renderDeck(decks[0], mixAL.data(), mixAR.data(), n);
     renderDeck(decks[1], mixBL.data(), mixBR.data(), n);
+    // Efectos por deck (antes del crossfader, como en un mezclador DJ).
+    const int srFx = engineSampleRate.load();
+    if (fxRack.rate() != srFx) fxRack.setRate(srFx);
+    const float bpmA = decks[0].bpm * decks[0].rate, bpmB = decks[1].bpm * decks[1].rate;
+    fxRack.process(fx::TARGET_A, mixAL.data(), mixAR.data(), n, bpmA);
+    fxRack.process(fx::TARGET_B, mixBL.data(), mixBR.data(), n, bpmB);
 
     const float x = xfader.load();
     float gainA = 1.0f;
@@ -854,6 +862,8 @@ struct Engine : public IAudioRenderer
         mixAL[i] = (mixAL[i] * gainA + mixBL[i] * gainB) * m;
         mixAR[i] = (mixAR[i] * gainA + mixBR[i] * gainB) * m;
       }
+      // Efectos de la salida general (tempo del deck que más suena), antes de la voz en vivo.
+      fxRack.process(fx::TARGET_MASTER, mixAL.data(), mixAR.data(), n, x < 0.5f ? bpmA : bpmB);
       const int sr = engineSampleRate.load();
       if (voice.engineRate() != sr) voice.setEngineRate(sr);
       voice.process(mixAL.data(), mixAR.data(), n);
@@ -1417,6 +1427,40 @@ void dj_voice_status(DjEngine engine, DjVoiceStatus* st) {
   st->buffered_ms = v.bufferedMs();
   st->received_seconds = (double)v.receivedSamples() / (double)std::max(1, v.engineRate());
   st->underruns = (unsigned)v.underruns();
+}
+
+int dj_set_fx(DjEngine engine, int bank, const char* type, const char* target, int on, float wet, float param,
+              int sync) {
+  if (!engine || bank < 0 || bank >= fx::Rack::kBanks) return 0;
+  fx::Params& p = asEngine(engine)->fxRack.bank[bank].p;
+  if (type) {
+    const int t = fx::typeFromName(type);
+    if (t < 0) return 0;
+    p.type.store(t);
+  }
+  if (target) {
+    const int g = fx::targetFromName(target);
+    if (g < 0) return 0;
+    p.target.store(g);
+  }
+  if (on >= 0) p.on.store(on != 0);
+  if (wet >= 0) p.wet.store(std::min(1.0f, wet));
+  if (param >= 0) p.param.store(std::min(1.0f, param));
+  if (sync >= 0) p.sync.store(sync != 0);
+  return 1;
+}
+
+int dj_get_fx(DjEngine engine, int bank, DjFxState* st) {
+  if (!engine || !st || bank < 0 || bank >= fx::Rack::kBanks) return 0;
+  const fx::Unit& u = asEngine(engine)->fxRack.bank[bank];
+  std::snprintf(st->type, sizeof(st->type), "%s", fx::typeName(u.p.type.load()));
+  std::snprintf(st->target, sizeof(st->target), "%s", fx::targetName(u.p.target.load()));
+  st->on = u.p.on.load() ? 1 : 0;
+  st->wet = u.p.wet.load();
+  st->param = u.p.param.load();
+  st->sync = u.p.sync.load() ? 1 : 0;
+  st->active_wet = u.currentWet();
+  return 1;
 }
 
 void dj_set_master(DjEngine engine, float linear) {

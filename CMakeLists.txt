@@ -91,6 +91,10 @@ target_link_libraries(mix_points_test PRIVATE audit_sound_engine Threads::Thread
 add_executable(voice_test ${ROOT}/tools/voice_test.cpp)
 target_link_libraries(voice_test PRIVATE audit_sound_engine Threads::Threads)
 
+# Efectos de audio (bancos FX).
+add_executable(fx_test ${ROOT}/tools/fx_test.cpp)
+target_link_libraries(fx_test PRIVATE audit_sound_engine Threads::Threads)
+
 add_executable(silence_test ${ROOT}/tools/silence_test.cpp)
 target_link_libraries(silence_test PRIVATE audit_sound_engine Threads::Threads)
 
