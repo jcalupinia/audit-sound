@@ -10,6 +10,10 @@
 //    entrante. Si abre con una intro suave larga y la saliente termina de golpe, el fundido mezcla
 //    la cola con la intro y el oyente oye un hueco (ensayo del 2026-11-08: «Cuban Cigars», 8 s de
 //    intro a −25 dB → bajón de 18 dB). Un DJ entra con la entrante ya cerca de su parte fuerte.
+// 1c) breakFadeEnd: si la saliente tiene un «break» (corte musical casi en silencio, típico de la
+//    bachata y la salsa) DENTRO del fundido, el fundido termina justo donde empieza el break. Si no,
+//    el break cae cuando la entrante aún está baja y el oyente oye un bajón (producción, 2026-11-09:
+//    «La Bachata Loca → Alentando ilusiones», 7,3 dB; el break de 1,5 s estaba a 2 s del inicio).
 // 2) rampToward: acerca la velocidad de reproducción a un objetivo a un ritmo máximo por segundo,
 //    para que la pista entrante vuelva a SU tempo después del fundido sin saltos audibles.
 
@@ -76,6 +80,53 @@ inline double energyFadeEnd(double loudEnd, double lastSound, double transition,
   const double cand = loudEnd + 1.0;
   if (cand >= lastSound) return lastSound;
   return std::max(cand, lastSound - std::max(0.0, maxAdvance));
+}
+
+// Nivel de referencia (percentil 60 de los valores con sonido > −60 dB). NAN si hay menos de 8.
+inline float levelRefDb(const std::vector<float>& db) {
+  std::vector<float> on;
+  for (float v : db)
+    if (v > -60.0f) on.push_back(v);
+  if (on.size() < 8) return NAN;
+  const size_t k = (size_t)(0.6 * (double)(on.size() - 1));
+  std::nth_element(on.begin(), on.begin() + (long)k, on.end());
+  return on[k];
+}
+
+// Fin del fundido que evita un break de la saliente. `q`: nivel en dBFS cada `hop` s.
+// Un break es un tramo de al menos `minBreak` s a más de `dropDb` bajo la referencia tras el cual la
+// música VUELVE antes de `backSec` s (así no se confunde con el final de la pista, que ya resuelve
+// energyFadeEnd). Se busca en el tramo del fundido [fadeEnd − transition, fadeEnd − 0,5 s]; si hay
+// uno, el fundido termina donde empieza y se vuelve a mirar el nuevo tramo (máximo 4 veces). Nunca
+// adelanta el final antes de `minFadeEnd` (el tope de adelanto) ni antes de `transition` s.
+inline double breakFadeEnd(const std::vector<float>& q, double hop, double fadeEnd, double transition,
+                           double minFadeEnd, float dropDb = 9.0f, double minBreak = 0.75,
+                           double backSec = 4.0) {
+  if (hop <= 0 || transition <= 0 || q.empty()) return fadeEnd;
+  const float ref = levelRefDb(q);
+  if (std::isnan(ref)) return fadeEnd;
+  const float thr = ref - dropDb;
+  const long need = std::max(1L, (long)std::lround(minBreak / hop));
+  const long back = (long)std::lround(backSec / hop);
+  const long n = (long)q.size();
+  for (int it = 0; it < 4; ++it) {
+    const long a = std::max(0L, (long)std::floor((fadeEnd - transition) / hop));
+    const long b = std::min(n, (long)std::floor((fadeEnd - 0.5) / hop));
+    double found = -1.0;
+    for (long i = a; i < b;) {
+      if (q[(size_t)i] >= thr) { ++i; continue; }
+      long j = i;
+      while (j < n && q[(size_t)j] < thr) ++j;
+      bool returns = false;
+      for (long k = j; k < std::min(n, j + back); ++k)
+        if (q[(size_t)k] >= thr) { returns = true; break; }
+      if (j - i >= need && returns) { found = (double)i * hop; break; }
+      i = j;
+    }
+    if (found < 0 || found < minFadeEnd || found < transition) break;
+    fadeEnd = found;
+  }
+  return fadeEnd;
 }
 
 // Mueve `rate` hacia `target` como máximo `perSec` por segundo transcurrido.

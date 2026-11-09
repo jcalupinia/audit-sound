@@ -113,6 +113,65 @@ int main() {
   ok(len >= 50 && len <= 56, ("dj_analyze_loud_range ubica el fin de la parte fuerte (dio " + std::to_string(len) + " s)").c_str());
   std::remove(wav.c_str());
 
+  // 4) breakFadeEnd (puras). Nivel cada 0,25 s: 60 s a −14 dB con un break de 1,5 s a −28 dB.
+  {
+    using mixpoints::breakFadeEnd;
+    const double H = 0.25;
+    auto track = [&](double secs, double brk, double brkLen) {
+      std::vector<float> q((size_t)(secs / H), -14.0f);
+      for (size_t i = 0; i < q.size(); ++i) {
+        const double t = (double)i * H;
+        if (brk >= 0 && t >= brk && t < brk + brkLen) q[i] = -28.0f;
+        if (i % 3 == 0) q[i] += 1.5f;  // un poco de variación, como la música
+      }
+      return q;
+    };
+    // Caso de producción: fundido 52–60 s y break en 53,5–55 s → termina en 53,5.
+    auto q = track(60, 53.5, 1.5);
+    ok(std::fabs(breakFadeEnd(q, H, 60.0, 8.0, 15.0) - 53.5) < 1e-6, "un break dentro del fundido lo adelanta al inicio del break");
+    // Sin break: no cambia.
+    ok(breakFadeEnd(track(60, -1, 0), H, 60.0, 8.0, 15.0) == 60.0, "sin break, el fundido no cambia");
+    // Break antes del fundido (40 s): no cambia.
+    ok(breakFadeEnd(track(60, 40.0, 1.5), H, 60.0, 8.0, 15.0) == 60.0, "un break fuera del fundido no lo cambia");
+    // Hueco de 0,5 s (un golpe seco, no un break): no cambia.
+    ok(breakFadeEnd(track(60, 55.0, 0.5), H, 60.0, 8.0, 15.0) == 60.0, "un hueco de 0,5 s no cuenta como break");
+    // El final de la pista (cae y ya no vuelve) no es un break: lo resuelve energyFadeEnd.
+    auto fin = track(60, -1, 0);
+    for (size_t i = (size_t)(56 / H); i < fin.size(); ++i) fin[i] = -35.0f;
+    ok(breakFadeEnd(fin, H, 60.0, 8.0, 15.0) == 60.0, "la caída final (sin vuelta de la música) no es un break");
+    // Tope de adelanto: con minFadeEnd = 55 no se adelanta a 53,5.
+    ok(breakFadeEnd(q, H, 60.0, 8.0, 55.0) == 60.0, "respeta el tope de adelanto (AUDIT_SOUND_MIX_MAX_ADELANTO)");
+    // Dos breaks seguidos: tras adelantar a 53,5, el nuevo tramo (45,5–53) tiene otro en 48 → 48.
+    auto q2 = track(60, 53.5, 1.5);
+    for (size_t i = (size_t)(48 / H); i < (size_t)(49.5 / H); ++i) q2[i] = -28.0f;
+    ok(std::fabs(breakFadeEnd(q2, H, 60.0, 8.0, 15.0) - 48.0) < 1e-6, "si el nuevo tramo tiene otro break, también lo esquiva");
+    ok(breakFadeEnd({}, H, 60.0, 8.0, 15.0) == 60.0, "sin datos de nivel, no cambia");
+  }
+
+  // 5) dj_analyze_mix_profile: el nivel cada 0,25 s ve el break y el resultado por segundo no cambia.
+  {
+    std::vector<float> pcm3;
+    for (int i = 0; i < sr * 30; ++i) {
+      const double s = (double)i / sr;
+      const double g = (s >= 20.0 && s < 21.5) ? 0.04 : 1.0;  // break de 1,5 s a −28 dB
+      pcm3.push_back((float)(0.4 * g * std::sin(2 * M_PI * 220 * s)));
+    }
+    ok(writeWav(wav, pcm3, sr), "WAV con break escrito");
+    std::vector<float> lv(1000);
+    int nq = 0;
+    double ls3 = -1, le3 = -1, ls4 = -1, le4 = -1;
+    dj_analyze_mix_profile(wav.c_str(), &ls3, &le3, lv.data(), (int)lv.size(), &nq);
+    dj_analyze_loud_range(wav.c_str(), &ls4, &le4);
+    ok(nq == 120, ("120 niveles para 30 s (dio " + std::to_string(nq) + ")").c_str());
+    ok(nq >= 86 && lv[80] < -25 && lv[85] < -25 && lv[79] > -12 && lv[86] > -12,
+       "el break de 20–21,5 s aparece en los niveles de 0,25 s");
+    ok(ls3 == ls4 && le3 == le4, "loud_start/loud_end iguales a dj_analyze_loud_range");
+    lv.resize((size_t)nq);
+    const double fe = mixpoints::breakFadeEnd(lv, DJ_LEVEL_HOP_SEC, 27.0, 8.0, 0.0);
+    ok(std::fabs(fe - 20.0) < 0.26, ("con el WAV real, el fundido 19–27 termina en el break (dio " + std::to_string(fe) + ")").c_str());
+    std::remove(wav.c_str());
+  }
+
   std::printf(fails ? "\n%d FALLA(S)\n" : "\nTODO OK\n", fails);
   return fails ? 1 : 0;
 }
