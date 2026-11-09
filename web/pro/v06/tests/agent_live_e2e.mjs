@@ -73,6 +73,11 @@ try {
   ok(!!sid && (await page.locator('main').innerText()).includes('AGENTE REAL CONECTADO'), 'sesión creada en el servidor y visible en la UI');
   ok(await page.evaluate(() => { try { return !localStorage.getItem('as.agent.token') && !!sessionStorage.getItem('as.agent.token'); } catch (e) { return false; } }),
     'el token solo vive en sessionStorage (no en localStorage)');
+  // Prueba en vivo 2026-11-09: con el agente conectado seguía el aviso «Modo demostración… ninguna orden se
+  // ejecuta en el servidor» junto a «las órdenes ya se ejecutan en el servidor».
+  const chat0 = await page.locator('#agent-chat').innerText();
+  ok(!chat0.includes('Modo demostración') && !chat0.includes('Sistema · DEMO'), 'al conectar se retira el aviso de demostración del chat');
+  ok((await page.locator('footer.foot').innerText()).includes('CONECTADO AL SERVIDOR'), 'el pie ya no dice «NO PRODUCCIÓN» con el agente conectado');
   if (SHOTS) await page.screenshot({ path: join(SHOTS, 'v06_agente_conectado.png'), fullPage: true });
 
   // 2) Modos: 30 cambios desde la UI, verificados en el servidor
@@ -107,6 +112,13 @@ try {
       ' — servidor: ' + JSON.stringify(await api('/sessions/' + sid, TOK_OP)).slice(0, 300)));
   const cmds = await api(`/sessions/${sid}/commands`, TOK_OP);
   ok(cmds.some((c) => c.action === 'skip' && c.status === 'ACKNOWLEDGED'), 'el motor confirmó el salto (ACKNOWLEDGED)');
+  // El mensaje dice qué hizo y el historial lo muestra (antes: «Hecho: la acción…» e historial vacío).
+  const chat1 = await page.locator('#agent-chat').innerText();
+  ok(chat1.includes('Saltar a la siguiente pista') && !chat1.includes('la acción'), 'la respuesta dice qué hizo el agente');
+  const hist = async () => page.evaluate(() => { const h = [...document.querySelectorAll('h3')].find((x) => x.textContent.includes('Historial de decisiones'));
+    return h && h.nextElementSibling ? h.nextElementSibling.innerText : ''; });
+  ok(await until(async () => { const t = await hist(); return t.includes('Saltar a la siguiente pista') && t.includes('EJECUTADA'); }),
+    'el historial de decisiones registra el salto ejecutado por el agente' + ' — historial: ' + (await hist()).slice(0, 200).replace(/\n/g, ' | '));
 
   // 4) Políticas: modelo, autonomía y reglas llegan al servidor
   await page.selectOption('select[name=agent-model]', 'qwen');

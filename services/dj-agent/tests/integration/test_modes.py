@@ -195,3 +195,16 @@ def test_el_plan_no_repite_la_pista_que_el_motor_ya_preparo(settings, clock, tmp
     elegida = sin["items"][0]["title"]
     con = primer_plan(elegida)
     assert elegida not in [i["title"] for i in con["items"]]
+
+
+def test_mensaje_de_la_orden_dice_que_hizo_y_con_que_pistas(client):
+    """Prueba en vivo 2026-11-09: «Hecho: la acción ejecutada…» no decía qué hizo ni con qué pistas, y el
+    historial de la consola quedaba vacío. Ahora el mensaje lo dice y los comandos llevan su propuesta."""
+    sid = new_session(client, mode="AUTOMATICO")["id"]
+    r = client.post(f"{BASE}/sessions/{sid}/intent", json={"text": "salta la canción"}, headers=H("op1")).json()
+    assert r["intent"] == "SKIP_TRACK"
+    assert "la acción" not in r["message"] and "Saltar a la siguiente pista" in r["message"]
+    assert r["outcome"] == "executed" and "sale «" in r["message"]   # nombra la pista que sonaba
+    cmds = client.get(f"{BASE}/sessions/{sid}/commands", headers=H("op1")).json()
+    assert all("proposal_id" in c for c in cmds)
+    assert any(c["origin"] == "agent" and c["action"] == "skip" and c["proposal_id"] is None for c in cmds)

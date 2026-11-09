@@ -58,9 +58,29 @@ function agentProposalsToHistory(list){
   return list.map(p=>({id:'srv-'+p.id,srv:p.id,text:p.summary+(p.reason?' · '+(AGENT_REASON[p.reason]||p.reason):''),status:st[p.status]||String(p.status).toLowerCase()}));
 }
 
+// Historial de decisiones = propuestas (pendientes o decididas) + lo que el agente EJECUTÓ por su cuenta.
+// Antes solo había propuestas: una orden que el agente ejecutaba directo («Hecho…») no aparecía nunca.
+const AGENT_ACTION={skip:'Saltar a la siguiente pista',set_transition:'Duración de las transiciones',deck_play:'Reproducir plato',
+  deck_pause:'Pausar plato',deck_load:'Cargar pista',deck_cue:'Volver al CUE',queue_set:'Cola de reproducción',queue_clear:'Vaciar la cola',
+  set_mixmode:'Modo de mezcla',xfader:'Crossfader',rate:'Tempo',eq:'Ecualizador',filter:'Filtro',gain:'Ganancia',fx:'Efecto'};
+const AGENT_CMD_STATUS={ACKNOWLEDGED:'executed',FAILED:'failed',REJECTED:'rejected',ACCEPTED:'sent',SENT:'sent',PROPOSED:'pending'};
+function agentCommandText(c){const p=c.params||{};let t=AGENT_ACTION[c.action]||c.action;
+  if(p.deck!=null&&/^deck_/.test(c.action))t+=' '+'AB'[p.deck];
+  if(c.action==='set_transition'&&p.value!=null)t+=`: ${Math.round(p.value)} s`;
+  if(c.action==='queue_set'&&Array.isArray(p.tracks))t+=`: ${p.tracks.length} pista(s)`;
+  if(c.error_code)t+=` · ${c.error_code}`;
+  return t}
+function agentCommandsToHistory(list){
+  return list.filter(c=>c.origin==='agent'&&!c.proposal_id)
+    .map(c=>({id:'cmd-'+c.id,text:'Agente: '+agentCommandText(c),status:AGENT_CMD_STATUS[c.status]||String(c.status).toLowerCase(),at:c.created_at||0}))}
 async function agentSyncProposals(){
   if(!agentLive())return;
-  try{const list=await agentFetch(`/sessions/${AGENT.sid}/proposals`);state.agentHistory=agentProposalsToHistory(list)}catch(e){}
+  let props=[],cmds=[];
+  try{props=await agentFetch(`/sessions/${AGENT.sid}/proposals`)}catch(e){}
+  try{cmds=await agentFetch(`/sessions/${AGENT.sid}/commands`)}catch(e){}
+  const h=agentProposalsToHistory(props||[]).map((x,i)=>({...x,at:(props[i]&&props[i].created_at)||0})).concat(agentCommandsToHistory(cmds||[]));
+  h.sort((a,b)=>a.at-b.at);
+  state.agentHistory=h.slice(-40);
 }
 
 async function agentSyncPrefs(){
@@ -93,6 +113,8 @@ async function agentConnect(token){
     AGENT.sid=s.id;AGENT.connected=true;agentApplySession(s);
     try{await agentSyncPrefs()}catch(e){/* rol sin permiso de preferencias: se muestran las locales */}
     await agentSyncProposals();await agentRefreshStatus();
+    // El aviso inicial «Modo demostración…» contradice la conexión: se retira al conectar.
+    state.chat=state.chat.filter(m=>!(m.who==='system'&&!m.label&&/^Modo demostración/.test(m.text||'')));
     state.chat.push({who:'system',label:'Agente DJ',text:`Conectado al agente real (sesión ${s.name||s.id.slice(0,8)}). Modo ${s.mode}. Las órdenes ya se ejecutan en el servidor.`});
     agentOpenWs();
     toast('Agente DJ conectado.');
@@ -141,6 +163,7 @@ function agentOnEvent(ev){
     case 'session.snapshot':AGENT.wsOk=true;AGENT.retry=0;agentApplySession(p);break;
     case 'mode.changed':if(p.to&&AGENT_MODE_UI[p.to]){AGENT.mode=p.to;state.mode=AGENT_MODE_UI[p.to]}break;
     case 'agent.proposal.created':case 'agent.proposal.decided':case 'agent.proposal.expired':
+    case 'agent.command.ack':case 'command.failed':case 'command.rejected':
       agentSyncProposals().then(agentRender);return;
     case 'preferences.updated':agentSyncPrefs().then(agentRender).catch(()=>{});return;
     case 'plan.created':state.chat.push({who:'system',label:'Agente DJ',text:`Plan v${p.version} creado con ${p.items} pistas del catálogo.`});break;
@@ -166,7 +189,7 @@ async function agentIntent(text,idx){
     if(r.plan&&r.plan.items&&r.plan.items.length){const it=r.plan.items,gs=[...new Set(it.map(i=>i.genre).filter(Boolean))],ts=it.map(i=>i.title).filter(Boolean);const det=gs.length?gs.join(' → '):ts.slice(0,3).map(t=>'«'+t+'»').join(', ')+(ts.length>3?'…':'');msg+=` Plan: ${it.length} ${it.length===1?"pista":"pistas"}`+(det?` (${det})`:'')+'.'}
     state.chat[idx]={who:'system',label:'Agente DJ · '+src,text:msg.trim()||'Orden recibida.'};
     if(r.mode&&AGENT_MODE_UI[r.mode]){AGENT.mode=r.mode;state.mode=AGENT_MODE_UI[r.mode]}
-    if(r.proposal)await agentSyncProposals();
+    if(r.proposal||(r.commands&&r.commands.length))await agentSyncProposals();
   }catch(e){state.chat[idx]={who:'system',label:'Agente DJ · error',text:'El agente no procesó la orden: '+e.message}}
   save();agentRender();
 }

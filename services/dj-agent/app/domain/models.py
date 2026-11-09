@@ -196,6 +196,7 @@ class CommandOut(BaseModel):
     error_message: str | None = None
     correlation_id: str
     idempotent_replay: bool = False
+    proposal_id: str | None = None  # propuesta aprobada que lo originó (el historial no la duplica)
     created_at: float
 
 
