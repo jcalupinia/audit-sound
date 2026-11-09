@@ -88,6 +88,8 @@ class FakeEngine:
         self.voice_blocks = 0
         self.voice_rates: set[int] = set()
         self.talkover_mode = 2
+        self.fx = [{"bank": b, "type": "none", "target": "master", "on": False, "wet": 0.35, "param": 0.5, "sync": True}
+                   for b in (1, 2)]
         if autostart and self.catalog:
             self._load(0, self.catalog[0].id)
             self.decks[0].playing = True
@@ -110,7 +112,7 @@ class FakeEngine:
     def capabilities(self) -> set[str]:
         caps = {"status", "tracks", "commands"}
         if not self.emulate_current:
-            caps |= {"metadata", "queue", "voice"}
+            caps |= {"metadata", "queue", "voice", "fx"}
         return caps
 
     def tracks(self) -> list[Track]:
@@ -199,6 +201,11 @@ class FakeEngine:
                 d.playing, d.pos = False, d.cue
             elif engine_action == "deck_set_cue":
                 self.decks[p["deck"]].cue = self.decks[p["deck"]].pos
+            elif engine_action == "fx":
+                if self.emulate_current:
+                    raise EngineCapabilityError("fx_unsupported", "Este motor no tiene efectos de audio")
+                bank = self.fx[p["bank"] - 1]
+                bank.update({k: v for k, v in p.items() if k != "bank" and v is not None})
             elif engine_action == "xfader":
                 self.xfader = float(p["value"])
                 self._fade = None

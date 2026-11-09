@@ -21,7 +21,7 @@ function changeControl(el){const d=el.dataset,k=d.change;if(!k)return;let n=Numb
  case 'mic-gain':case 'mic-hi':case 'mic-low':micAction('mic-param',d.id,{field:k.split('-')[1],n});command('mic.channel',{id:d.id,field:k.split('-')[1],value:n},'LOCAL');break;
  case 'mic-device':micAction('mic-device',d.id,el.value);break;
  case 'talkover-mode':micAction('talkover',null,el.value);break;
- case 'fx-type':case 'fx-channel':case 'fx-wet':case 'fx-param':case 'fx-sync':{let f=state.fx.find(f=>f.id===Number(d.id));if(!f)return;let key=({ 'fx-type':'type','fx-channel':'channel','fx-wet':'wet','fx-param':'parameter','fx-sync':'bpmSync'})[k];f[key]=key==='bpmSync'?el.checked:['wet','parameter'].includes(key)?n:el.value;command('fx.control',{bank:d.id,field:key,value:f[key]});break}
+ case 'fx-type':case 'fx-channel':case 'fx-wet':case 'fx-param':case 'fx-sync':{let f=state.fx.find(f=>f.id===Number(d.id));if(!f)return;let key=({ 'fx-type':'type','fx-channel':'channel','fx-wet':'wet','fx-param':'parameter','fx-sync':'bpmSync'})[k];f[key]=key==='bpmSync'?el.checked:['wet','parameter'].includes(key)?n:el.value;command('fx.control',{bank:d.id,field:key,value:f[key]},'LOCAL');save();fxChanged(f,['type','channel','bpmSync'].includes(key));if(key==='type')render();break}
  case 'permission':updateRole(d.role,d.permission,el.checked);break;
  default:console.warn('UNHANDLED_CHANGE',k)
  }save();render()}catch(e){toast(e.message,true)}}

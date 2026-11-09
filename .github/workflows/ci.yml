@@ -56,6 +56,8 @@ jobs:
         run: ./build/mix_points_test
       - name: Mezclador de voz (micrófonos + talkover)
         run: ./build/voice_test
+      - name: Efectos de audio (eco, delay, reverb, filtro, flanger, phaser, bitcrush)
+        run: ./build/fx_test
 
   wasm:
     name: Build WASM del motor (emscripten) + autoprueba de enlace
@@ -123,7 +125,7 @@ jobs:
         run: PYTHON=python node web/pro/v06/tests/sesion_real_e2e.mjs
 
   microfonos-e2e:
-    name: Micrófonos en vivo (consola → agente → motor → Icecast, servicios reales)
+    name: Micrófonos y efectos en vivo (consola → agente → motor → Icecast, servicios reales)
     # Igual que la imagen del motor en producción (deploy/engine/Dockerfile: ubuntu:24.04). En
     # ubuntu-latest (más nuevo) libshout e Icecast no se entienden (Icecast rechaza «!POKE» y se cae el montaje).
     runs-on: ubuntu-24.04
@@ -148,3 +150,5 @@ jobs:
           pip install "fastapi==0.162.2" "pydantic==2.10.4" "uvicorn==0.34.0" "httpx==0.28.1" "websockets==14.1"
       - name: Voz al stream con talkover, verificada por un oyente
         run: GDB=1 PYTHON=python node web/pro/v06/tests/microfono_stream_e2e.mjs
+      - name: Efectos de audio desde la consola, verificados por un oyente
+        run: GDB=1 PYTHON=python node web/pro/v06/tests/efectos_stream_e2e.mjs

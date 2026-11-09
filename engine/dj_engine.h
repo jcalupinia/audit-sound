@@ -56,6 +56,21 @@ typedef struct {
   unsigned underruns;      /* veces que el búfer se vació hablando */
 } DjVoiceStatus;
 void dj_voice_status(DjEngine engine, DjVoiceStatus* st);
+
+/* Bancos de efectos (0 y 1). type: "none" | "echo" | "delay" | "reverb" | "filter" | "flanger" |
+ * "phaser" | "crush" (NULL = no cambia). target: "A" | "B" | "master" (NULL = no cambia).
+ * on/sync: 0/1 (negativo = no cambia). wet/param: 0..1 (negativo = no cambia).
+ * Devuelve 0 si el banco, el tipo o el destino no son válidos. */
+int dj_set_fx(DjEngine engine, int bank, const char* type, const char* target, int on, float wet, float param,
+              int sync);
+typedef struct {
+  char type[12];
+  char target[8];
+  int on, sync;
+  float wet, param;
+  float active_wet; /* mezcla aplicada en este momento (rampa) */
+} DjFxState;
+int dj_get_fx(DjEngine engine, int bank, DjFxState* st);
 // Título de lo que suena ("Artista - Tema"): el sink de Icecast lo publica como metadato del stream.
 void dj_set_stream_title(DjEngine engine, const char* title);
 void dj_set_rate(DjEngine engine, int deck, float rate);

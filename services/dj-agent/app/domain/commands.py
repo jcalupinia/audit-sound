@@ -7,7 +7,7 @@ Cualquier acción o campo desconocido se rechaza (extra="forbid").
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -65,6 +65,17 @@ class MixModeP(_P):
     value: int = Field(ge=0, le=1)  # 0 = salta silencios, 1 = pista completa
 
 
+class FxP(_P):
+    """Banco de efectos del motor (eco, delay, reverb, filtro, flanger, phaser, bitcrush)."""
+    bank: int = Field(ge=1, le=2)
+    type: Literal["none", "echo", "delay", "reverb", "filter", "flanger", "phaser", "crush"] | None = None
+    target: Literal["A", "B", "master"] | None = None
+    on: bool | None = None
+    wet: float | None = Field(default=None, ge=0.0, le=1.0)
+    param: float | None = Field(default=None, ge=0.0, le=1.0)
+    sync: bool | None = None
+
+
 class QueueSetP(_P):
     track_ids: list[int] = Field(min_length=1, max_length=50)
 
@@ -93,6 +104,8 @@ SPECS: dict[str, CommandSpec] = {s.action: s for s in [
     CommandSpec(action="set_transition", engine_action="set_transition", params_model=TransitionP),
     # 'set_mode' en el motor es el modo de AutoMix (no el modo DJ): lo renombramos.
     CommandSpec(action="set_mixmode", engine_action="set_mode", params_model=MixModeP),
+    # Efectos de audio: solo personas (no está en los niveles de autonomía del agente).
+    CommandSpec(action="fx", engine_action="fx", params_model=FxP, capability="fx"),
     # Fase 2 (no existe aún en el motor real → capacidad "queue", brecha B2)
     CommandSpec(action="queue_set", engine_action="queue_set", params_model=QueueSetP, capability="queue"),
     CommandSpec(action="queue_clear", engine_action="queue_clear", params_model=EmptyP, capability="queue"),

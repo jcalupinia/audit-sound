@@ -217,7 +217,7 @@ async function micListDevices(ask){
 microphonesPage=function(){
   const devs=[['','Micrófono predeterminado'],...MIC_DEVICES.map((d,i)=>[d.deviceId,d.label||('Micrófono '+(i+1))])];
   const live=agentLive();
-  return `${pageTitle('Micrófonos y talkover','Tu voz entra a la mezcla: en este equipo y, si quieres, en el stream en vivo.')}
+  return `${pageTitle('Micrófonos y talkover','Tu voz entra a la mezcla: en este equipo y, si quieres, en el stream en vivo.','',agentLive())}
   <section class="panel"><div class="panel-head"><h2>Nivel de voz</h2><span data-mic-duck class="micro muted">música a volumen normal</span></div>
     <div class="micvu"><div class="micvu-bar" data-mic-vu style="width:0%"></div></div>
     <div class="pillbar spaced">
