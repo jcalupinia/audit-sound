@@ -122,11 +122,15 @@ try {
   await page.locator('button[data-action=agent-test-approval]').click();
   ok(await until(async () => (await page.locator('button[data-action=agent-approve]').count()) > 0), 'la propuesta del servidor aparece como solicitud de aprobación');
   if (SHOTS) await page.screenshot({ path: join(SHOTS, 'v06_agente_propuesta.png'), fullPage: true });
-  await page.locator('button[data-action=agent-approve]').first().click();
-  ok(await until(async () => {
-    const ps = await api(`/sessions/${sid}/proposals`, TOK_OP);
-    return ps.some((p) => ['APPROVED', 'EXECUTED'].includes(p.status));
-  }), 'la aprobación se registró en el servidor');
+  // Los eventos del agente redibujan el panel: si el botón se reemplaza justo en el clic, el clic se
+  // pierde (cae en un nodo ya desconectado). Se reintenta solo si el servidor no registró la decisión.
+  const decided = async () => (await api(`/sessions/${sid}/proposals`, TOK_OP)).some((p) => ['APPROVED', 'EXECUTED'].includes(p.status));
+  let approved = false;
+  for (let i = 0; i < 3 && !approved; i++) {
+    if (await page.locator('button[data-action=agent-approve]').count()) await page.locator('button[data-action=agent-approve]').first().click();
+    approved = await until(decided, 3000);
+  }
+  ok(approved, 'la aprobación se registró en el servidor');
   ok(await until(async () => (await page.locator('button[data-action=agent-approve]').count()) === 0), 'la solicitud desaparece de pendientes en la UI');
 
   // 6) Evento en vivo: otro cliente cambia el modo → la UI lo refleja sin recargar
