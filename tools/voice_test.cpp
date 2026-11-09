@@ -112,6 +112,22 @@ int main() {
     v.process(l.data(), r.data(), SR);
     ok(!v.active() && v.underruns() == 1 && l.back() == 0.0f, "corte de red: la voz se detiene limpia y espera el búfer");
   }
+  // 5b) El consumidor se detiene (motor reconectando a Icecast) y la voz sigue llegando: el búfer se
+  //     llena, se descarta lo que no cabe y NO se pierde la posición (antes: lectura fuera del PCM).
+  {
+    VoiceMixer v(SR);
+    double ph = 0;
+    for (int b = 0; b < 45; ++b) {  // 4,5 s de voz sin consumir (el búfer guarda 3 s)
+      auto pcm = tone(4800, 48000, 440.0, 0.3, ph);
+      v.push(pcm.data(), 4800, 48000);
+    }
+    ok(v.overflowSamples() > 0, "búfer lleno: la voz que no cabe se descarta");
+    std::vector<float> l(SR * 4, 0.0f), r(SR * 4, 0.0f);
+    v.process(l.data(), r.data(), SR * 4);  // el consumidor vuelve y vacía
+    auto pcm = tone(4800, 48000, 440.0, 0.3, ph);
+    const int n = v.push(pcm.data(), 4800, 48000);
+    ok(n >= 4400 && n <= 4420, "tras el desborde, 100 ms de voz siguen siendo 100 ms (" + std::to_string(n) + " muestras)");
+  }
   // 6) Entradas inválidas.
   {
     VoiceMixer v(SR);

@@ -53,7 +53,8 @@ class VoiceMixer {
     const double step = (double)srcRate / (double)rate_;  // muestras de origen por muestra de salida
     int written = 0;
     // Remuestreo lineal continuo entre bloques: srcPos_ es la posición en el bloque actual,
-    // con last_ como la muestra anterior al bloque (índice -1).
+    // con last_ como la muestra anterior al bloque (índice -1). Siempre en [-1, 0) al empezar.
+    if (!(srcPos_ >= -1.0 && srcPos_ < 0.0 + 1e-9)) srcPos_ = 0.0;
     while (srcPos_ < (double)frames - 1e-9) {
       const int i0 = (int)std::floor(srcPos_);
       const double f = srcPos_ - i0;
@@ -62,10 +63,16 @@ class VoiceMixer {
       const float v = (float)(a + (b - a) * f);
       size_t w = w_.load(std::memory_order_relaxed);
       const size_t r = r_.load(std::memory_order_acquire);
-      if (w - r >= cap - 1) break;  // lleno (no debería ocurrir: el consumidor recorta el retraso)
-      ring_[w % cap] = v;
-      w_.store(w + 1, std::memory_order_release);
-      ++written;
+      // Lleno: el consumidor está detenido (p. ej. el motor se reconecta a Icecast). Se descarta la
+      // voz, pero la posición avanza igual: cortar aquí dejaba srcPos_ muy negativo y el bloque
+      // siguiente leía fuera del PCM (caída del motor vista en CI, 2026-11-09).
+      if (w - r < cap - 1) {
+        ring_[w % cap] = v;
+        w_.store(w + 1, std::memory_order_release);
+        ++written;
+      } else {
+        overflow_.fetch_add(1, std::memory_order_relaxed);
+      }
       srcPos_ += step;
     }
     srcPos_ -= (double)frames;
@@ -131,6 +138,7 @@ class VoiceMixer {
   uint64_t receivedSamples() const { return received_.load(); }
   uint64_t underruns() const { return underruns_; }
   uint64_t dropped() const { return dropped_; }
+  uint64_t overflowSamples() const { return overflow_.load(); }
 
  private:
   std::mutex pushMu;
@@ -140,6 +148,7 @@ class VoiceMixer {
   double srcPos_ = 0.0;
   float last_ = 0.0f;
   std::atomic<uint64_t> received_{0};
+  std::atomic<uint64_t> overflow_{0};  // muestras descartadas porque el búfer estaba lleno
   // Estado del consumidor (solo hilo de audio).
   bool primed_ = false;
   double env_ = 0.0;

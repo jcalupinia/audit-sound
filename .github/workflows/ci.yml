@@ -124,14 +124,16 @@ jobs:
 
   microfonos-e2e:
     name: Micrófonos en vivo (consola → agente → motor → Icecast, servicios reales)
-    runs-on: ubuntu-latest
+    # Igual que la imagen del motor en producción (deploy/engine/Dockerfile: ubuntu:24.04). En
+    # ubuntu-latest (más nuevo) libshout e Icecast no se entienden (Icecast rechaza «!POKE» y se cae el montaje).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Toolchain del motor, Icecast y ffmpeg
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libcurl4-openssl-dev libmicrohttpd-dev icecast2 ffmpeg
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libcurl4-openssl-dev libmicrohttpd-dev icecast2 ffmpeg gdb
       - name: Compilar el servidor del motor
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build build -j"$(nproc)" --target audit_sound_server
       - uses: actions/setup-node@v4
         with:
@@ -145,4 +147,4 @@ jobs:
           npx playwright install --with-deps chromium
           pip install "fastapi==0.162.2" "pydantic==2.10.4" "uvicorn==0.34.0" "httpx==0.28.1" "websockets==14.1"
       - name: Voz al stream con talkover, verificada por un oyente
-        run: PYTHON=python node web/pro/v06/tests/microfono_stream_e2e.mjs
+        run: GDB=1 PYTHON=python node web/pro/v06/tests/microfono_stream_e2e.mjs
