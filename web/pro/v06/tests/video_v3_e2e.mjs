@@ -127,7 +127,9 @@ try {
   ok((await vx(p)).xlink === false, 'el cue desvincula el crossfader compartido del videoclip (si no, el de audio lo devolvería)');
   ok(await pxIs(p, [255, 0, 0], 'program'), 'el programa muestra la diapositiva 1');
 
-  const hm = await p.evaluate(() => new Date().toTimeString().slice(0, 5));
+  // Hora del MINUTO ANTERIOR: el cue ya venció hace menos de 2 min. Antes solo valía el minuto exacto y el
+  // cue se perdía si el minuto cambiaba entre crearlo y el chequeo (fallo del CI del PR 79, 2026-11-09).
+  const hm = await p.evaluate(() => new Date(Date.now() - 60000).toTimeString().slice(0, 5));
   const fotoId = await p.evaluate(() => window.__ASVX.tracks().find((t) => t.kind === 'image' && t.name === 'foto_verde').id);
   await p.fill('form[data-form=cue] input[name=time]', hm);
   await p.fill('form[data-form=cue] input[name=name]', 'Foto a la hora');

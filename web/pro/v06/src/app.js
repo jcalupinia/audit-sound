@@ -1381,6 +1381,7 @@ function vxCrossTo(target){cancelAnimationFrame(VX.anim);
 async function vxRunCue(c,auto){
   const t=trackFor(c.item);
   if(!t){toast(`Cue «${c.name}»: elige qué mostrar (video, foto o presentación).`,true);return false}
+  c.lastRun=vxToday();                               // antes de esperar nada: el chequeo siguiente no lo repite
   // El cue manda sobre la mezcla de video: si había un videoclip con crossfader compartido, se desvincula
   // (si no, el crossfader de audio devolvería la mezcla a su posición en el siguiente cuadro).
   if(state.clipXfader&&(state.video.A.clip||state.video.B.clip)){state.clipXfader=false;toast('Crossfader de video desvinculado del de audio para el cue.')}
@@ -1389,12 +1390,19 @@ async function vxRunCue(c,auto){
   if(t.kind==='video'){const el=vjVideo(deck);el.currentTime=0;try{await el.play();state.video[deck].playing=true}catch(e){}}
   vxCrossTo(deck==='A'?0:100);
   if(!state.videoLive){state.videoLive=true;state.programSource=deck}
-  c.lastRun=new Date().toISOString().slice(0,10);
   command('event.cue',{id:c.id,action:'execute',item:t.id,deck,auto:!!auto},'LOCAL');
   toast(`${auto?'Cue automático':'Cue'} «${c.name}»: ${t.name} al aire (deck ${deck}).`);save();render();return true}
 // Ejecución automática a la hora del cue (una vez por día).
-setInterval(()=>{if(!state.cueAuto)return;const now=new Date(),hm=now.toTimeString().slice(0,5),day=now.toISOString().slice(0,10);
-  for(const c of state.cuesheets)if(c.time===hm&&c.item&&c.lastRun!==day)vxRunCue(c,true)},10000);
+// Fecha LOCAL (antes en UTC: en Ecuador el «día» cambiaba a las 19:00 y un cue podía repetirse o no correr).
+function vxToday(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+// Un cue vence si su hora llegó hace como máximo VX_CUE_GRACIA_MIN minutos y hoy no se ejecutó. Antes solo
+// valía el minuto exacto: si «Automático» se activaba (o el chequeo de 10 s caía) justo al cambiar de minuto,
+// el cue se perdía.
+const VX_CUE_GRACIA_MIN=2;
+function vxDueCues(){if(!state.cueAuto)return;const now=new Date(),day=vxToday(now),nowMin=now.getHours()*60+now.getMinutes();
+  for(const c of state.cuesheets){const m=/^(\d{1,2}):(\d{2})$/.exec(c.time||'');if(!m||!c.item||c.lastRun===day)continue;
+    const d=nowMin-(+m[1]*60+ +m[2]);if(d>=0&&d<=VX_CUE_GRACIA_MIN)vxRunCue(c,true)}}
+setInterval(vxDueCues,10000);
 
 eventPage=function(){
   const items=state.tracks.filter(t=>(t.kind==='video'&&mediaUrls.has(t.id))||(t.kind==='image'&&mediaUrls.has(t.id))||t.kind==='presentation');
@@ -1411,7 +1419,7 @@ async function vxAction(n,a){switch(n){
   case 'vx-xlink':state.clipXfader=!state.clipXfader;toast(state.clipXfader?'El crossfader de audio mueve también la mezcla de video.':'Crossfader de video independiente.');render();break;
   case 'vx-prev':vxSlide(a.deck,-1);break;
   case 'vx-next':vxSlide(a.deck,1);break;
-  case 'vx-cue-auto':state.cueAuto=!state.cueAuto;toast(state.cueAuto?'Los cues se ejecutarán solos a su hora (deja esta pestaña abierta).':'Cues en modo manual.');save();render();break;
+  case 'vx-cue-auto':state.cueAuto=!state.cueAuto;toast(state.cueAuto?'Los cues se ejecutarán solos a su hora (deja esta pestaña abierta).':'Cues en modo manual.');save();render();vxDueCues();break;
   case 'cue-execute':{const c=state.cuesheets.find(c=>c.id===a.id);if(c)await vxRunCue(c,false);break}
 }}
 
