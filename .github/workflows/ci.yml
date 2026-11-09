@@ -112,6 +112,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Mezcla por GPU y respaldo 2D, transiciones, efectos, texto, logo y biblioteca persistente
         run: node web/pro/v06/tests/video_v1_e2e.mjs
+      - name: Pantalla 2 (proyector), transiciones al enviar a programa y botón de pánico
+        run: node web/pro/v06/tests/video_v2_pantalla2_e2e.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

@@ -7,7 +7,7 @@ function changeControl(el){const d=el.dataset,k=d.change;if(!k)return;let n=Numb
  case 'video-cross':state.videoMix=n;command('video.crossfade',{position:n},'LOCAL');break;
  case 'video-transition':state.videoTrans=el.value;command('video.transition',{type:el.value});break;
  case 'video-seek':{let v=vjVideo(d.deck);if(v?.duration)v.currentTime=(n/100)*v.duration;state.video[d.deck].seek=n;command('video.transport',{deck:d.deck,op:'seek',percentage:n},'LOCAL');break}
- case 'video-output':command('video.output',{output:el.value});if(el.value!=='local')toast(el.value==='screen-2'?'La salida a una segunda pantalla llega en la fase V2. Por ahora usa «Pantalla completa».':'La transmisión del video por internet llega en la fase V5.');break;
+ case 'video-output':command('video.output',{output:el.value});if(el.value==='screen-2')p2Show();else if(el.value==='stream')toast('La transmisión del video por internet llega en la fase V5.');break;
  case 'visual-fx':state.videoFx=el.value;command('video.transition',{fx:el.value,amount:state.videoFxAmount});break;
  case 'video-fx-amount':state.videoFxAmount=n;command('video.transition',{fx:state.videoFx,amount:n});break;
  case 'video-logo':state.videoLogo=el.value;command('video.transition',{logo:el.value||null});break;

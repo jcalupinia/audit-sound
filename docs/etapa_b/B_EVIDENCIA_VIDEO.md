@@ -1,5 +1,27 @@
 # Evidencia · Bloque 2 de video
 
+## V2 · Pantalla 2 (proyector) y programa con transición (2026-11-09)
+
+> **Estado:** en revisión, en la rama `claude/video-v2-pantalla2`, apilada sobre la de micrófonos. Funciona en el
+> mismo equipo del DJ: la pantalla 2 es una ventana que se lleva al proyector. No hay transmisión por internet (eso es V5).
+
+| Elemento | Estado | Evidencia |
+|---|---|---|
+| Botón «Abrir pantalla 2»: ventana «Programa» sin controles, que muestra en vivo la salida Programa (1280×720) | **REAL** | E2E: se lee el video **de la ventana** (lo que ve el público) |
+| Si el navegador lo permite (Window Management API), la ventana se abre directamente en la pantalla secundaria; si no, se arrastra al proyector | **REAL** (código) | Prueba física pendiente con dos pantallas |
+| Doble clic o tecla F en la ventana: pantalla completa | **REAL** (código) | Prueba física pendiente |
+| «Enviar a programa» y «Detener» con la transición elegida: Desvanecer (0,9 s, pasa por cuadros intermedios), Barrido (de izquierda a derecha) o Corte (inmediato) | **REAL** | E2E píxel a píxel en la pantalla 2 |
+| Sin programa, el público ve negro (antes salía el texto «PROGRAMA DETENIDO» en la salida) | **REAL** | E2E |
+| **Pánico**: logo fijo al instante (el logo cargado o «AUDIT SOUND»); la mezcla no afecta lo que se ve hasta quitarlo | **REAL** | E2E |
+| La consola sabe si la pantalla 2 está abierta y detecta cuando se cierra | **REAL** | E2E |
+| Selector «Salida → Pantalla 2 (proyector)», antes «fase V2» | **REAL** | código |
+
+Pruebas:
+- `video_v2_pantalla2_e2e.mjs`: **TODO OK, 2 corridas**. Agregada al CI.
+- `video_v1_e2e.mjs`: OK. Se ajustó la espera de «Detener» porque ahora usa la transición.
+- Regresión: `agent_live`, `voice_mobile`, `sesion_real`, `cc_login` y `microfono_stream`: OK.
+
+
 ## V1 · Compositor de video por GPU (2026-11-08)
 
 > **Estado:** en revisión, en la rama `claude/video-v1`. No hay despliegue ni cambios en producción. La mezcla se hace en el
