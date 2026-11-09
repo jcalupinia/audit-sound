@@ -122,6 +122,8 @@ jobs:
         run: node web/pro/v06/tests/video_v3_e2e.mjs
       - name: «Escuchar en vivo» reproduce el stream del servidor (COEP + CORP)
         run: node web/pro/v06/tests/escuchar_stream_e2e.mjs
+      - name: Forma de onda real en los decks (cabezal, clic para ir a un punto)
+        run: node web/pro/v06/tests/onda_real_e2e.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
