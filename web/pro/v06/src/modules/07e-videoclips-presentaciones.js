@@ -25,7 +25,9 @@ function vxImageId(deck){const v=state.video[deck];
   if(v.kind==='slides'){const p=trackFor(v.pres);return p&&p.pages?p.pages[Math.max(0,Math.min(p.pages.length-1,v.page))]||'':''}
   return ''}
 function vxImg(deck){const id=vxImageId(deck);if(!id)return null;
-  if(VX.imgId[deck]!==id){VX.imgId[deck]=id;const url=mediaUrls.get(id);const im=new Image();if(url)im.src=url;VX.img[deck]=im}
+  // Tras recargar, la biblioteca (IndexedDB) entrega las imágenes un poco después: sin URL todavía no
+  // se fija la imagen, para volver a intentarlo en el próximo cuadro (antes quedaba vacía para siempre).
+  if(VX.imgId[deck]!==id){const url=mediaUrls.get(id);if(!url)return null;VX.imgId[deck]=id;const im=new Image();im.src=url;VX.img[deck]=im}
   return VX.img[deck]}
 
 // Fuente del deck: foto o diapositiva si corresponde; si no, el video de siempre.
