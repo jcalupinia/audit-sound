@@ -122,7 +122,9 @@ jobs:
 
   microfonos-e2e:
     name: Micrófonos en vivo (consola → agente → motor → Icecast, servicios reales)
-    runs-on: ubuntu-latest
+    # Igual que la imagen del motor en producción (deploy/engine/Dockerfile: ubuntu:24.04). En
+    # ubuntu-latest (más nuevo) libshout e Icecast no se entienden (Icecast rechaza «!POKE» y se cae el montaje).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Toolchain del motor, Icecast y ffmpeg
