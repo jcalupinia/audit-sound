@@ -42,6 +42,10 @@ ahora pasan por el compose, así que se pueden cambiar en Coolify. Dejarlas vac�
 | Los Cuban Boys → Cuban Cigars | **17,0 dB** de bajón, cambio de 1 s | **0,8 dB**, mezcla de 10,5 s (la entrante entra en el segundo 6) |
 | Cuban Cigars → Los Cuban Boys | — | 3,4 dB (sin intro suave: entra en su primer sonido) |
 
+- Ensayo con las 7 pistas y el motor nuevo (21 min): **5 de 5 mezclas suaves**, bajón de −0,9 a 5,4 dB y
+  6 títulos anunciados ([`transiciones_latina_mejoras_2026-11-08.md`](evidencias/transiciones_latina_mejoras_2026-11-08.md)).
+  - Con el motor anterior hubo 4 de 5 en el ensayo y 3 de 4 en producción. La que fallaba, en ambos casos, era «Cuban Boys → Cuban Cigars».
+  - Ninguna canción se repitió.
 - Medición de producción con el motor anterior (línea base): [`transiciones_prod_latina_2026-11-08.md`](evidencias/transiciones_prod_latina_2026-11-08.md).
 
 ## 3. Límites conocidos
