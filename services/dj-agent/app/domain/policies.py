@@ -97,7 +97,7 @@ class AgentDecision:
 def agent_authority(mode: Mode, action: str, dangerous: bool, policy: SessionPolicy) -> AgentDecision:
     """Decide qué puede hacer el AGENTE con una acción en el modo actual."""
     if mode == Mode.MANUAL:
-        return AgentDecision(False, False, "mode_manual_observe_only")
+        return AgentDecision(True, False, "mode_manual_observe_only")  # MUTACION: no fusionar
     if dangerous:
         return AgentDecision(False, True, "dangerous_action_requires_human")
     if mode == Mode.HIBRIDO:
