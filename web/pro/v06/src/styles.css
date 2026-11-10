@@ -28,4 +28,4 @@
 .vj-deck-slot video{width:100%;height:100%;object-fit:contain;display:block}
 .vj-fxrow{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.vj-fxrow .deckfield input[type=range]{min-width:0;flex:1}
 .cc-gate{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;background:var(--bg)}
-.micvu{height:14px;border:1px solid #34514d;border-radius:7px;background:#071317;overflow:hidden}.micvu-bar{height:100%;width:0;background:linear-gradient(90deg,#2f8e61,#72e267 60%,#dbe767 85%,#ff697a);transition:width .06s linear}.red{color:var(--red)}
+.micvu{height:14px;border:1px solid #34514d;border-radius:7px;background:#071317;overflow:hidden}.micvu-bar{height:100%;width:0;background:linear-gradient(90deg,#2f8e61,#72e267 60%,#dbe767 85%,#ff697a);transition:width .06s linear}.red{color:var(--red)}.wave-real{display:block;width:100%;height:52px;margin:10px 0;border-top:1px solid #273a45;border-bottom:1px solid #273a45;background:#060e15;border-radius:4px;cursor:pointer}
