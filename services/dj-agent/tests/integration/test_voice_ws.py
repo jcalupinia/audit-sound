@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import struct
+import time
 
 import pytest
 from starlette.websockets import WebSocketDisconnect
@@ -16,6 +17,18 @@ URL = "/api/v1/dj-agent/sessions/{}/voice"
 def _pcm(ms: int, sr: int = 48000) -> bytes:
     n = sr * ms // 1000
     return struct.pack(f"<{n}h", *(int(8000 * math.sin(2 * math.pi * 440 * i / sr)) for i in range(n)))
+
+
+def _esperar(cond, segundos: float = 5.0) -> bool:
+    """El WebSocket entrega la voz al motor desde una tarea aparte (cola ``pending``), así que el
+    «pong» puede llegar antes de que el motor haya recibido el último bloque. Se espera, con un
+    tope, a que se cumpla la condición en vez de comprobarla una sola vez."""
+    fin = time.monotonic() + segundos
+    while not cond():
+        if time.monotonic() > fin:
+            return False
+        time.sleep(0.01)
+    return True
 
 
 def test_la_voz_llega_al_motor_en_orden_y_con_su_frecuencia(client, engine):
@@ -32,7 +45,8 @@ def test_la_voz_llega_al_motor_en_orden_y_con_su_frecuencia(client, engine):
         ws.send_json({"type": "ping"})
         while ws.receive_json()["type"] != "pong":
             pass
-    # 12 bloques de 100 ms = 1,2 s de voz (pueden llegar agrupados, nunca perdidos sin retraso)
+        # 12 bloques de 100 ms = 1,2 s de voz (pueden llegar agrupados, nunca perdidos)
+        assert _esperar(lambda: engine.voice_bytes >= 12 * 9600), engine.voice_bytes
     assert engine.voice_bytes == 12 * 9600 and engine.voice_rates == {48000}
     assert engine.talkover_mode == 1
     assert ("talkover", {"value": 1, "gain": 1.3, "duck": -18.0}) in engine.calls
@@ -79,6 +93,7 @@ def test_bloques_invalidos_se_rechazan_sin_cortar(client, engine):
         ws.send_json({"type": "ping"})
         while ws.receive_json()["type"] != "pong":
             pass
+        assert _esperar(lambda: engine.voice_bytes >= 3200), engine.voice_bytes
     assert engine.voice_bytes == 3200 and engine.voice_rates == {16000}
 
 
