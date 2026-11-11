@@ -129,6 +129,8 @@ jobs:
         run: node web/pro/v06/tests/video_v2_pantalla2_e2e.mjs
       - name: Fotos, presentaciones (PDF), videoclips con sonido y cues de eventos
         run: node web/pro/v06/tests/video_v3_e2e.mjs
+      - name: Cues «Automático» se conserva al recargar y avisa de los cues vencidos con la consola cerrada (H-02)
+        run: node web/pro/v06/tests/cues_automatico_persistente_e2e.mjs
       - name: «Escuchar en vivo» reproduce el stream del servidor (COEP + CORP)
         run: node web/pro/v06/tests/escuchar_stream_e2e.mjs
       - name: Forma de onda real en los decks (cabezal, clic para ir a un punto)

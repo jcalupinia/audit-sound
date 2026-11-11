@@ -116,7 +116,7 @@ const API={
 function uid(prefix='id'){return prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function fmt(sec){if(!Number.isFinite(sec))return'00:00';const n=Math.max(0,Math.floor(sec));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function save(){try{const safe={mode:state.mode,view:state.view,content:state.content,playlists:state.playlists,favorites:state.favorites,playlistSelected:state.playlistSelected,mics:state.mics,fx:state.fx,fxPresets:state.fxPresets,fxCustom:state.fxCustom,chat:state.chat.slice(-30),agentModel:state.agentModel,agentApproval:state.agentApproval,agentAutonomy:state.agentAutonomy,agentRules:state.agentRules,segments:state.segments,events:state.events,cuesheets:state.cuesheets,streamUrl:state.streamUrl,users:state.users,roles:state.roles,organization:state.organization,licenses:state.licenses,plans:state.plans,invoiceDrafts:state.invoiceDrafts,settings:state.settings,videoFx:state.videoFx,videoFxAmount:state.videoFxAmount,videoCaption:state.videoCaption,videoLogo:state.videoLogo,videoTrans:state.videoTrans,videoMix:state.videoMix};localStorage.setItem(LS,JSON.stringify(safe))}catch(e){console.warn('Persistencia no disponible:',e)}}
+function save(){try{const safe={mode:state.mode,view:state.view,content:state.content,playlists:state.playlists,favorites:state.favorites,playlistSelected:state.playlistSelected,mics:state.mics,fx:state.fx,fxPresets:state.fxPresets,fxCustom:state.fxCustom,chat:state.chat.slice(-30),agentModel:state.agentModel,agentApproval:state.agentApproval,agentAutonomy:state.agentAutonomy,agentRules:state.agentRules,segments:state.segments,events:state.events,cuesheets:state.cuesheets,streamUrl:state.streamUrl,cueAuto:!!state.cueAuto,users:state.users,roles:state.roles,organization:state.organization,licenses:state.licenses,plans:state.plans,invoiceDrafts:state.invoiceDrafts,settings:state.settings,videoFx:state.videoFx,videoFxAmount:state.videoFxAmount,videoCaption:state.videoCaption,videoLogo:state.videoLogo,videoTrans:state.videoTrans,videoMix:state.videoMix};localStorage.setItem(LS,JSON.stringify(safe))}catch(e){console.warn('Persistencia no disponible:',e)}}
 function toast(msg,error=false){state.notice=msg;state.noticeError=error;document.querySelector('#toast')?.remove();const e=document.createElement('div');e.id='toast';e.className='toast'+(error?' error':'');e.setAttribute('role','status');e.textContent=msg;document.body.appendChild(e);clearTimeout(lastToastTimer);lastToastTimer=setTimeout(()=>e.remove(),4200)}
 function command(name,payload={},status='MOCK'){const item={id:uid('cmd'),at:new Date().toISOString(),name,payload,status,endpoint:API[name]||'SIN CONTRATO'};state.logs.unshift(item);if(state.logs.length>180)state.logs.pop();window.dispatchEvent(new CustomEvent('auditsound:command',{detail:{name,payload,correlationId:item.id,mode:'mock',contract:item.endpoint}}));return item}
 function safeUrl(v){try{let u=new URL(v,window.location.href);return ['https:','http:'].includes(u.protocol)?u.href:null}catch(e){return null}}
@@ -241,7 +241,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'stream-copy':if(state.streamUrl&&navigator.clipboard)await navigator.clipboard.writeText(state.streamUrl);else toast('Sin URL configurada.',true);break;
  case 'event-delete':state.events=state.events.filter(e=>e.id!==id);save();render();break;
  case 'cue-prepare':{let c=state.cuesheets.find(c=>c.id===id);command('event.cue',{id,action:'prepare'},'MOCK');toast('Cue "'+c?.name+'" preparado en interfaz (mock).');break}
- case 'cue-execute':case 'vx-clip':case 'vx-xlink':case 'vx-prev':case 'vx-next':case 'vx-cue-auto':await vxAction(n,a);break;
+ case 'cue-execute':case 'vx-clip':case 'vx-xlink':case 'vx-prev':case 'vx-next':case 'vx-cue-auto':case 'vx-cue-missed-ok':await vxAction(n,a);break;
  case 'cue-delete':state.cuesheets=state.cuesheets.filter(c=>c.id!==id);save();render();break;
  case 'user-toggle':{let u=state.users.find(x=>x.id===id);if(u)u.enabled=!u.enabled;command('iam.users',{op:'toggle',id});save();render();break}
  case 'user-delete':{if(id==='u1'){toast('La cuenta administrativa demo es obligatoria.',true);return}state.users=state.users.filter(u=>u.id!==id);command('iam.users',{op:'delete',id});save();render();break}
@@ -1401,14 +1401,34 @@ function vxToday(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+
 const VX_CUE_GRACIA_MIN=2;
 function vxDueCues(){if(!state.cueAuto)return;const now=new Date(),day=vxToday(now),nowMin=now.getHours()*60+now.getMinutes();
   for(const c of state.cuesheets){const m=/^(\d{1,2}):(\d{2})$/.exec(c.time||'');if(!m||!c.item||c.lastRun===day)continue;
-    const d=nowMin-(+m[1]*60+ +m[2]);if(d>=0&&d<=VX_CUE_GRACIA_MIN)vxRunCue(c,true)}}
+    const d=nowMin-(+m[1]*60+ +m[2]);if(d>=0&&d<=VX_CUE_GRACIA_MIN)vxRunCue(c,true)}
+  vxMarcarRevision(now)}
 setInterval(vxDueCues,10000);
+
+// «Automático» se guarda con el resto del estado (antes volvía a «NO» al recargar y los cues dejaban de
+// dispararse sin aviso). Si la consola estuvo cerrada o recargándose cuando vencía un cue, ese cue NO se
+// ejecuta solo al volver (podría salir fuera de tiempo): se avisa y se lista para ejecutarlo a mano.
+// La hora de la última revisión va en una clave aparte y pequeña, para no reescribir todo el estado cada 10 s.
+const VX_CUE_REVISION='auditsound.v06.cueRevision';
+function vxMarcarRevision(now){try{localStorage.setItem(VX_CUE_REVISION,String(now.getTime()))}catch(e){}}
+function vxCuesPerdidos(now=new Date()){
+  let desde=0;try{desde=+localStorage.getItem(VX_CUE_REVISION)||0}catch(e){}
+  if(!state.cueAuto||!desde||desde>=now.getTime())return [];
+  const day=vxToday(now),nowMin=now.getHours()*60+now.getMinutes(),ini=new Date(desde),
+    desdeMin=vxToday(ini)===day?ini.getHours()*60+ini.getMinutes():-1;
+  return state.cuesheets.filter(c=>{const m=/^(\d{1,2}):(\d{2})$/.exec(c.time||'');if(!m||!c.item||c.lastRun===day)return false;
+    const t=+m[1]*60+ +m[2];return t>desdeMin&&nowMin-t>VX_CUE_GRACIA_MIN});
+}
+state.cueMissed=vxCuesPerdidos().map(c=>c.id);
+if(state.cueAuto){vxMarcarRevision(new Date());
+  setTimeout(()=>toast(state.cueMissed.length?`Cues automáticos activos. ${state.cueMissed.length} cue(s) vencieron con la consola cerrada y no se ejecutaron: revísalos en «Eventos».`:'Cues automáticos activos (se mantuvo «Automático: SÍ»).',state.cueMissed.length>0),1200)}
 
 eventPage=function(){
   const items=state.tracks.filter(t=>(t.kind==='video'&&mediaUrls.has(t.id))||(t.kind==='image'&&mediaUrls.has(t.id))||t.kind==='presentation');
   const opt=[['','— qué mostrar —'],...items.map(t=>[t.id,({video:'▷ ',image:'▣ ',presentation:'▤ '}[t.kind])+t.name])];
   return `${pageTitle('Eventos y presentaciones','Organiza el evento: cada cue muestra un video, una foto o una presentación a su hora.')}<div class="grid2"><section class="panel"><h2>Calendario de eventos</h2><form data-form="event"><div class="formrow">${field('name','Nombre de evento','','text','required')}${field('date','Fecha','','date','required')}${field('venue','Lugar','', 'text','required')}${field('start','Hora de inicio','18:00','time','required')}</div><button class="primary" type="submit">+ Crear evento</button></form><div class="divider"></div>${state.events.map(e=>`<div class="listrow"><div><strong>${esc(e.name)}</strong><small>${esc(e.date)} · ${esc(e.start)} · ${esc(e.venue)}</small></div>${button('Eliminar','event-delete',{id:e.id},'danger')}</div>`).join('')||'<div class="empty">Sin eventos programados.</div>'}</section>
   <section class="panel"><div class="panel-head"><h2>Cues del evento</h2>${button(state.cueAuto?'⏰ Automático: SÍ':'⏰ Automático: NO','vx-cue-auto',{},state.cueAuto?'active':'')}</div>
+  ${(state.cueMissed||[]).length?`<div class="callout spaced" data-cues-perdidos><strong>No se ejecutaron mientras la consola estuvo cerrada:</strong> ${state.cuesheets.filter(c=>state.cueMissed.includes(c.id)).map(c=>esc(c.time+' · '+c.name)).join(' — ')}. Ejecútalos a mano con «Ejecutar» si aún corresponde. ${button('Entendido','vx-cue-missed-ok')}</div>`:''}
   <form data-form="cue"><div class="formrow">${field('time','Hora','19:15','time','required')}${field('name','Escena','','text','required')}<label class="field">Mostrar${sel('item',opt,'')}</label></div><button type="submit" class="primary">+ Agregar cue</button></form><div class="divider"></div>
   ${state.cuesheets.map(c=>{const t=trackFor(c.item);return `<div class="listrow"><div><strong>${esc(c.time)} · ${esc(c.name)}</strong><small>${t?esc(({video:'Video',image:'Foto',presentation:'Presentación'}[t.kind]||'')+' · '+t.name):'Sin contenido elegido'}${c.lastRun?' · ejecutado '+esc(c.lastRun):''}</small></div><div class="actions">${button('Ejecutar','cue-execute',{id:c.id},'primary')}${button('×','cue-delete',{id:c.id},'danger')}</div></div>`}).join('')||'<p class="muted">Sin cues. Agrega escenas para el evento.</p>'}
   <div class="callout spaced">«Ejecutar» carga el contenido en el deck que no está al aire y lo pasa a programa con la transición elegida en «Producción video». Con «Automático: SÍ» cada cue se ejecuta solo a su hora (con esta pestaña abierta).</div></section></div>
@@ -1420,7 +1440,8 @@ async function vxAction(n,a){switch(n){
   case 'vx-prev':vxSlide(a.deck,-1);break;
   case 'vx-next':vxSlide(a.deck,1);break;
   case 'vx-cue-auto':state.cueAuto=!state.cueAuto;toast(state.cueAuto?'Los cues se ejecutarán solos a su hora (deja esta pestaña abierta).':'Cues en modo manual.');save();render();vxDueCues();break;
-  case 'cue-execute':{const c=state.cuesheets.find(c=>c.id===a.id);if(c)await vxRunCue(c,false);break}
+  case 'cue-execute':{const c=state.cuesheets.find(c=>c.id===a.id);if(c){state.cueMissed=(state.cueMissed||[]).filter(x=>x!==c.id);await vxRunCue(c,false)}break}
+  case 'vx-cue-missed-ok':state.cueMissed=[];render();break;
 }}
 
 window.__ASVX={state:()=>({A:{...state.video.A},B:{...state.video.B},mix:state.videoMix,live:state.videoLive,xlink:state.clipXfader,
