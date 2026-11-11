@@ -28,6 +28,7 @@
 #include <fstream>
 #include <map>
 #include <mutex>
+#include <csignal>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -147,6 +148,13 @@ struct TrackMeta {
 };
 
 int main(int argc, char** argv) {
+#ifdef SIGPIPE
+  // H-23: si Icecast cierra la conexión mientras el sink le escribe, el núcleo envía
+  // SIGPIPE y, por defecto, mata el proceso (código 141): el stream se corta y no llega
+  // a actuar la reconexión (IcecastByteSink::tryReconnect). Ignorándolo, la escritura
+  // devuelve EPIPE, el sink lo trata como desconexión y se reconecta solo.
+  std::signal(SIGPIPE, SIG_IGN);
+#endif
   DjEngine e = dj_create();
   if (!dj_start(e)) {
     std::fprintf(stderr, "dj_start falló (¿sink/Icecast no disponible?)\n");
