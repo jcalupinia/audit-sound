@@ -131,7 +131,14 @@ try {
   // 5) Propuesta en HÍBRIDO → aprobación desde la UI
   await page.locator('button[data-action=set-mode][data-mode=hibrido]').first().click();
   await until(async () => (await api('/sessions/' + sid, TOK_OP)).mode === 'HIBRIDO');
-  await page.locator('button[data-action=agent-test-approval]').click();
+  // El cambio a HÍBRIDO llega por WebSocket y redibuja el panel: un clic que cae en ese instante se
+  // pierde (mismo caso que «Aprobar», más abajo). Se reintenta solo si el servidor no tiene ninguna
+  // propuesta pendiente, para no crear duplicadas; si el servidor no crea la propuesta, sigue fallando.
+  const pendiente = async () => (await api(`/sessions/${sid}/proposals`, TOK_OP)).some((p) => p.status === 'PENDING');
+  for (let i = 0; i < 3 && !(await pendiente()); i++) {
+    await page.locator('button[data-action=agent-test-approval]').click();
+    await until(pendiente, 3000);
+  }
   ok(await until(async () => (await page.locator('button[data-action=agent-approve]').count()) > 0), 'la propuesta del servidor aparece como solicitud de aprobación');
   if (SHOTS) await page.screenshot({ path: join(SHOTS, 'v06_agente_propuesta.png'), fullPage: true });
   // Los eventos del agente redibujan el panel: si el botón se reemplaza justo en el clic, el clic se

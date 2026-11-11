@@ -127,10 +127,54 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Dependencias del agente DJ
-        run: pip install "fastapi==0.162.2" "pydantic==2.10.4" "uvicorn==0.34.0" "httpx==0.28.1" "websockets==14.1"
+      - name: Dependencias del agente DJ (las mismas versiones de services/dj-agent/pyproject.toml)
+        run: |
+          python -c "import tomllib; d = tomllib.load(open('services/dj-agent/pyproject.toml', 'rb')); print('\n'.join(d['project']['dependencies'] + d['project']['optional-dependencies']['dev']))" > "$RUNNER_TEMP/agente-req.txt"
+          pip install -r "$RUNNER_TEMP/agente-req.txt"
       - name: Inicio de sesión real del Command Center en la v0.6 (Command Center simulado)
         run: PYTHON=python node web/pro/v06/tests/sesion_real_e2e.mjs
+      - name: Agente DJ en vivo en la consola (modos, órdenes, aprobaciones, historial; motor simulado)
+        run: PYTHON=python node web/pro/v06/tests/agent_live_e2e.mjs
+      - name: Login con el Command Center y conexión automática del agente (Command Center simulado)
+        run: PYTHON=python node web/pro/v06/tests/cc_login_e2e.mjs
+      - name: Dictado por voz y uso en el móvil (voz simulada, emulación de teléfono)
+        run: PYTHON=python node web/pro/v06/tests/voice_mobile_e2e.mjs
+
+  agente:
+    name: Agente DJ (ruff + pytest con el motor real)
+    # Igual que microfonos-e2e: la imagen del motor en producción es ubuntu:24.04 (libshout/Icecast).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain del motor y ffmpeg
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libcurl4-openssl-dev libmicrohttpd-dev ffmpeg
+      - name: Compilar el servidor del motor
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build build -j"$(nproc)" --target audit_sound_server
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencias del agente (las mismas versiones de services/dj-agent/pyproject.toml, con las de desarrollo)
+        run: |
+          python -c "import tomllib; d = tomllib.load(open('services/dj-agent/pyproject.toml', 'rb')); print('\n'.join(d['project']['dependencies'] + d['project']['optional-dependencies']['dev']))" > "$RUNNER_TEMP/agente-req.txt"
+          cat "$RUNNER_TEMP/agente-req.txt"
+          pip install -r "$RUNNER_TEMP/agente-req.txt"
+      - name: Estilo y errores estáticos (ruff)
+        working-directory: services/dj-agent
+        run: ruff check .
+      - name: Pruebas del agente (unitarias, integración, contrato, failover y con el binario real del motor)
+        working-directory: services/dj-agent
+        env:
+          DJ_AGENT_REAL_ENGINE_BIN: ${{ github.workspace }}/build/audit_sound_server
+        run: |
+          set -o pipefail
+          python -m pytest -rs 2>&1 | tee "$RUNNER_TEMP/pytest.txt"
+          # Ninguna prueba puede quedar omitida: si faltara el binario o ffmpeg, las del motor
+          # real se saltarían en silencio y la CI quedaría verde sin probarlas.
+          if grep -Eq "[0-9]+ skipped" "$RUNNER_TEMP/pytest.txt"; then
+            echo "ERROR: hay pruebas omitidas (ver el resumen de arriba)."; exit 1
+          fi
 
   microfonos-e2e:
     name: Micrófonos y efectos en vivo (consola → agente → motor → Icecast, servicios reales)
@@ -155,7 +199,8 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright@1.63.0
           npx playwright install --with-deps chromium
-          pip install "fastapi==0.162.2" "pydantic==2.10.4" "uvicorn==0.34.0" "httpx==0.28.1" "websockets==14.1"
+          python -c "import tomllib; d = tomllib.load(open('services/dj-agent/pyproject.toml', 'rb')); print('\n'.join(d['project']['dependencies'] + d['project']['optional-dependencies']['dev']))" > "$RUNNER_TEMP/agente-req.txt"
+          pip install -r "$RUNNER_TEMP/agente-req.txt"
       - name: Voz al stream con talkover, verificada por un oyente
         run: GDB=1 PYTHON=python node web/pro/v06/tests/microfono_stream_e2e.mjs
       - name: Efectos de audio desde la consola, verificados por un oyente
