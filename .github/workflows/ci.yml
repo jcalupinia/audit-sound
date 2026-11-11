@@ -160,3 +160,12 @@ jobs:
         run: GDB=1 PYTHON=python node web/pro/v06/tests/microfono_stream_e2e.mjs
       - name: Efectos de audio desde la consola, verificados por un oyente
         run: GDB=1 PYTHON=python node web/pro/v06/tests/efectos_stream_e2e.mjs
+      - name: Icecast se cae y vuelve 10 veces sin tumbar el motor (H-23, SIGPIPE) y el stream se reconecta (S1)
+        run: |
+          # Antes del arreglo, ~1 de cada 3 caídas de Icecast mataba el motor con SIGPIPE (código 141).
+          for i in $(seq 1 10); do
+            echo "== Repetición $i/10"
+            bash scripts/verificar_s1_reconexion.sh 2>&1 | tee "$RUNNER_TEMP/s1.txt"
+            # El script se salta (código 0) si falta icecast o ffprobe; en la CI eso es un fallo.
+            grep -q "RESULTADO S1: 3 OK, 0 FAIL" "$RUNNER_TEMP/s1.txt" || { echo "ERROR en la repetición $i"; exit 1; }
+          done
