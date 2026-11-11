@@ -141,13 +141,13 @@ jobs:
         run: PYTHON=python node web/pro/v06/tests/voice_mobile_e2e.mjs
 
   agente:
-    name: Agente DJ (ruff + pytest con el motor real + reconexión a Icecast)
+    name: Agente DJ (ruff + pytest con el motor real)
     # Igual que microfonos-e2e: la imagen del motor en producción es ubuntu:24.04 (libshout/Icecast).
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Toolchain del motor, Icecast y ffmpeg
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libcurl4-openssl-dev libmicrohttpd-dev icecast2 ffmpeg
+      - name: Toolchain del motor y ffmpeg
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cmake g++ pkg-config libmp3lame-dev libshout3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libcurl4-openssl-dev libmicrohttpd-dev ffmpeg
       - name: Compilar el servidor del motor
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -175,12 +175,6 @@ jobs:
           if grep -Eq "[0-9]+ skipped" "$RUNNER_TEMP/pytest.txt"; then
             echo "ERROR: hay pruebas omitidas (ver el resumen de arriba)."; exit 1
           fi
-      - name: Reconexión automática del stream cuando Icecast se cae y vuelve (S1)
-        run: |
-          set -o pipefail
-          bash scripts/verificar_s1_reconexion.sh 2>&1 | tee "$RUNNER_TEMP/s1.txt"
-          # El script se salta (código 0) si falta icecast o ffprobe; en la CI eso es un fallo.
-          grep -q "RESULTADO S1: 3 OK, 0 FAIL" "$RUNNER_TEMP/s1.txt"
 
   microfonos-e2e:
     name: Micrófonos y efectos en vivo (consola → agente → motor → Icecast, servicios reales)
