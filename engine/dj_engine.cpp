@@ -1386,9 +1386,12 @@ void dj_set_eq(DjEngine engine, int deck, float low_db, float mid_db, float high
   auto* e = asEngine(engine);
   Deck& d = e->decks[deck];
   std::lock_guard<std::mutex> lock(d.mutex);
-  d.eqLow = low_db;
-  d.eqMid = mid_db;
-  d.eqHigh = high_db;
+  // H-01: un valor no numérico (NaN/Inf, p. ej. una banda «undefined» desde JavaScript) se
+  // convertía en ganancia 0 en eqBandGain y silenciaba la banda. Se trata como 0 dB (plano).
+  auto finite_or_flat = [](float db) { return std::isfinite(db) ? db : 0.0f; };
+  d.eqLow = finite_or_flat(low_db);
+  d.eqMid = finite_or_flat(mid_db);
+  d.eqHigh = finite_or_flat(high_db);
   d.rebuildEq((float)e->engineSampleRate.load());
 }
 
