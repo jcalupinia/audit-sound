@@ -1,5 +1,7 @@
 name: CI
 
+# Todos los jobs usan ubuntu-24.04 (la imagen del motor en producción). ubuntu-latest pasó a
+# Ubuntu 26.04 y el 2026-11-11 sus repositorios de paquetes no resolvían (apt fallaba antes de las pruebas).
 # Esqueleto de CI (issue A1). El cableado real de build para Linux llega en C1
 # (CMake headless sin Oboe + libmp3lame/libshout). Por ahora validamos estructura.
 
@@ -12,7 +14,7 @@ on:
 jobs:
   structure:
     name: Verificar estructura y licencia
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Comprobar archivos de licencia y atribución
@@ -35,7 +37,7 @@ jobs:
 
   build:
     name: Build headless del motor (Linux) + selftest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Instalar toolchain
@@ -61,7 +63,7 @@ jobs:
 
   wasm:
     name: Build WASM del motor (emscripten) + autoprueba de enlace
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Instalar Emscripten 6.0.13
@@ -90,7 +92,7 @@ jobs:
 
   frontend:
     name: Pruebas del frontend (buscador + proxy de música)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -113,7 +115,7 @@ jobs:
 
   video:
     name: Consola v0.6 en Chromium real (video y sesión AUDIT-IA)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
