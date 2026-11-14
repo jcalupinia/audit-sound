@@ -71,7 +71,7 @@ async function act(a){const n=a.action;const deck=a.deck;const id=a.id;try{
  case 'stream-copy':if(state.streamUrl&&navigator.clipboard)await navigator.clipboard.writeText(state.streamUrl);else toast('Sin URL configurada.',true);break;
  case 'event-delete':state.events=state.events.filter(e=>e.id!==id);save();render();break;
  case 'cue-prepare':{let c=state.cuesheets.find(c=>c.id===id);command('event.cue',{id,action:'prepare'},'MOCK');toast('Cue "'+c?.name+'" preparado en interfaz (mock).');break}
- case 'cue-execute':case 'vx-clip':case 'vx-xlink':case 'vx-prev':case 'vx-next':case 'vx-cue-auto':await vxAction(n,a);break;
+ case 'cue-execute':case 'vx-clip':case 'vx-xlink':case 'vx-prev':case 'vx-next':case 'vx-cue-auto':case 'vx-cue-missed-ok':await vxAction(n,a);break;
  case 'cue-delete':state.cuesheets=state.cuesheets.filter(c=>c.id!==id);save();render();break;
  case 'user-toggle':{let u=state.users.find(x=>x.id===id);if(u)u.enabled=!u.enabled;command('iam.users',{op:'toggle',id});save();render();break}
  case 'user-delete':{if(id==='u1'){toast('La cuenta administrativa demo es obligatoria.',true);return}state.users=state.users.filter(u=>u.id!==id);command('iam.users',{op:'delete',id});save();render();break}
