@@ -148,6 +148,8 @@ jobs:
         run: PYTHON=python node web/pro/v06/tests/sesion_real_e2e.mjs
       - name: Agente DJ en vivo en la consola (modos, órdenes, aprobaciones, historial; motor simulado)
         run: PYTHON=python node web/pro/v06/tests/agent_live_e2e.mjs
+      - name: Una respuesta vieja del agente no borra una propuesta nueva en la consola (H-25)
+        run: PYTHON=python node web/pro/v06/tests/agente_propuestas_carrera_e2e.mjs
       - name: Login con el Command Center y conexión automática del agente (Command Center simulado)
         run: PYTHON=python node web/pro/v06/tests/cc_login_e2e.mjs
       - name: Dictado por voz y uso en el móvil (voz simulada, emulación de teléfono)
