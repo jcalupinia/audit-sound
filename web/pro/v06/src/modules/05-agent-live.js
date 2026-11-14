@@ -73,11 +73,18 @@ function agentCommandText(c){const p=c.params||{};let t=AGENT_ACTION[c.action]||
 function agentCommandsToHistory(list){
   return list.filter(c=>c.origin==='agent'&&!c.proposal_id)
     .map(c=>({id:'cmd-'+c.id,text:'Agente: '+agentCommandText(c),status:AGENT_CMD_STATUS[c.status]||String(c.status).toLowerCase(),at:c.created_at||0}))}
+// H-25: cada evento (propuesta creada, comando confirmado…) lanza una sincronización y suelen ir varias a la
+// vez. Antes cada una escribía el historial con su respuesta aunque llegara tarde: si la más vieja (pedida antes
+// de crearse una propuesta) llegaba la última, borraba la propuesta y «Aprobar» desaparecía hasta el siguiente
+// evento. Ahora solo se aplica el resultado de la sincronización más reciente que se haya iniciado.
+let agentSyncSeq=0;
 async function agentSyncProposals(){
   if(!agentLive())return;
+  const seq=++agentSyncSeq;
   let props=[],cmds=[];
   try{props=await agentFetch(`/sessions/${AGENT.sid}/proposals`)}catch(e){}
   try{cmds=await agentFetch(`/sessions/${AGENT.sid}/commands`)}catch(e){}
+  if(seq!==agentSyncSeq)return;   // hay una sincronización más nueva en curso: esta respuesta ya está vieja
   const h=agentProposalsToHistory(props||[]).map((x,i)=>({...x,at:(props[i]&&props[i].created_at)||0})).concat(agentCommandsToHistory(cmds||[]));
   h.sort((a,b)=>a.at-b.at);
   state.agentHistory=h.slice(-40);
@@ -244,3 +251,6 @@ function agentStatusHtml(){
 // Arranque: si el servidor anuncia el agente y la pestaña ya tiene token, se reconecta sola.
 if(AGENT.available&&agentGetToken()&&!agentIsOff())setTimeout(()=>agentConnect(),0);
 // (el cierre del módulo y el primer render están al final de 06-voice-mobile.js)
+
+// Gancho de pruebas (como __ASVX/__ASWAVE): sincronizar a demanda y leer las solicitudes pendientes.
+window.__ASAGENT={sync:()=>agentSyncProposals().then(agentRender),pending:()=>state.agentHistory.filter(h=>h.status==='pending').length};
